@@ -1,0 +1,79 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.TasksBookmarks-TaskEditor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-m);
+}
+
+.TasksBookmarks-TaskEditor__row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-m);
+}
+
+.TasksBookmarks-TaskEditor__label {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: var(--font-size-100);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-100);
+}
+
+.TasksBookmarks-TaskEditor__dateInput {
+    box-sizing: border-box;
+    width: 100%;
+    height: 32px;
+    padding: 0 var(--spacing-s);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-s);
+    background: var(--center-channel-bg);
+    color: var(--center-channel-color);
+    font-family: inherit;
+    font-size: var(--font-size-100);
+}
+
+.TasksBookmarks-TaskEditor__dateInput:focus-visible {
+    border-color: var(--button-bg);
+    outline: 2px solid rgba(var(--button-bg-rgb), 0.24);
+    outline-offset: 1px;
+}
+
+.TasksBookmarks-TaskEditor__assignees {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.TasksBookmarks-TaskEditor__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.TasksBookmarks-TaskEditor__results {
+    max-height: 180px;
+    margin: 0;
+    padding: var(--spacing-xs);
+    overflow-y: auto;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+    border-radius: var(--radius-s);
+    list-style: none;
+}
+
+.TasksBookmarks-TaskEditor__result {
+    padding: var(--spacing-xxs) var(--spacing-xs);
+}
+
+.TasksBookmarks-TaskEditor__hint {
+    margin: 0;
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-50);
+    line-height: var(--line-height-50);
+}
+
+.TasksBookmarks-TaskEditor__hint--error {
+    color: var(--error-text);
+}

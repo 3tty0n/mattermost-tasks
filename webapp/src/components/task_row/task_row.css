@@ -1,0 +1,121 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.TasksBookmarks-TaskRow {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-s);
+    padding: var(--spacing-s);
+    border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+}
+
+.TasksBookmarks-TaskRow:hover {
+    background: rgba(var(--center-channel-color-rgb), 0.04);
+}
+
+.TasksBookmarks-TaskRow--done .TasksBookmarks-TaskRow__title {
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    text-decoration: line-through;
+}
+
+.TasksBookmarks-TaskRow__check {
+    padding-top: 2px;
+}
+
+.TasksBookmarks-TaskRow__main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    gap: var(--spacing-xxs);
+}
+
+.TasksBookmarks-TaskRow__title {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--center-channel-color);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--font-size-100);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-100);
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.TasksBookmarks-TaskRow__title:hover {
+    color: var(--button-bg);
+    text-decoration: underline;
+}
+
+.TasksBookmarks-TaskRow__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-xxs);
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+    font-size: var(--font-size-50);
+    line-height: var(--line-height-50);
+}
+
+.TasksBookmarks-TaskRow__status {
+    padding: 1px var(--spacing-xs);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+.TasksBookmarks-TaskRow__status:hover {
+    border-color: var(--button-bg);
+    color: var(--button-bg);
+}
+
+.TasksBookmarks-TaskRow__status--in_progress {
+    border-color: rgba(var(--button-bg-rgb), 0.48);
+    color: var(--button-bg);
+}
+
+.TasksBookmarks-TaskRow__status--done {
+    border-color: rgba(var(--online-indicator-rgb, 61, 184, 120), 0.48);
+}
+
+.TasksBookmarks-TaskRow__due--overdue {
+    color: var(--error-text);
+    font-weight: var(--font-weight-semibold);
+}
+
+.TasksBookmarks-TaskRow__scope {
+    overflow: hidden;
+    max-width: 160px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.TasksBookmarks-TaskRow__assignees {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.TasksBookmarks-TaskRow__extra {
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+    font-size: var(--font-size-50);
+}
+
+.TasksBookmarks-TaskRow__srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    border: 0;
+    white-space: nowrap;
+}

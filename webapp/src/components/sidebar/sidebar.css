@@ -1,0 +1,49 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.TasksBookmarks-Sidebar {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: var(--center-channel-bg);
+    color: var(--center-channel-color);
+}
+
+.TasksBookmarks-Sidebar__header {
+    flex: none;
+    padding: var(--spacing-s) var(--spacing-m) 0;
+    border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+}
+
+.TasksBookmarks-Sidebar__scopes {
+    margin-top: var(--spacing-xs);
+}
+
+.TasksBookmarks-Sidebar__notice {
+    padding: var(--spacing-s) var(--spacing-m) 0;
+}
+
+.TasksBookmarks-Sidebar__centered {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+}
+
+.TasksBookmarks-Sidebar__list {
+    flex: 1;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.TasksBookmarks-Sidebar__pagination {
+    display: flex;
+    flex: none;
+    justify-content: space-between;
+    padding: var(--spacing-s) var(--spacing-m);
+    border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+}

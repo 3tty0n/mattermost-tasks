@@ -1,0 +1,35 @@
+{
+    "id": "com.github.3tty0n.mattermost-tasks",
+    "name": "Tasks & Bookmarks",
+    "description": "Task management and URL bookmarks linked to Mattermost teams, channels and posts.",
+    "homepage_url": "https://github.com/3tty0n/mattermost-tasks",
+    "support_url": "https://github.com/3tty0n/mattermost-tasks/issues",
+    "icon_path": "assets/tasks-icon.svg",
+    "min_server_version": "11.7.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "linux-arm64": "server/dist/plugin-linux-arm64",
+            "darwin-amd64": "server/dist/plugin-darwin-amd64",
+            "darwin-arm64": "server/dist/plugin-darwin-arm64",
+            "windows-amd64": "server/dist/plugin-windows-amd64.exe"
+        }
+    },
+    "webapp": {
+        "bundle_path": "webapp/dist/main.js"
+    },
+    "settings_schema": {
+        "header": "Tasks & Bookmarks",
+        "footer": "Tasks and bookmarks inherit Mattermost team and channel permissions. Task content is never sent to an external service.",
+        "settings": [
+            {
+                "key": "EnableAssignmentNotifications",
+                "display_name": "Send task assignment notifications:",
+                "type": "bool",
+                "help_text": "When enabled, the plugin bot sends a direct message to each user newly assigned to a task.",
+                "default": true
+            }
+        ]
+    },
+    "version": "0.1.0"
+}

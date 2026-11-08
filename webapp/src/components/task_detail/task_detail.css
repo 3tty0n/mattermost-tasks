@@ -1,0 +1,126 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.TasksBookmarks-TaskDetail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-m);
+    height: 100%;
+    padding: var(--spacing-m);
+    overflow-y: auto;
+}
+
+.TasksBookmarks-TaskDetail--centered {
+    align-items: center;
+    justify-content: center;
+}
+
+.TasksBookmarks-TaskDetail__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-s);
+}
+
+.TasksBookmarks-TaskDetail__actions {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.TasksBookmarks-TaskDetail__confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-s);
+    border: 1px solid rgba(var(--error-text-color-rgb, 210, 75, 78), 0.32);
+    border-radius: var(--radius-s);
+    background: rgba(var(--error-text-color-rgb, 210, 75, 78), 0.08);
+    font-size: var(--font-size-100);
+}
+
+.TasksBookmarks-TaskDetail__title {
+    margin: 0;
+    color: var(--center-channel-color);
+    font-size: var(--font-size-300);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-300);
+    overflow-wrap: anywhere;
+}
+
+.TasksBookmarks-TaskDetail__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-s);
+}
+
+.TasksBookmarks-TaskDetail__due {
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: var(--font-size-100);
+}
+
+.TasksBookmarks-TaskDetail__due--overdue {
+    color: var(--error-text);
+    font-weight: var(--font-weight-semibold);
+}
+
+.TasksBookmarks-TaskDetail__facts {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: var(--spacing-xs) var(--spacing-m);
+    margin: 0;
+    font-size: var(--font-size-100);
+    line-height: var(--line-height-100);
+}
+
+.TasksBookmarks-TaskDetail__term {
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+}
+
+.TasksBookmarks-TaskDetail__value {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.TasksBookmarks-TaskDetail__people {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xxs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.TasksBookmarks-TaskDetail__person {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.TasksBookmarks-TaskDetail__muted {
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+}
+
+.TasksBookmarks-TaskDetail__description {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.TasksBookmarks-TaskDetail__sectionTitle {
+    margin: 0;
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: var(--font-size-100);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-100);
+}
+
+.TasksBookmarks-TaskDetail__text {
+    margin: 0;
+    color: var(--center-channel-color);
+    font-size: var(--font-size-100);
+    line-height: var(--line-height-200);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
