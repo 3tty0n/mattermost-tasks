@@ -545,10 +545,8 @@ export default function TasksSidebar() {
                                             key={task.id}
                                             task={task}
                                             profiles={profiles}
-                                            scopeLabel={scopeLabel(task)}
                                             onOpen={() => setPreviewTaskID(task.id)}
                                             onToggleDone={() => setTaskStatus(task.id, task.status === 'done' ? 'todo' : 'done')}
-                                            onCycleStatus={() => setTaskStatus(task.id, nextStatus(task.status))}
                                         />
                                     ))}
                                     {board[status].length === 0 && quickAddStatus !== status && (

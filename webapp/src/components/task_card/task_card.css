@@ -3,9 +3,10 @@
 
 .Tasks-TaskCard {
     display: flex;
-    flex-direction: column;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-s);
+    align-items: flex-start;
+    gap: var(--spacing-s);
+    min-height: 64px;
+    padding: 10px 12px;
     border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
     border-radius: var(--radius-s);
     background: var(--center-channel-bg);
@@ -18,25 +19,38 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
-.Tasks-TaskCard__top {
+.Tasks-TaskCard__check {
     display: flex;
-    align-items: flex-start;
-    gap: var(--spacing-xs);
+    flex: 0 0 16px;
+    width: 16px;
+    padding-top: 1px;
+}
+
+.Tasks-TaskCard__content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
 }
 
 .Tasks-TaskCard__title {
-    flex: 1;
+    display: -webkit-box;
+    width: 100%;
     padding: 0;
+    overflow: hidden;
     border: 0;
     background: none;
     color: var(--center-channel-color);
     cursor: pointer;
     font-family: inherit;
-    font-size: var(--font-size-200);
+    font-size: var(--font-size-100);
     font-weight: var(--font-weight-semibold);
-    line-height: var(--line-height-200);
+    line-height: var(--line-height-100);
     overflow-wrap: anywhere;
     text-align: left;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .Tasks-TaskCard:hover .Tasks-TaskCard__title {
@@ -45,27 +59,24 @@
 
 .Tasks-TaskCard__meta {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-xs);
+    min-width: 0;
+}
+
+.Tasks-TaskCard__metaItems {
+    display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--spacing-xxs);
+    min-width: 0;
     color: rgba(var(--center-channel-color-rgb), 0.64);
     font-size: var(--font-size-50);
 }
 
-.Tasks-TaskCard__status {
-    padding: 1px var(--spacing-xs);
-    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
-    border-radius: var(--radius-pill);
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: inherit;
-}
-
-.Tasks-TaskCard__status:hover {
-    border-color: var(--button-bg);
-    color: var(--button-bg);
+.Tasks-TaskCard__due {
+    white-space: nowrap;
 }
 
 .Tasks-TaskCard__due--overdue {
@@ -73,40 +84,15 @@
     font-weight: var(--font-weight-semibold);
 }
 
-.Tasks-TaskCard__bottom {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-xs);
-}
-
-.Tasks-TaskCard__scope {
-    overflow: hidden;
-    color: rgba(var(--center-channel-color-rgb), 0.56);
-    font-size: var(--font-size-50);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
 .Tasks-TaskCard__assignees {
     display: flex;
+    flex: none;
     align-items: center;
     gap: var(--spacing-xxxxs);
+    margin-left: auto;
 }
 
 .Tasks-TaskCard__extra {
     color: rgba(var(--center-channel-color-rgb), 0.64);
     font-size: var(--font-size-50);
-}
-
-.Tasks-TaskCard__srOnly {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    border: 0;
-    white-space: nowrap;
 }
