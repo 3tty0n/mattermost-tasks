@@ -78,3 +78,14 @@ export function selectIsSystemAdmin(state: GlobalState): boolean {
 export function selectSiteURL(state: GlobalState): string | undefined {
     return state.entities.general.config.SiteURL;
 }
+
+// selectUseMilitaryTime follows the user's Mattermost display preference first, then the
+// site-wide setting. Mattermost defaults to a 12-hour clock when neither is set.
+export function selectUseMilitaryTime(state: GlobalState): boolean {
+    const preference = state.entities.preferences?.myPreferences?.['display_settings--use_military_time'];
+    if (preference) {
+        return preference.value === 'true';
+    }
+    const config = state.entities.general.config as {EnableMilitaryTime?: string};
+    return config.EnableMilitaryTime === 'true';
+}

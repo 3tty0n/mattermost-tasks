@@ -28,7 +28,8 @@ system, no external service, no second database.
 **Due dates the way you expect:** a date is date-only by default. Open the calendar, choose a day,
 and press **OK**. Enable **Set time** only when you need a time. Timed tasks and events store their
 own IANA **time zone** (default: the machine's region) so the entered wall time is unambiguous;
-every viewer sees the resulting instant in their own machine's time zone. Set **Repeat** to daily,
+every viewer sees the resulting instant in their own machine's time zone. Clock display follows
+the Mattermost 12/24-hour preference. Set **Repeat** to daily,
 weekly, monthly, yearly or a custom interval; choose when the series ends, or leave it endless.
 Completing a repeating task moves it to its next occurrence.
 
@@ -107,8 +108,10 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   **New task** button defaults the due date to today; double-clicking a day overrides it with that
   day. Repeating tasks appear on every occurrence, not just their next due date.
 - **Events:** create an event with the **+** in a day header (week view) or in the selected day's
-  agenda (month view). Events have a start/end time in a selectable **time zone**, an optional
-  all-day flag, visibility, assignees and an optional description. They are deliberately separate
+  agenda (month view). Start/end are manual text fields accepting `mm/dd/yyyy`, `dd/mm/yyyy` or
+  `yyyy/mm/dd` (auto-detected; the locale decides ambiguous values) and a time in the Mattermost
+  clock format. Each event has a selectable/typeahead IANA **time zone**, an optional all-day
+  flag, visibility, assignees and an optional description. They are deliberately separate
   from tasks: no checkbox or priority. Events appear as accent-colored cards with a calendar icon
   and time range plus assignee avatars; tasks keep their priority dots and assignee avatars, and
   month cells show tasks as dots and events as bars. Click an event to edit it; creators and
@@ -117,9 +120,9 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   drop on the upper/lower half to place before/after the target. Positions are saved on the server.
 - **Quick add:** the **+** at the top right of each board column creates a task in that column
   using only its name. It follows the context: team-visible in channels, Only me in DMs.
-- **Assignees:** focusing the assignee box immediately lists eligible users. Results show the
-  user's avatar, display name and `@username`; search matches username, first name, last name and
-  nickname before you add them.
+- **Assignees:** focusing the assignee box immediately opens a dropdown of eligible team/channel
+  members. Results show the user's avatar, display name and `@username`; typing filters them and
+  the server enforces the same scope permissions. Select one to add it as a chip.
 - **Open and edit:** click a card. List cards open the interactive task view in the sidebar;
   board cards open the same view in a popup. Name and description start as previews (description
   is rendered Markdown). Click either field to edit; click outside to save, or press **Esc** to

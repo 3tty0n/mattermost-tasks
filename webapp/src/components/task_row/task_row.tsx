@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {getProfilePictureUrl, type Profile} from 'client';
+import {useHour12} from 'hooks';
 import {type DragEvent, memo, useRef} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {recurrenceLabel} from 'recurrence_utils';
@@ -37,6 +38,7 @@ type Props = {
 
 function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatus, draggable, dragging, dropPosition, onDragStart, onDragEnd, onDragOver, onDrop}: Props) {
     const intl = useIntl();
+    const hour12 = useHour12();
     const dragActive = useRef(false);
     const done = task.status === 'done';
     const overdue = !done && isOverdue(task.dueAt, task.dueHasTime);
@@ -114,7 +116,7 @@ function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatu
                     )}
                     {task.dueAt && task.dueAt > 0 && (
                         <span className={`Tasks-TaskRow__due${overdue ? ' Tasks-TaskRow__due--overdue' : ''}`}>
-                            {formatDue(intl, task.dueAt, task.dueHasTime)}
+                            {formatDue(intl, task.dueAt, task.dueHasTime, hour12)}
                         </span>
                     )}
                     {task.recurrence && (

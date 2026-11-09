@@ -96,7 +96,11 @@ administrator. Assignment never grants access to a private channel.
 - Timed tasks and events store the IANA timezone used to enter their wall time. Display always
   converts the absolute instant into the viewer's machine timezone (overridable only by the
   viewer's own environment), so two people in different regions see the same meeting at their
-  local times.
+  local times. The 12/24-hour clock follows the Mattermost `display_settings--use_military_time`
+  preference.
+- Event start/end date fields accept mm/dd/yyyy, dd/mm/yyyy and yyyy/mm/dd; an ambiguous value is
+  resolved with the user's locale order. The timezone control is a creatable combobox, so any
+  IANA zone (or a typed value to be validated on save) can be selected.
 - The due calendar commits only on **OK**. Time is off by default and only a date is stored unless
   the user enables **Set time**. Recurrence stores a frequency, interval, stable start date,
   optional end date and IANA timezone in both the task and its compact ref. The calendar asks for

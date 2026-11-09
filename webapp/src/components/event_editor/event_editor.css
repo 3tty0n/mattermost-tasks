@@ -115,3 +115,12 @@
     font-size: var(--font-size-50);
     line-height: var(--line-height-50);
 }
+
+.Tasks-EventEditor__dateTimeInputs {
+    display: flex;
+    gap: var(--spacing-xxs);
+}
+
+.Tasks-EventEditor__timeInput {
+    max-width: 110px;
+}

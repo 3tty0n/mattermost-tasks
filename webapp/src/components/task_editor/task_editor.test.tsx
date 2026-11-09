@@ -77,8 +77,8 @@ describe('TaskEditor', () => {
         await user.type(screen.getByLabelText('Title'), 'Ship the release');
         await user.type(screen.getByLabelText('Description'), 'Before Friday');
         await user.type(screen.getByLabelText('Add assignee'), 'alice');
-        const alice = await screen.findByRole('checkbox', {name: /Alice/});
-        expect(screen.getByText('@alice')).toBeVisible();
+        const alice = await screen.findByRole('option', {name: /Alice/});
+        expect(screen.getByText('Alice')).toBeVisible();
         await user.click(alice);
 
         await user.click(screen.getByRole('button', {name: 'Add task'}));
@@ -169,7 +169,7 @@ describe('TaskEditor', () => {
 
         await user.click(screen.getByLabelText('Add assignee'));
 
-        expect(await screen.findByRole('checkbox', {name: /Alice/})).toBeVisible();
+        expect(await screen.findByRole('option', {name: /Alice/})).toBeVisible();
         expect(fetchAssigneesMock).toHaveBeenCalledWith(ids.team, ids.channel, '', expect.anything());
     });
 

@@ -2,12 +2,12 @@
 // See LICENSE.txt for license information.
 
 import {deleteTask, getProfilePictureUrl, getTask, updateTask, getSitePath} from 'client';
-import {useAssignees, useDebouncedValue, useProfiles} from 'hooks';
+import {useHour12, useProfiles} from 'hooks';
 import {type ReactNode, useEffect, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {recurrenceLabel} from 'recurrence_utils';
-import {machineTimeZone, timeZoneOptions} from 'timezone_utils';
+import {machineTimeZone} from 'timezone_utils';
 import {
     PRIORITY_TAG_TYPE,
     STATUS_MESSAGES,
@@ -24,11 +24,8 @@ import PencilOutlineIcon from '@mattermost/compass-icons/components/pencil-outli
 import RefreshIcon from '@mattermost/compass-icons/components/refresh';
 import TrashCanOutlineIcon from '@mattermost/compass-icons/components/trash-can-outline';
 import {Button} from '@mattermost/compass-ui/components/button';
-import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
-import {Chip} from '@mattermost/compass-ui/components/chip';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 import {IconButton} from '@mattermost/compass-ui/components/icon-button';
-import {SearchInput} from '@mattermost/compass-ui/components/search-input';
 import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
 import {Select} from '@mattermost/compass-ui/components/select';
 import {Spinner} from '@mattermost/compass-ui/components/spinner';
@@ -38,8 +35,10 @@ import type {GlobalState} from '@mattermost/types/store';
 
 import {selectChannel, selectCurrentChannel, selectCurrentUserId, selectIsSystemAdmin, selectMyChannels, selectMyTeams, selectTeam} from 'selectors';
 
+import AssigneePicker from 'components/assignee_picker/assignee_picker';
 import DueDatePicker from 'components/due_date_picker/due_date_picker';
 import TaskInlineEditor from 'components/task_inline_editor/task_inline_editor';
+import TimeZoneInput from 'components/timezone_input/timezone_input';
 
 import type {Task, TaskStatus, TaskVisibility, UpdateTaskInput} from 'types';
 
@@ -63,6 +62,7 @@ type EditableField = 'visibility' | 'team' | 'channel' | 'assignees' | 'due';
 
 export default function TaskDetail({taskId, revision, onClose, onChanged, onDeleted}: Props) {
     const intl = useIntl();
+    const hour12 = useHour12();
     const currentUserId = useSelector(selectCurrentUserId);
     const isAdmin = useSelector(selectIsSystemAdmin);
     const [task, setTask] = useState<Task>();
@@ -73,8 +73,6 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
     const [deleting, setDeleting] = useState(false);
     const [editingField, setEditingField] = useState<EditableField>();
     const [savingField, setSavingField] = useState<EditableField>();
-    const [assigneeTerm, setAssigneeTerm] = useState('');
-    const [assigneeFocused, setAssigneeFocused] = useState(false);
     const [dueTimeZone, setDueTimeZone] = useState(() => machineTimeZone());
 
     const team = useSelector((state: GlobalState) => (task ? selectTeam(state, task.teamId) : undefined));
@@ -85,17 +83,9 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
 
     const profileIds = task ? [task.creatorId, ...task.assigneeIds] : [];
     const profiles = useProfiles(profileIds);
-    const debouncedAssigneeTerm = useDebouncedValue(assigneeTerm, 200);
-    const assigneeResults = useAssignees(
-        task?.teamId,
-        task?.channelId,
-        debouncedAssigneeTerm,
-        Boolean(task?.teamId) && editingField === 'assignees' && task?.visibility !== 'private',
-    );
 
     useEffect(() => {
         setEditingField(undefined);
-        setAssigneeTerm('');
     }, [taskId]);
 
     useEffect(() => {
@@ -150,9 +140,7 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
     const canModify = task.creatorId === currentUserId || isAdmin;
     const canChangeStatus = canModify || task.assigneeIds.includes(currentUserId);
     const canEditScope = canModify && !task.sourcePostId;
-    const sourcePostURL = task.sourcePostId && team ?
-        `${getSitePath()}/${team.name}/pl/${task.sourcePostId}` :
-        undefined;
+    const sourcePostURL = task.sourcePostId && team ? `${getSitePath()}/${team.name}/pl/${task.sourcePostId}` : undefined;
     const statusOptions = Object.entries(STATUS_MESSAGES).map(([value, message]) => ({value, label: intl.formatMessage(message)}));
     const teamOptions = myTeams.map((memberTeam) => ({value: memberTeam.id, label: memberTeam.display_name}));
     if (task.teamId && !teamOptions.some((option) => option.value === task.teamId)) {
@@ -182,10 +170,6 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
     const toggleField = (field: EditableField) => {
         setEditingField((current) => (current === field ? undefined : field));
         setError(undefined);
-        if (field === 'assignees') {
-            setAssigneeTerm('');
-            setAssigneeFocused(true);
-        }
     };
 
     const saveField = async (field: EditableField, patch: UpdateTaskInput, close = true) => {
@@ -245,13 +229,6 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
             channelId: channelID,
             visibility: 'channel',
         });
-    };
-
-    const toggleAssignee = (userID: string) => {
-        const assigneeIds = task.assigneeIds.includes(userID) ?
-            task.assigneeIds.filter((id) => id !== userID) :
-            [...task.assigneeIds, userID];
-        saveField('assignees', {assigneeIds}, false);
     };
 
     const renderEditable = (field: EditableField, content: ReactNode, enabled = canModify) => {
@@ -500,11 +477,11 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
                             size='16'
                             glyph={<CalendarOutlineIcon/>}
                         />
-                        <span>{task.dueAt ? formatDue(intl, task.dueAt, task.dueHasTime) : intl.formatMessage({id: 'tasks.editor.due', defaultMessage: 'Due date'})}</span>
+                        <span>{task.dueAt ? formatDue(intl, task.dueAt, task.dueHasTime, hour12) : intl.formatMessage({id: 'tasks.editor.due', defaultMessage: 'Due date'})}</span>
                     </button>
                 ) : (task.dueAt && (
                     <span className={`Tasks-TaskDetail__due${isOverdue(task.dueAt, task.dueHasTime) && task.status !== 'done' ? ' Tasks-TaskDetail__due--overdue' : ''}`}>
-                        {formatDue(intl, task.dueAt, task.dueHasTime)}
+                        {formatDue(intl, task.dueAt, task.dueHasTime, hour12)}
                     </span>
                 ))}
                 {task.recurrence && (
@@ -532,10 +509,7 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
                             saveField('due', {dueAt: value ?? 0, dueHasTime: hasTime, timezone: dueTimeZone});
                         }}
                     />
-                    <Select
-                        size='small'
-                        label={intl.formatMessage({id: 'tasks.editor.timezone', defaultMessage: 'Time zone'})}
-                        options={timeZoneOptions(dueTimeZone).map((zone) => ({value: zone, label: zone}))}
+                    <TimeZoneInput
                         value={dueTimeZone}
                         onChange={setDueTimeZone}
                     />
@@ -649,97 +623,15 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
                                     />
                                 </Button>
                             </div>
-                            {task.assigneeIds.length > 0 && (
-                                <div className='Tasks-TaskDetail__chips'>
-                                    {task.assigneeIds.map((userId) => {
-                                        const profile = profiles[userId];
-                                        const name = profileName(profile, userId);
-                                        const src = getProfilePictureUrl(profile);
-                                        return (
-                                            <Chip
-                                                key={userId}
-                                                leadingAvatar={src ? {src, alt: name} : undefined}
-                                                onRemove={task.visibility === 'private' ? undefined : () => toggleAssignee(userId)}
-                                            >
-                                                {name}
-                                            </Chip>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                            {task.visibility === 'private' ? (
-                                <span className='Tasks-TaskDetail__hint'>
-                                    <FormattedMessage
-                                        id='tasks.editor.private_assignee_hint'
-                                        defaultMessage='Private tasks are visible only to you and are always assigned to you.'
-                                    />
-                                </span>
-                            ) : (
-                                <>
-                                    <SearchInput
-                                        size='small'
-                                        label={intl.formatMessage({id: 'tasks.editor.add_assignee', defaultMessage: 'Add assignee'})}
-                                        value={assigneeTerm}
-                                        autoFocus={true}
-                                        disabled={Boolean(savingField)}
-                                        onChange={(event) => setAssigneeTerm(event.target.value)}
-                                        onFocus={() => setAssigneeFocused(true)}
-                                        onClear={() => setAssigneeTerm('')}
-                                        clearLabel={intl.formatMessage({id: 'tasks.search.clear', defaultMessage: 'Clear search'})}
-                                    />
-                                    {assigneeResults.loading && (
-                                        <span className='Tasks-TaskDetail__hint'>
-                                            <FormattedMessage
-                                                id='tasks.loading'
-                                                defaultMessage='Loading…'
-                                            />
-                                        </span>
-                                    )}
-                                    {assigneeResults.error && (
-                                        <span className='Tasks-TaskDetail__hint Tasks-TaskDetail__hint--error'>
-                                            {assigneeResults.error}
-                                        </span>
-                                    )}
-                                    {assigneeFocused && assigneeResults.data && assigneeResults.data.length > 0 && (
-                                        <ul className='Tasks-TaskDetail__results'>
-                                            {assigneeResults.data.
-                                                filter((assignee) => !task.assigneeIds.includes(assignee.id)).
-                                                map((assignee) => {
-                                                    const name = profileName(assignee, assignee.username);
-                                                    const username = assignee.username ? `@${assignee.username}` : '';
-                                                    const src = getProfilePictureUrl({id: assignee.id, last_picture_update: assignee.lastPictureUpdate});
-                                                    return (
-                                                        <li
-                                                            key={assignee.id}
-                                                            className='Tasks-TaskDetail__result'
-                                                        >
-                                                            <Checkbox
-                                                                checked={false}
-                                                                disabled={Boolean(savingField)}
-                                                                onChange={() => toggleAssignee(assignee.id)}
-                                                            >
-                                                                <span className='Tasks-TaskDetail__resultIdentity'>
-                                                                    <UserAvatar
-                                                                        alt={name}
-                                                                        name={name}
-                                                                        src={src}
-                                                                        size='24'
-                                                                    />
-                                                                    <span className='Tasks-TaskDetail__resultNames'>
-                                                                        <span className='Tasks-TaskDetail__resultName'>{name}</span>
-                                                                        {username && name !== assignee.username && (
-                                                                            <span className='Tasks-TaskDetail__resultUsername'>{username}</span>
-                                                                        )}
-                                                                    </span>
-                                                                </span>
-                                                            </Checkbox>
-                                                        </li>
-                                                    );
-                                                })}
-                                        </ul>
-                                    )}
-                                </>
-                            )}
+                            <AssigneePicker
+                                teamId={task.teamId}
+                                channelId={task.channelId}
+                                assigneeIds={task.assigneeIds}
+                                onChange={(assigneeIds) => saveField('assignees', {assigneeIds}, false)}
+                                disabled={Boolean(savingField)}
+                                privateTask={task.visibility === 'private'}
+                                autoFocus={true}
+                            />
                         </div>
                     ) : (
                         assigneeSummary()

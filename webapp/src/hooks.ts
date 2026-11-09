@@ -3,6 +3,9 @@
 
 import {fetchAssignees, fetchEvents, fetchTasks, getProfiles, type Profile} from 'client';
 import {useEffect, useRef, useState} from 'react';
+import {useSelector} from 'react-redux';
+
+import {selectUseMilitaryTime} from 'selectors';
 
 import type {Assignee, EventQuery, EventSummary, ListResult, TaskQuery, TaskSummary} from 'types';
 
@@ -89,6 +92,11 @@ export function useAssignees(teamId: string | undefined, channelId: string | und
     }, [scopeKey, term, enabled, teamId, channelId]);
 
     return state;
+}
+
+// useHour12 returns the Mattermost clock preference for Intl formatting.
+export function useHour12(): boolean {
+    return !useSelector(selectUseMilitaryTime);
 }
 
 export function useProfiles(userIds: string[]) {

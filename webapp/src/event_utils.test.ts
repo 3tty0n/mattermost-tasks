@@ -72,5 +72,6 @@ describe('formatEventTime', () => {
     it('formats all-day and timed events', () => {
         expect(formatEventTime(intl, event({allDay: true}))).toBe('All day');
         expect(formatEventTime(intl, event({startAt: new Date(2026, 0, 5, 9, 0).getTime(), endAt: new Date(2026, 0, 5, 10, 0).getTime()}))).toBe('9:00 AM – 10:00 AM');
+        expect(formatEventTime(intl, event({startAt: new Date(2026, 0, 5, 9, 0).getTime(), endAt: new Date(2026, 0, 5, 10, 0).getTime()}), false)).toBe('09:00 – 10:00');
     });
 });

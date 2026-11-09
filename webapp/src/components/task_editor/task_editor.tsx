@@ -1,20 +1,19 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {createTask, getProfilePictureUrl, updateTask} from 'client';
-import {useAssignees, useDebouncedValue, useProfiles} from 'hooks';
+import {createTask, updateTask} from 'client';
+import {useHour12} from 'hooks';
 import {useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {fromDateInput, recurrencePillLabel, toDateInput} from 'recurrence_utils';
-import {epochToZonedDateTimeInput, machineTimeZone, timeZoneOptions, zonedDateTimeToEpoch} from 'timezone_utils';
+import {epochToZonedDateTimeInput, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
 import {
     PRIORITY_MESSAGES,
     STATUS_MESSAGES,
     formatDue,
     fromDateTimeInput,
     priorityLabel,
-    profileName,
     statusLabel,
     toDateTimeInput,
 } from 'utils';
@@ -31,20 +30,18 @@ import FormatListBulletedIcon from '@mattermost/compass-icons/components/format-
 import LinkVariantIcon from '@mattermost/compass-icons/components/link-variant';
 import RefreshIcon from '@mattermost/compass-icons/components/refresh';
 import {Button} from '@mattermost/compass-ui/components/button';
-import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
-import {Chip} from '@mattermost/compass-ui/components/chip';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 import {IconButton} from '@mattermost/compass-ui/components/icon-button';
-import {SearchInput} from '@mattermost/compass-ui/components/search-input';
 import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
 import {Select} from '@mattermost/compass-ui/components/select';
-import {UserAvatar} from '@mattermost/compass-ui/components/user-avatar';
 
 import {selectCurrentTeam, selectCurrentUserId, selectMyChannels, selectMyTeams} from 'selectors';
 
+import AssigneePicker from 'components/assignee_picker/assignee_picker';
 import Dialog from 'components/dialog/dialog';
 import DueDatePicker from 'components/due_date_picker/due_date_picker';
 import MarkdownText from 'components/markdown_text/markdown_text';
+import TimeZoneInput from 'components/timezone_input/timezone_input';
 
 import type {Recurrence, RecurrenceFrequency, Task, TaskPriority, TaskStatus, TaskVisibility} from 'types';
 
@@ -85,6 +82,7 @@ function initialRepeatMode(recurrence: Recurrence | undefined): RepeatMode {
 
 export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     const intl = useIntl();
+    const hour12 = useHour12();
     const currentTeam = useSelector(selectCurrentTeam);
     const myTeams = useSelector(selectMyTeams);
     const myChannels = useSelector(selectMyChannels);
@@ -124,17 +122,12 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
         initialAssigneeIds = currentUserId ? [currentUserId] : [];
     }
     const [assigneeIds, setAssigneeIds] = useState<string[]>(initialAssigneeIds);
-    const [assigneeTerm, setAssigneeTerm] = useState('');
-    const [assigneeFocused, setAssigneeFocused] = useState(false);
     const [preview, setPreview] = useState(false);
     const [openProperty, setOpenProperty] = useState<'due' | 'priority' | 'status' | 'scope' | 'repeat'>();
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string>();
 
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
-    const debouncedTerm = useDebouncedValue(assigneeTerm, 200);
-    const assigneeResults = useAssignees(teamID, channelID || undefined, debouncedTerm, Boolean(teamID) && assigneeFocused);
-    const selectedProfiles = useProfiles(assigneeIds);
 
     const teamOptions = myTeams.map((team) => ({value: team.id, label: team.display_name}));
     if (teamID && !teamOptions.some((option) => option.value === teamID)) {
@@ -171,7 +164,6 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     if (dueHasTime) {
         dueDateInput = dueValue ? epochToZonedDateTimeInput(dueValue, timeZone).slice(0, 10) : '';
     }
-    const taskTimeZoneOptions = timeZoneOptions(timeZone);
 
     const changeTimeZone = (next: string) => {
         const instant = dueValue;
@@ -233,10 +225,6 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
         {value: 'never', label: intl.formatMessage({id: 'tasks.editor.repeat_end_never', defaultMessage: 'Never'})},
         {value: 'on', label: intl.formatMessage({id: 'tasks.editor.repeat_end_on', defaultMessage: 'On date'})},
     ];
-
-    const toggleAssignee = (userID: string) => {
-        setAssigneeIds((previous) => (previous.includes(userID) ? previous.filter((id) => id !== userID) : [...previous, userID]));
-    };
 
     const selectVisibility = (next: TaskVisibility) => {
         setVisibility(next);
@@ -557,7 +545,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                             size='16'
                             glyph={<CalendarOutlineIcon/>}
                         />
-                        <span>{dueValue ? formatDue(intl, dueValue, dueHasTime) : intl.formatMessage({id: 'tasks.editor.due', defaultMessage: 'Due date'})}</span>
+                        <span>{dueValue ? formatDue(intl, dueValue, dueHasTime, hour12) : intl.formatMessage({id: 'tasks.editor.due', defaultMessage: 'Due date'})}</span>
                     </button>
                     <button
                         type='button'
@@ -641,10 +629,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                                         setOpenProperty(undefined);
                                     }}
                                 />
-                                <Select
-                                    size='small'
-                                    label={intl.formatMessage({id: 'tasks.editor.timezone', defaultMessage: 'Time zone'})}
-                                    options={taskTimeZoneOptions.map((zone) => ({value: zone, label: zone}))}
+                                <TimeZoneInput
                                     value={timeZone}
                                     onChange={changeTimeZone}
                                 />
@@ -899,91 +884,14 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                             />
                         </span>
                     </div>
-                    {assigneeIds.length > 0 && (
-                        <div className='Tasks-TaskEditor__chips'>
-                            {assigneeIds.map((id) => {
-                                const profile = selectedProfiles[id];
-                                const name = profileName(profile, id);
-                                const src = profile ? getProfilePictureUrl(profile) : undefined;
-                                return (
-                                    <Chip
-                                        key={id}
-                                        leadingAvatar={src ? {src, alt: name} : undefined}
-                                        onRemove={visibility === 'private' ? undefined : () => toggleAssignee(id)}
-                                    >
-                                        {name}
-                                    </Chip>
-                                );
-                            })}
-                        </div>
-                    )}
-                    {visibility === 'private' ? (
-                        <span className='Tasks-TaskEditor__hint'>
-                            <FormattedMessage
-                                id='tasks.editor.private_assignee_hint'
-                                defaultMessage='Private tasks are visible only to you and are always assigned to you.'
-                            />
-                        </span>
-                    ) : (
-                        <SearchInput
-                            label={intl.formatMessage({id: 'tasks.editor.add_assignee', defaultMessage: 'Add assignee'})}
-                            value={assigneeTerm}
-                            onChange={(event) => setAssigneeTerm(event.target.value)}
-                            onFocus={() => setAssigneeFocused(true)}
-                            onClear={() => setAssigneeTerm('')}
-                            clearLabel={intl.formatMessage({id: 'tasks.search.clear', defaultMessage: 'Clear search'})}
-                        />
-                    )}
-                    {visibility !== 'private' && assigneeResults.loading && (
-                        <span className='Tasks-TaskEditor__hint'>
-                            <FormattedMessage
-                                id='tasks.loading'
-                                defaultMessage='Loading…'
-                            />
-                        </span>
-                    )}
-                    {visibility !== 'private' && assigneeResults.error && (
-                        <span className='Tasks-TaskEditor__hint Tasks-TaskEditor__hint--error'>
-                            {assigneeResults.error}
-                        </span>
-                    )}
-                    {visibility !== 'private' && assigneeFocused && assigneeResults.data && assigneeResults.data.length > 0 && (
-                        <ul className='Tasks-TaskEditor__results'>
-                            {assigneeResults.data.
-                                filter((assignee) => !assigneeIds.includes(assignee.id)).
-                                map((assignee) => {
-                                    const name = profileName(assignee, assignee.username);
-                                    const username = assignee.username ? `@${assignee.username}` : '';
-                                    const src = getProfilePictureUrl({id: assignee.id, last_picture_update: assignee.lastPictureUpdate});
-                                    return (
-                                        <li
-                                            key={assignee.id}
-                                            className='Tasks-TaskEditor__result'
-                                        >
-                                            <Checkbox
-                                                checked={assigneeIds.includes(assignee.id)}
-                                                onChange={() => toggleAssignee(assignee.id)}
-                                            >
-                                                <span className='Tasks-TaskEditor__resultIdentity'>
-                                                    <UserAvatar
-                                                        alt={name}
-                                                        name={name}
-                                                        src={src}
-                                                        size='24'
-                                                    />
-                                                    <span className='Tasks-TaskEditor__resultNames'>
-                                                        <span className='Tasks-TaskEditor__resultName'>{name}</span>
-                                                        {username && name !== assignee.username && (
-                                                            <span className='Tasks-TaskEditor__resultUsername'>{username}</span>
-                                                        )}
-                                                    </span>
-                                                </span>
-                                            </Checkbox>
-                                        </li>
-                                    );
-                                })}
-                        </ul>
-                    )}
+                    <AssigneePicker
+                        teamId={teamID}
+                        channelId={visibility === 'channel' ? channelID : undefined}
+                        assigneeIds={assigneeIds}
+                        onChange={setAssigneeIds}
+                        disabled={saving}
+                        privateTask={visibility === 'private'}
+                    />
                 </div>
 
                 <p className='Tasks-TaskEditor__hint'>

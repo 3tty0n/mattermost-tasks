@@ -1,0 +1,84 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-AssigneePicker {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.Tasks-AssigneePicker__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xxs);
+}
+
+.Tasks-AssigneePicker__control {
+    position: relative;
+}
+
+.Tasks-AssigneePicker__dropdown {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + var(--spacing-xxxs));
+    right: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xxxs);
+    max-height: 220px;
+    padding: var(--spacing-xxs);
+    overflow-y: auto;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-s);
+    background: var(--center-channel-bg);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+}
+
+.Tasks-AssigneePicker__option {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    width: 100%;
+    padding: var(--spacing-xxs) var(--spacing-xs);
+    border: 0;
+    border-radius: var(--radius-s);
+    background: transparent;
+    color: var(--center-channel-color);
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+}
+
+.Tasks-AssigneePicker__option:hover,
+.Tasks-AssigneePicker__option--highlighted {
+    background: rgba(var(--button-bg-rgb), 0.08);
+}
+
+.Tasks-AssigneePicker__optionNames {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.Tasks-AssigneePicker__optionName {
+    font-size: var(--font-size-100);
+    line-height: var(--line-height-100);
+}
+
+.Tasks-AssigneePicker__optionUsername {
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-50);
+    line-height: var(--line-height-50);
+}
+
+.Tasks-AssigneePicker__hint {
+    padding: var(--spacing-xxs);
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-50);
+    line-height: var(--line-height-50);
+}
+
+.Tasks-AssigneePicker__hint--error {
+    color: var(--error-text);
+}

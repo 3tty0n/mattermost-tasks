@@ -45,7 +45,7 @@ export function nextStatus(status: TaskStatus): TaskStatus {
     return 'todo';
 }
 
-export function formatDue(intl: IntlShape, dueAt: number | undefined, hasTime = false): string {
+export function formatDue(intl: IntlShape, dueAt: number | undefined, hasTime = false, hour12?: boolean): string {
     if (!dueAt) {
         return '';
     }
@@ -60,7 +60,7 @@ export function formatDue(intl: IntlShape, dueAt: number | undefined, hasTime = 
     if (!hasTime) {
         return day;
     }
-    return day + ' ' + intl.formatTime(date, {hour: 'numeric', minute: '2-digit'});
+    return day + ' ' + intl.formatTime(date, {hour: 'numeric', minute: '2-digit', hour12});
 }
 
 export function isOverdue(dueAt: number | undefined, hasTime = false): boolean {

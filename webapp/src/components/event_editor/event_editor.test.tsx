@@ -69,7 +69,7 @@ describe('EventEditor', () => {
         const onSaved = jest.fn();
         renderWithStore(
             <EventEditor
-                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start}}
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC'}}
                 onClose={jest.fn()}
                 onSaved={onSaved}
             />,
@@ -117,11 +117,39 @@ describe('EventEditor', () => {
         })));
     });
 
+    it('accepts manual date/time formats', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <EventEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC'}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Manual event');
+        await user.clear(screen.getByLabelText('Start date'));
+        await user.type(screen.getByLabelText('Start date'), '2026/01/06');
+        await user.clear(screen.getByLabelText('Start time'));
+        await user.type(screen.getByLabelText('Start time'), '10:30');
+        await user.clear(screen.getByLabelText('End date'));
+        await user.type(screen.getByLabelText('End date'), '2026/01/07');
+        await user.clear(screen.getByLabelText('End time'));
+        await user.type(screen.getByLabelText('End time'), '11:00');
+        await user.click(screen.getByRole('button', {name: 'Save'}));
+
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'Manual event',
+            startAt: Date.UTC(2026, 0, 6, 10, 30),
+            endAt: Date.UTC(2026, 0, 7, 11, 0),
+        })));
+    });
+
     it('adds an assignee to an event', async () => {
         const user = userEvent.setup();
         renderWithStore(
             <EventEditor
-                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start}}
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC'}}
                 onClose={jest.fn()}
                 onSaved={jest.fn()}
             />,
@@ -129,7 +157,7 @@ describe('EventEditor', () => {
 
         await user.type(screen.getByLabelText('Title'), 'Sprint planning');
         await user.click(screen.getByLabelText('Add assignee'));
-        await user.click(await screen.findByRole('checkbox', {name: /Alice/}));
+        await user.click(await screen.findByRole('option', {name: /Alice/}));
         await user.click(screen.getByRole('button', {name: 'Save'}));
 
         await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
@@ -142,7 +170,7 @@ describe('EventEditor', () => {
         const user = userEvent.setup();
         renderWithStore(
             <EventEditor
-                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start}}
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC'}}
                 onClose={jest.fn()}
                 onSaved={jest.fn()}
             />,

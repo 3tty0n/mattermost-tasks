@@ -154,7 +154,7 @@ describe('TaskDetail inline editing', () => {
         await user.click(screen.getByRole('button', {name: 'No assignees'}));
 
         expect(await screen.findByLabelText('Add assignee')).toHaveFocus();
-        await user.click(await screen.findByRole('checkbox', {name: /Alice/}));
+        await user.click(await screen.findByRole('option', {name: /Alice/}));
 
         await waitFor(() => expect(updateTaskMock).toHaveBeenCalledWith(baseTask.id, {
             assigneeIds: [ids.otherUser],

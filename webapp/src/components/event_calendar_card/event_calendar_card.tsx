@@ -3,6 +3,7 @@
 
 import {getProfilePictureUrl, type Profile} from 'client';
 import {formatEventTime} from 'event_utils';
+import {useHour12} from 'hooks';
 import {useIntl} from 'react-intl';
 import {profileName} from 'utils';
 
@@ -24,6 +25,7 @@ type Props = {
 // range, no checkbox, priority or assignee.
 export default function EventCalendarCard({event, profiles, onOpen}: Props) {
     const intl = useIntl();
+    const hour12 = useHour12();
     const visibleAssignees = event.assigneeIds.slice(0, 3);
     const extraAssignees = event.assigneeIds.length - visibleAssignees.length;
     return (
@@ -36,7 +38,7 @@ export default function EventCalendarCard({event, profiles, onOpen}: Props) {
                     size='12'
                     glyph={<CalendarOutlineIcon/>}
                 />
-                <span>{formatEventTime(intl, event)}</span>
+                <span>{formatEventTime(intl, event, hour12)}</span>
                 <div className='Tasks-EventCard__assignees'>
                     {visibleAssignees.map((userID) => {
                         const profile = profiles[userID];

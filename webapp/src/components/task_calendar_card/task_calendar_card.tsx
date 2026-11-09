@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {getProfilePictureUrl, type Profile} from 'client';
+import {useHour12} from 'hooks';
 import {memo} from 'react';
 import {useIntl} from 'react-intl';
 import {recurrenceLabel} from 'recurrence_utils';
@@ -27,6 +28,7 @@ type Props = {
 // sidebar; clicking the card opens the full task editor.
 function TaskCalendarCard({task, profiles, onOpen}: Props) {
     const intl = useIntl();
+    const hour12 = useHour12();
     const done = task.status === 'done';
     const visibleAssignees = task.assigneeIds.slice(0, 3);
     const extraAssignees = task.assigneeIds.length - visibleAssignees.length;
@@ -58,7 +60,7 @@ function TaskCalendarCard({task, profiles, onOpen}: Props) {
                     )}
                     {task.dueHasTime && task.dueAt && (
                         <span className='Tasks-CalendarCard__time'>
-                            {intl.formatTime(new Date(task.dueAt), {hour: 'numeric', minute: '2-digit'})}
+                            {intl.formatTime(new Date(task.dueAt), {hour: 'numeric', minute: '2-digit', hour12})}
                         </span>
                     )}
                     {task.recurrence && (

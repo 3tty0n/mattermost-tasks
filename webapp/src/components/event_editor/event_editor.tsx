@@ -2,27 +2,26 @@
 // See LICENSE.txt for license information.
 
 import {DAY_IN_MS} from 'calendar_utils';
-import {createEvent, deleteEvent, getEvent, getProfilePictureUrl, updateEvent} from 'client';
-import {useAssignees, useDebouncedValue, useProfiles} from 'hooks';
+import {createEvent, deleteEvent, getEvent, updateEvent} from 'client';
+import {formatDateInput, formatTimeInput, parseDateInput, parseTimeInput, wallDateTime} from 'datetime_input_utils';
+import {useHour12} from 'hooks';
 import {useEffect, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
-import {fromDateInput, toDateInput} from 'recurrence_utils';
-import {epochToZonedDateInput, epochToZonedDateTimeInput, machineTimeZone, timeZoneOptions, zonedDateTimeToEpoch} from 'timezone_utils';
-import {profileName} from 'utils';
+import {toDateInput} from 'recurrence_utils';
+import {epochToZonedParts, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
 
 import {Button} from '@mattermost/compass-ui/components/button';
 import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
-import {Chip} from '@mattermost/compass-ui/components/chip';
-import {SearchInput} from '@mattermost/compass-ui/components/search-input';
 import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
 import {Select} from '@mattermost/compass-ui/components/select';
 import {Spinner} from '@mattermost/compass-ui/components/spinner';
-import {UserAvatar} from '@mattermost/compass-ui/components/user-avatar';
 
 import {selectCurrentTeam, selectCurrentUserId, selectIsSystemAdmin, selectMyChannels, selectMyTeams} from 'selectors';
 
+import AssigneePicker from 'components/assignee_picker/assignee_picker';
 import Dialog from 'components/dialog/dialog';
+import TimeZoneInput from 'components/timezone_input/timezone_input';
 
 import type {Event, TaskVisibility} from 'types';
 
@@ -59,6 +58,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     const myChannels = useSelector(selectMyChannels);
     const currentUserId = useSelector(selectCurrentUserId);
     const isAdmin = useSelector(selectIsSystemAdmin);
+    const hour12 = useHour12();
 
     const initialStart = defaults?.startAt ?? defaultStartAt();
     const initialEnd = initialStart + (60 * 60 * 1000);
@@ -69,16 +69,17 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [allDay, setAllDay] = useState(Boolean(defaults?.allDay));
-    const [startDate, setStartDate] = useState(epochToZonedDateInput(initialStart, initialTimeZone));
-    const [endDate, setEndDate] = useState(epochToZonedDateInput(initialEnd - 1, initialTimeZone));
-    const [startTime, setStartTime] = useState(epochToZonedDateTimeInput(initialStart, initialTimeZone));
-    const [endTime, setEndTime] = useState(epochToZonedDateTimeInput(initialEnd, initialTimeZone));
+    const initialStartParts = epochToZonedParts(initialStart, initialTimeZone);
+    const initialEndDateParts = epochToZonedParts(initialEnd - (allDay ? DAY_IN_MS : 0), initialTimeZone);
+    const initialEndClockParts = epochToZonedParts(initialEnd, initialTimeZone);
+    const [startDate, setStartDate] = useState(formatDateInput({year: initialStartParts.year, month: initialStartParts.month, day: initialStartParts.day}));
+    const [endDate, setEndDate] = useState(formatDateInput({year: initialEndDateParts.year, month: initialEndDateParts.month, day: initialEndDateParts.day}));
+    const [startTime, setStartTime] = useState(formatTimeInput(initialStartParts.hour, initialStartParts.minute, Boolean(hour12)));
+    const [endTime, setEndTime] = useState(formatTimeInput(initialEndClockParts.hour, initialEndClockParts.minute, Boolean(hour12)));
     const [teamID, setTeamID] = useState(defaults?.teamId ?? currentTeam?.id ?? myTeams[0]?.id ?? '');
     const [channelID, setChannelID] = useState(defaults?.channelId ?? '');
     const [visibility, setVisibility] = useState<TaskVisibility>(defaults?.visibility ?? 'private');
     const [assigneeIds, setAssigneeIds] = useState<string[]>(defaults?.assigneeIds ?? (currentUserId ? [currentUserId] : []));
-    const [assigneeTerm, setAssigneeTerm] = useState('');
-    const [assigneeFocused, setAssigneeFocused] = useState(false);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -97,11 +98,14 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                 setDescription(loaded.description ?? '');
                 setAllDay(Boolean(loaded.allDay));
                 const loadedZone = loaded.timezone || machineTimeZone();
+                const startParts = epochToZonedParts(loaded.startAt, loadedZone);
+                const endDateParts = epochToZonedParts(loaded.allDay ? loaded.endAt - DAY_IN_MS : loaded.endAt, loadedZone);
+                const endClockParts = epochToZonedParts(loaded.endAt, loadedZone);
                 setTimeZone(loadedZone);
-                setStartDate(loaded.allDay ? toDateInput(loaded.startAt, false) : epochToZonedDateInput(loaded.startAt, loadedZone));
-                setEndDate(loaded.allDay ? toDateInput(loaded.endAt - DAY_IN_MS, false) : epochToZonedDateInput(loaded.endAt - DAY_IN_MS, loadedZone));
-                setStartTime(epochToZonedDateTimeInput(loaded.startAt, loadedZone));
-                setEndTime(epochToZonedDateTimeInput(loaded.endAt, loadedZone));
+                setStartDate(loaded.allDay ? toDateInput(loaded.startAt, false).replace(/-/g, '/') : formatDateInput({year: startParts.year, month: startParts.month, day: startParts.day}));
+                setEndDate(loaded.allDay ? toDateInput(loaded.endAt - DAY_IN_MS, false).replace(/-/g, '/') : formatDateInput({year: endDateParts.year, month: endDateParts.month, day: endDateParts.day}));
+                setStartTime(formatTimeInput(startParts.hour, startParts.minute, Boolean(hour12)));
+                setEndTime(formatTimeInput(endClockParts.hour, endClockParts.minute, Boolean(hour12)));
                 setTeamID(loaded.teamId);
                 setChannelID(loaded.channelId ?? '');
                 setVisibility(loaded.visibility);
@@ -121,14 +125,6 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
 
     const canModify = !eventId || Boolean(event && (event.creatorId === currentUserId || isAdmin));
     const canDelete = Boolean(event && (event.creatorId === currentUserId || isAdmin));
-    const debouncedAssigneeTerm = useDebouncedValue(assigneeTerm, 200);
-    const assigneeResults = useAssignees(
-        teamID,
-        channelID || undefined,
-        debouncedAssigneeTerm,
-        Boolean(teamID) && canModify && visibility !== 'private' && assigneeFocused,
-    );
-    const selectedProfiles = useProfiles(assigneeIds);
     const teamOptions = myTeams.map((memberTeam) => ({value: memberTeam.id, label: memberTeam.display_name}));
     if (teamID && !teamOptions.some((option) => option.value === teamID)) {
         teamOptions.push({value: teamID, label: currentTeam?.id === teamID ? currentTeam.display_name : teamID});
@@ -169,45 +165,89 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
         }
     };
 
-    const changeTimeZone = (next: string) => {
-        if (!allDay) {
-            const start = zonedDateTimeToEpoch(startTime, timeZone);
-            const end = zonedDateTimeToEpoch(endTime, timeZone);
-            if (start) {
-                setStartTime(epochToZonedDateTimeInput(start, next));
+    const currentWallTimes = () => {
+        if (allDay) {
+            const start = parseDateInput(startDate, intl.locale);
+            const end = parseDateInput(endDate, intl.locale);
+            if (!start || !end) {
+                return undefined;
             }
-            if (end) {
-                setEndTime(epochToZonedDateTimeInput(end, next));
-            }
+            const startAt = Date.UTC(start.year, start.month - 1, start.day);
+            const endAt = Date.UTC(end.year, end.month - 1, end.day) + DAY_IN_MS;
+            return {startAt, endAt};
         }
+        const startDateParts = parseDateInput(startDate, intl.locale);
+        const endDateParts = parseDateInput(endDate, intl.locale);
+        const startClock = parseTimeInput(startTime);
+        const endClock = parseTimeInput(endTime);
+        if (!startDateParts || !endDateParts || !startClock || !endClock) {
+            return undefined;
+        }
+        return {
+            startAt: zonedDateTimeToEpoch(wallDateTime(startDateParts, startClock), timeZone),
+            endAt: zonedDateTimeToEpoch(wallDateTime(endDateParts, endClock), timeZone),
+        };
+    };
+
+    const changeTimeZone = (next: string) => {
+        if (allDay) {
+            setTimeZone(next);
+            return;
+        }
+        const instants = currentWallTimes();
         setTimeZone(next);
+        if (!instants || !instants.startAt || !instants.endAt) {
+            return;
+        }
+        const startParts = epochToZonedParts(instants.startAt, next);
+        const endDateParts = epochToZonedParts(allDay ? instants.endAt - DAY_IN_MS : instants.endAt, next);
+        const endClockParts = epochToZonedParts(instants.endAt, next);
+        setStartDate(formatDateInput({year: startParts.year, month: startParts.month, day: startParts.day}));
+        setEndDate(formatDateInput({year: endDateParts.year, month: endDateParts.month, day: endDateParts.day}));
+        setStartTime(formatTimeInput(startParts.hour, startParts.minute, Boolean(hour12)));
+        setEndTime(formatTimeInput(endClockParts.hour, endClockParts.minute, Boolean(hour12)));
     };
 
     const toggleAllDay = (next: boolean) => {
         if (next) {
-            const start = zonedDateTimeToEpoch(startTime, timeZone) ?? initialStart;
-            const end = zonedDateTimeToEpoch(endTime, timeZone) ?? (start + (60 * 60 * 1000));
-            setStartDate(epochToZonedDateInput(start, timeZone));
-            setEndDate(epochToZonedDateInput(Math.max(start, end - 1), timeZone));
+            const instants = currentWallTimes();
+            if (instants?.startAt) {
+                const startParts = epochToZonedParts(instants.startAt, timeZone);
+                const endParts = epochToZonedParts(Math.max(instants.startAt, (instants.endAt ?? instants.startAt + 3600000) - 1), timeZone);
+                setStartDate(formatDateInput({year: startParts.year, month: startParts.month, day: startParts.day}));
+                setEndDate(formatDateInput({year: endParts.year, month: endParts.month, day: endParts.day}));
+            }
         } else {
-            setStartTime(`${startDate}T09:00`);
-            setEndTime(`${endDate}T10:00`);
+            setStartTime(formatTimeInput(9, 0, Boolean(hour12)));
+            setEndTime(formatTimeInput(10, 0, Boolean(hour12)));
         }
         setAllDay(next);
     };
 
     const buildTimes = (): {startAt: number; endAt: number} | undefined => {
+        const startParts = parseDateInput(startDate, intl.locale);
+        const endParts = parseDateInput(endDate, intl.locale);
+        if (!startParts || !endParts) {
+            setError(intl.formatMessage({id: 'tasks.event.invalid_date', defaultMessage: 'Enter a valid date (mm/dd/yyyy, dd/mm/yyyy or yyyy/mm/dd).'}));
+            return undefined;
+        }
         if (allDay) {
-            const startAt = fromDateInput(startDate);
-            const endAt = fromDateInput(endDate);
-            if (!startAt || !endAt || endAt < startAt) {
+            const startAt = Date.UTC(startParts.year, startParts.month - 1, startParts.day);
+            const endAt = Date.UTC(endParts.year, endParts.month - 1, endParts.day);
+            if (endAt < startAt) {
                 setError(intl.formatMessage({id: 'tasks.event.end_before_start', defaultMessage: 'The end must be on or after the start.'}));
                 return undefined;
             }
             return {startAt, endAt: endAt + DAY_IN_MS};
         }
-        const startAt = zonedDateTimeToEpoch(startTime, timeZone);
-        const endAt = zonedDateTimeToEpoch(endTime, timeZone);
+        const startClock = parseTimeInput(startTime);
+        const endClock = parseTimeInput(endTime);
+        if (!startClock || !endClock) {
+            setError(intl.formatMessage({id: 'tasks.event.invalid_time', defaultMessage: 'Enter a valid time.'}));
+            return undefined;
+        }
+        const startAt = zonedDateTimeToEpoch(wallDateTime(startParts, startClock), timeZone);
+        const endAt = zonedDateTimeToEpoch(wallDateTime(endParts, endClock), timeZone);
         if (!startAt || !endAt || endAt <= startAt) {
             setError(intl.formatMessage({id: 'tasks.event.end_before_start', defaultMessage: 'The end must be on or after the start.'}));
             return undefined;
@@ -444,7 +484,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                         />
                     </Checkbox>
                     <div className='Tasks-EventEditor__row'>
-                        <label className='Tasks-EventEditor__field'>
+                        <div className='Tasks-EventEditor__field'>
                             <span className='Tasks-EventEditor__label'>
                                 <FormattedMessage
                                     id='tasks.event.start'
@@ -453,23 +493,41 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                             </span>
                             {allDay ? (
                                 <input
-                                    type='date'
+                                    type='text'
                                     className='Tasks-EventEditor__input'
                                     value={startDate}
+                                    placeholder='YYYY/MM/DD'
+                                    autoComplete='off'
+                                    aria-label={intl.formatMessage({id: 'tasks.event.start_date', defaultMessage: 'Start date'})}
                                     disabled={!canModify}
                                     onChange={(changeEvent) => setStartDate(changeEvent.target.value)}
                                 />
                             ) : (
-                                <input
-                                    type='datetime-local'
-                                    className='Tasks-EventEditor__input'
-                                    value={startTime}
-                                    disabled={!canModify}
-                                    onChange={(changeEvent) => setStartTime(changeEvent.target.value)}
-                                />
+                                <div className='Tasks-EventEditor__dateTimeInputs'>
+                                    <input
+                                        type='text'
+                                        className='Tasks-EventEditor__input'
+                                        value={startDate}
+                                        placeholder='YYYY/MM/DD'
+                                        autoComplete='off'
+                                        aria-label={intl.formatMessage({id: 'tasks.event.start_date', defaultMessage: 'Start date'})}
+                                        disabled={!canModify}
+                                        onChange={(changeEvent) => setStartDate(changeEvent.target.value)}
+                                    />
+                                    <input
+                                        type='text'
+                                        className='Tasks-EventEditor__input Tasks-EventEditor__timeInput'
+                                        value={startTime}
+                                        placeholder={hour12 ? '9:00 AM' : '09:00'}
+                                        autoComplete='off'
+                                        aria-label={intl.formatMessage({id: 'tasks.event.start_time', defaultMessage: 'Start time'})}
+                                        disabled={!canModify}
+                                        onChange={(changeEvent) => setStartTime(changeEvent.target.value)}
+                                    />
+                                </div>
                             )}
-                        </label>
-                        <label className='Tasks-EventEditor__field'>
+                        </div>
+                        <div className='Tasks-EventEditor__field'>
                             <span className='Tasks-EventEditor__label'>
                                 <FormattedMessage
                                     id='tasks.event.end'
@@ -478,31 +536,51 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                             </span>
                             {allDay ? (
                                 <input
-                                    type='date'
+                                    type='text'
                                     className='Tasks-EventEditor__input'
                                     value={endDate}
-                                    min={startDate}
+                                    placeholder='YYYY/MM/DD'
+                                    autoComplete='off'
+                                    aria-label={intl.formatMessage({id: 'tasks.event.end_date', defaultMessage: 'End date'})}
                                     disabled={!canModify}
                                     onChange={(changeEvent) => setEndDate(changeEvent.target.value)}
                                 />
                             ) : (
-                                <input
-                                    type='datetime-local'
-                                    className='Tasks-EventEditor__input'
-                                    value={endTime}
-                                    disabled={!canModify}
-                                    onChange={(changeEvent) => setEndTime(changeEvent.target.value)}
-                                />
+                                <div className='Tasks-EventEditor__dateTimeInputs'>
+                                    <input
+                                        type='text'
+                                        className='Tasks-EventEditor__input'
+                                        value={endDate}
+                                        placeholder='YYYY/MM/DD'
+                                        autoComplete='off'
+                                        aria-label={intl.formatMessage({id: 'tasks.event.end_date', defaultMessage: 'End date'})}
+                                        disabled={!canModify}
+                                        onChange={(changeEvent) => setEndDate(changeEvent.target.value)}
+                                    />
+                                    <input
+                                        type='text'
+                                        className='Tasks-EventEditor__input Tasks-EventEditor__timeInput'
+                                        value={endTime}
+                                        placeholder={hour12 ? '10:00 AM' : '10:00'}
+                                        autoComplete='off'
+                                        aria-label={intl.formatMessage({id: 'tasks.event.end_time', defaultMessage: 'End time'})}
+                                        disabled={!canModify}
+                                        onChange={(changeEvent) => setEndTime(changeEvent.target.value)}
+                                    />
+                                </div>
                             )}
-                        </label>
+                        </div>
                     </div>
-                    <Select
-                        size='small'
-                        label={intl.formatMessage({id: 'tasks.editor.timezone', defaultMessage: 'Time zone'})}
-                        options={timeZoneOptions(timeZone).map((zone) => ({value: zone, label: zone}))}
+                    <p className='Tasks-EventEditor__hint'>
+                        <FormattedMessage
+                            id='tasks.event.date_hint'
+                            defaultMessage='Dates accept mm/dd/yyyy, dd/mm/yyyy or yyyy/mm/dd.'
+                        />
+                    </p>
+                    <TimeZoneInput
                         value={timeZone}
-                        disabled={!canModify}
                         onChange={changeTimeZone}
+                        disabled={!canModify}
                     />
                     <div className='Tasks-EventEditor__row'>
                         <div className='Tasks-EventEditor__field'>
@@ -541,97 +619,14 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                 defaultMessage='Assignees'
                             />
                         </span>
-                        {assigneeIds.length > 0 && (
-                            <div className='Tasks-EventEditor__chips'>
-                                {assigneeIds.map((userID) => {
-                                    const profile = selectedProfiles[userID];
-                                    const name = profileName(profile, userID);
-                                    const src = getProfilePictureUrl(profile);
-                                    return (
-                                        <Chip
-                                            key={userID}
-                                            leadingAvatar={src ? {src, alt: name} : undefined}
-                                            onRemove={canModify && visibility !== 'private' ? () => {
-                                                setAssigneeIds((current) => current.filter((id) => id !== userID));
-                                            } : undefined}
-                                        >
-                                            {name}
-                                        </Chip>
-                                    );
-                                })}
-                            </div>
-                        )}
-                        {visibility === 'private' ? (
-                            <span className='Tasks-EventEditor__hint'>
-                                <FormattedMessage
-                                    id='tasks.editor.private_assignee_hint'
-                                    defaultMessage='Private tasks are visible only to you and are always assigned to you.'
-                                />
-                            </span>
-                        ) : canModify && (
-                            <>
-                                <SearchInput
-                                    size='small'
-                                    label={intl.formatMessage({id: 'tasks.editor.add_assignee', defaultMessage: 'Add assignee'})}
-                                    value={assigneeTerm}
-                                    disabled={!canModify}
-                                    onChange={(changeEvent) => setAssigneeTerm(changeEvent.target.value)}
-                                    onFocus={() => setAssigneeFocused(true)}
-                                    onClear={() => setAssigneeTerm('')}
-                                    clearLabel={intl.formatMessage({id: 'tasks.search.clear', defaultMessage: 'Clear search'})}
-                                />
-                                {assigneeResults.loading && (
-                                    <span className='Tasks-EventEditor__hint'>
-                                        <FormattedMessage
-                                            id='tasks.loading'
-                                            defaultMessage='Loading…'
-                                        />
-                                    </span>
-                                )}
-                                {assigneeResults.error && (
-                                    <span className='Tasks-EventEditor__hint Tasks-EventEditor__hint--error'>
-                                        {assigneeResults.error}
-                                    </span>
-                                )}
-                                {assigneeFocused && assigneeResults.data && assigneeResults.data.length > 0 && (
-                                    <ul className='Tasks-EventEditor__results'>
-                                        {assigneeResults.data.
-                                            filter((assignee) => !assigneeIds.includes(assignee.id)).
-                                            map((assignee) => {
-                                                const name = profileName(assignee, assignee.username);
-                                                const username = assignee.username ? `@${assignee.username}` : '';
-                                                const src = getProfilePictureUrl({id: assignee.id, last_picture_update: assignee.lastPictureUpdate});
-                                                return (
-                                                    <li
-                                                        key={assignee.id}
-                                                        className='Tasks-EventEditor__result'
-                                                    >
-                                                        <Checkbox
-                                                            checked={false}
-                                                            onChange={() => setAssigneeIds((current) => [...current, assignee.id])}
-                                                        >
-                                                            <span className='Tasks-EventEditor__resultIdentity'>
-                                                                <UserAvatar
-                                                                    alt={name}
-                                                                    name={name}
-                                                                    src={src}
-                                                                    size='24'
-                                                                />
-                                                                <span className='Tasks-EventEditor__resultNames'>
-                                                                    <span>{name}</span>
-                                                                    {username && name !== assignee.username && (
-                                                                        <span className='Tasks-EventEditor__resultUsername'>{username}</span>
-                                                                    )}
-                                                                </span>
-                                                            </span>
-                                                        </Checkbox>
-                                                    </li>
-                                                );
-                                            })}
-                                    </ul>
-                                )}
-                            </>
-                        )}
+                        <AssigneePicker
+                            teamId={teamID}
+                            channelId={visibility === 'channel' ? channelID : undefined}
+                            assigneeIds={assigneeIds}
+                            onChange={setAssigneeIds}
+                            disabled={!canModify}
+                            privateTask={visibility === 'private'}
+                        />
                     </div>
                 </div>
             )}

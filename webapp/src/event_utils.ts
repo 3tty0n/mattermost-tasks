@@ -39,14 +39,14 @@ export function eventOccurrencesForDays(event: EventSummary, days: Date[]): Cale
     return occurrences;
 }
 
-export function formatEventTime(intl: IntlShape, event: EventSummary): string {
+export function formatEventTime(intl: IntlShape, event: EventSummary, hour12?: boolean): string {
     if (event.allDay) {
         return intl.formatMessage({id: 'tasks.event.all_day', defaultMessage: 'All day'});
     }
     const start = new Date(event.startAt);
     const end = new Date(event.endAt);
-    const startLabel = intl.formatTime(start, {hour: 'numeric', minute: '2-digit'});
-    const endLabel = intl.formatTime(end, {hour: 'numeric', minute: '2-digit'});
+    const startLabel = intl.formatTime(start, {hour: 'numeric', minute: '2-digit', hour12});
+    const endLabel = intl.formatTime(end, {hour: 'numeric', minute: '2-digit', hour12});
     if (start.toDateString() === end.toDateString()) {
         return `${startLabel} – ${endLabel}`;
     }
