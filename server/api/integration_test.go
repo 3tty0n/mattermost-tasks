@@ -179,6 +179,18 @@ func TestPrivateChannelIsolationIntegration(t *testing.T) {
 	response, payload := pluginRequest(t, th, th.Client, http.MethodGet, "/tasks/"+privateTask.ID, nil)
 	assert.Equal(t, http.StatusNotFound, response.StatusCode, string(payload))
 
+	response, payload = pluginRequest(t, th, th.AdminClient, http.MethodGet, "/tasks?scope=team&team_id="+th.Team.Id, nil)
+	require.Equal(t, http.StatusOK, response.StatusCode, string(payload))
+	var adminList tasks.ListResult
+	require.NoError(t, json.Unmarshal(payload, &adminList))
+	foundPrivate := false
+	for _, item := range adminList.Items {
+		if item.ID == privateTask.ID {
+			foundPrivate = true
+		}
+	}
+	assert.True(t, foundPrivate, "the creator's team view includes their private task")
+
 	response, payload = pluginRequest(t, th, th.Client, http.MethodGet, "/tasks?scope=team&team_id="+th.Team.Id, nil)
 	require.Equal(t, http.StatusOK, response.StatusCode, string(payload))
 	var list tasks.ListResult
@@ -205,6 +217,18 @@ func TestTaskVisibilityIntegration(t *testing.T) {
 
 	response, payload := pluginRequest(t, th, th.Client, http.MethodGet, "/tasks/"+privateTask.ID, nil)
 	assert.Equal(t, http.StatusNotFound, response.StatusCode, string(payload))
+
+	response, payload = pluginRequest(t, th, th.AdminClient, http.MethodGet, "/tasks?scope=team&team_id="+th.Team.Id, nil)
+	require.Equal(t, http.StatusOK, response.StatusCode, string(payload))
+	var adminList tasks.ListResult
+	require.NoError(t, json.Unmarshal(payload, &adminList))
+	foundPrivate := false
+	for _, item := range adminList.Items {
+		if item.ID == privateTask.ID {
+			foundPrivate = true
+		}
+	}
+	assert.True(t, foundPrivate, "the creator's team view includes their private task")
 
 	teamTask := createTaskIntegration(t, th, th.AdminClient, map[string]any{
 		"teamId":     th.Team.Id,

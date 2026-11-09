@@ -67,12 +67,7 @@
   "tasks.row.more_assignees": "{count} more assignees",
   "tasks.row.open_hint": "Open task details",
   "tasks.save": "Save",
-  "tasks.scope.all": "All",
-  "tasks.scope.channel": "Channel",
-  "tasks.scope.my": "My tasks",
-  "tasks.scope.no_channel": "Open a channel to see its tasks.",
   "tasks.scope.no_team": "Join or open a team to see team tasks.",
-  "tasks.scope.team": "Team",
   "tasks.search.clear": "Clear search",
   "tasks.status.done": "Done",
   "tasks.status.in_progress": "In progress",
@@ -120,5 +115,6 @@
   "tasks.inline.description": "Description",
   "tasks.inline.edit_description": "Edit description",
   "tasks.inline.hint": "Click a field to edit. Click outside to save; Esc to cancel.",
-  "tasks.inline.name": "Task name"
+  "tasks.inline.name": "Task name",
+  "tasks.view.team_heading": "Team tasks"
 }

@@ -101,6 +101,7 @@ export type ComposerRequest = {
     kind: 'task';
     postId?: string;
     channelId?: string;
+    visibility?: TaskVisibility;
     title?: string;
     description?: string;
 };

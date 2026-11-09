@@ -19,7 +19,8 @@ responses set `Cache-Control: no-store` because task titles and descriptions are
 `GET /tasks?scope=my|team|channel|all&team_id=...&channel_id=...&status=todo,in_progress&assignee_id=...&priority=...&due_before=...&due_after=...&has_due=true&sort=due|created|priority&direction=asc|desc&page=0&per_page=20`
 
 - `scope=my` returns tasks assigned to the actor.
-- `scope=team` requires `team_id`.
+- `scope=team` requires `team_id` and is the single view used by the webapp. It includes
+  team/channel tasks the actor can read plus the actor's own private tasks in that team.
 - `scope=channel` requires `channel_id`.
 - `scope=all` returns every task in teams the user can access.
 - `status` is a comma-separated list of `todo`, `in_progress`, `done`.

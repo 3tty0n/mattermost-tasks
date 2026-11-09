@@ -7,21 +7,18 @@ import '@mattermost/compass-ui/styles';
 
 import {setSiteURL} from 'client';
 import manifest from 'manifest';
+import {canCreateTaskFromPost, taskComposerFromPost} from 'post_actions';
 import {FormattedMessage} from 'react-intl';
 import type {Store} from 'redux';
 import {openComposer, openTask, reconnected, reducer, remoteEvent} from 'state';
-import {postTitle} from 'utils';
 
 import CheckboxMarkedCircleOutlineIcon from '@mattermost/compass-icons/components/checkbox-marked-circle-outline';
-import type {Channel} from '@mattermost/types/channels';
-import type {Post} from '@mattermost/types/posts';
 import type {GlobalState} from '@mattermost/types/store';
 
 import {selectSiteURL} from 'selectors';
 
 import TasksSidebar from 'components/sidebar/sidebar';
 
-import type {ComposerRequest} from 'types';
 import type {PluginRegistry} from 'types/mattermost-webapp';
 
 import en from '../i18n/en.json';
@@ -29,21 +26,6 @@ import en from '../i18n/en.json';
 const translations: Record<string, Record<string, string>> = {en};
 
 const TASK_HASH = /^#task-([a-z0-9]{26})$/;
-
-function usablePost(state: GlobalState, postID: string): {post: Post; channel: Channel} | undefined {
-    if (!postID) {
-        return undefined;
-    }
-    const post = state.entities.posts.posts[postID];
-    if (!post || post.delete_at) {
-        return undefined;
-    }
-    const channel = state.entities.channels.channels[post.channel_id];
-    if (!channel || (channel.type !== 'O' && channel.type !== 'P')) {
-        return undefined;
-    }
-    return {post, channel};
-}
 
 export default class Plugin {
     private hashListener?: () => void;
@@ -89,17 +71,10 @@ export default class Plugin {
         openFromHash();
 
         const createTaskFromPost = (postID: string) => {
-            const target = usablePost(store.getState(), postID);
-            if (!target) {
+            const request = taskComposerFromPost(store.getState(), postID);
+            if (!request) {
                 return;
             }
-            const request: ComposerRequest = {
-                kind: 'task',
-                postId: postID,
-                channelId: target.post.channel_id,
-                title: postTitle(target.post.message),
-                description: target.post.message,
-            };
             store.dispatch(openComposer(request));
             store.dispatch(showRHSPlugin);
         };
@@ -110,7 +85,7 @@ export default class Plugin {
                 defaultMessage='Create task'
             />,
             createTaskFromPost,
-            (postID: string) => Boolean(usablePost(store.getState(), postID)),
+            (postID: string) => canCreateTaskFromPost(store.getState(), postID),
         );
     }
 

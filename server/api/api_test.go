@@ -294,6 +294,7 @@ func TestTaskAPIVisibility(t *testing.T) {
 	allowChannel(env.api, creatorID, channelID, teamID)
 	env.api.On("GetTeam", teamID).Return(&model.Team{Id: teamID}, nil).Maybe()
 	env.api.On("HasPermissionToTeam", creatorID, teamID, model.PermissionViewTeam).Return(true).Maybe()
+	env.api.On("HasPermissionToTeam", otherID, teamID, model.PermissionViewTeam).Return(true).Maybe()
 	denyAdmin(env.api, creatorID)
 
 	body := `{"teamId":"` + teamID + `","visibility":"private","title":"Only me"}`
@@ -322,5 +323,10 @@ func TestTaskAPIVisibility(t *testing.T) {
 	w = env.serve(http.MethodGet, "/api/v1/tasks?scope=team&team_id="+teamID, "", creatorID)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	list = decodeResponse[tasks.ListResult](t, w)
-	assert.Equal(t, 1, list.Total, "the private task must not appear in the team index")
+	assert.Equal(t, 2, list.Total, "the team view includes the creator's private task")
+
+	w = env.serve(http.MethodGet, "/api/v1/tasks?scope=team&team_id="+teamID, "", otherID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	otherList := decodeResponse[tasks.ListResult](t, w)
+	assert.Equal(t, 1, otherList.Total, "another member sees only the team-visible task")
 }

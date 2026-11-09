@@ -2,8 +2,9 @@
 
 - [x] Plugin manifest, KV store, server API and permissions.
 - [x] Task model: title, Markdown description, assignees, status, priority, due date, source post.
-- [x] Team-level and channel-level tasks; My/Team/Channel/All scopes.
-- [x] Per-task visibility: private (creator only), team-wide, or channel members only.
+- [x] Team-level and channel-level tasks; one team-global sidebar view (no scope tabs).
+- [x] Per-task visibility: private (creator only), team-wide, or channel members only. Private
+      tasks are created explicitly with Only me, or from the user's own DM message.
 - [x] List/board RHS with filters, sorting, pagination and status quick-toggle.
 - [x] Kanban columns with drag-and-drop, per-column Name-only quick add and description popups.
 - [x] Due calendar with OK/Clear and optional time (`dueHasTime`).

@@ -93,9 +93,8 @@ def post(x, y, w, name, time, body, reaction, i, width=540):
 
 def rhs_head(x, w, mode='board'):
     out = [t(x + 16, 88, 'Tasks', 20, 700, TEXT), t(x + w - 24, 87, '×', 22, 400, MUTED, 'middle')]
-    out += [t(x + 16, 124, 'My tasks', 11.5, 700, BLUE), r(x + 16, 131, 56, 2, BLUE, 1),
-            t(x + 86, 124, 'Team', 11.5, 400, MUTED), t(x + 132, 124, 'Channel', 11.5, 400, MUTED),
-            t(x + 194, 124, 'All', 11.5, 400, MUTED), list_icon(x + w - 92, 115, MUTED if mode == 'board' else BLUE),
+    out += [t(x + 16, 124, 'Team tasks', 11.5, 700, BLUE),
+            list_icon(x + w - 92, 115, MUTED if mode == 'board' else BLUE),
             board_icon(x + w - 64, 115, BLUE if mode == 'board' else MUTED), plus(x + w - 30, 121, MUTED, 13)]
     for i, label in enumerate(['Any status', 'Any priority', 'Any assignee', 'Any due'][:4 if mode == 'board' else 3]):
         bx = x + 16 + i * (128 if mode == 'board' else 160)

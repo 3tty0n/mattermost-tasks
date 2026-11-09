@@ -26,9 +26,8 @@ import {Icon} from '@mattermost/compass-ui/components/icon';
 import {IconButton} from '@mattermost/compass-ui/components/icon-button';
 import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
 import {Spinner} from '@mattermost/compass-ui/components/spinner';
-import {Tabs} from '@mattermost/compass-ui/components/tabs';
 
-import {selectAllChannels, selectCurrentChannel, selectCurrentTeam, selectCurrentUserId, selectTeams} from 'selectors';
+import {selectAllChannels, selectCurrentChannel, selectCurrentTeam, selectCurrentUserId} from 'selectors';
 
 import TaskCard from 'components/task_card/task_card';
 import TaskDescriptionDialog from 'components/task_description_dialog/task_description_dialog';
@@ -37,7 +36,7 @@ import TaskEditor, {type TaskEditorDefaults} from 'components/task_editor/task_e
 import TaskFilters, {DEFAULT_TASK_FILTERS, type TaskFiltersState} from 'components/task_filters/task_filters';
 import TaskRow from 'components/task_row/task_row';
 
-import type {Task, TaskQuery, TaskScope, TaskSort, TaskStatus, TaskSummary, TaskVisibility} from 'types';
+import type {Task, TaskQuery, TaskSort, TaskStatus, TaskSummary} from 'types';
 
 import './sidebar.css';
 
@@ -67,7 +66,6 @@ export default function TasksSidebar() {
     const dispatch = useDispatch();
     const currentTeam = useSelector(selectCurrentTeam);
     const currentChannel = useSelector(selectCurrentChannel);
-    const teams = useSelector(selectTeams);
     const channels = useSelector(selectAllChannels);
     const currentUserId = useSelector(selectCurrentUserId);
     const tasksRevision = useSelector(getTasksRevision);
@@ -75,7 +73,6 @@ export default function TasksSidebar() {
     const composer = useSelector(getComposer);
 
     const [view, setView] = useState<'list' | 'board'>('list');
-    const [scope, setScope] = useState<TaskScope>('my');
     const [filters, setFilters] = useState<TaskFiltersState>(DEFAULT_TASK_FILTERS);
     const [page, setPage] = useState(0);
     const [reload, setReload] = useState(0);
@@ -93,12 +90,12 @@ export default function TasksSidebar() {
 
     useEffect(() => {
         setPage(0);
-    }, [scope, teamID, channelID, view]);
+    }, [teamID, channelID, view]);
 
     useEffect(() => {
         setQuickAddStatus(undefined);
         setQuickAddError(undefined);
-    }, [view, scope]);
+    }, [view]);
 
     useEffect(() => {
         if (!composer || composer.kind !== 'task') {
@@ -110,7 +107,7 @@ export default function TasksSidebar() {
             defaults: {
                 teamId: teamID,
                 channelId: composer.channelId ?? channelID,
-                visibility: 'channel',
+                visibility: composer.visibility ?? 'channel',
                 title: composer.title,
                 description: composer.description,
                 assigneeIds: currentUserId ? [currentUserId] : [],
@@ -123,10 +120,7 @@ export default function TasksSidebar() {
     }, [composer]);
 
     const taskQuery = useMemo<TaskQuery | null>(() => {
-        if (scope === 'team' && !teamID) {
-            return null;
-        }
-        if (scope === 'channel' && !channelID) {
+        if (!teamID) {
             return null;
         }
 
@@ -147,9 +141,8 @@ export default function TasksSidebar() {
 
         const {sortBy, direction} = sortFor(filters.sort);
         return {
-            scope,
-            teamId: scope === 'my' ? undefined : teamID,
-            channelId: scope === 'channel' ? channelID : undefined,
+            scope: 'team',
+            teamId: teamID,
             statuses: view === 'list' && filters.status ? [filters.status] : undefined,
             priority: filters.priority || undefined,
             assigneeId: filters.assigneeId || undefined,
@@ -164,7 +157,7 @@ export default function TasksSidebar() {
 
         // filters is replaced by setFilters, so its identity changes only on a real filter change.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [view, scope, teamID, channelID, filters, page]);
+    }, [view, teamID, filters, page]);
 
     const tasks = useTasks(taskQuery, tasksRevision + reload);
 
@@ -174,7 +167,7 @@ export default function TasksSidebar() {
         }
     }, [tasks.data, page]);
 
-    const filterAssignees = useAssignees(teamID, scope === 'channel' ? channelID : undefined, '', Boolean(teamID));
+    const filterAssignees = useAssignees(teamID, undefined, '', Boolean(teamID));
     const assigneeIds = useMemo(() => {
         const ids = new Set<string>();
         for (const task of tasks.data?.items ?? []) {
@@ -194,27 +187,14 @@ export default function TasksSidebar() {
         return groups;
     }, [tasks.data]);
 
-    const visibilityForScope = (value: TaskScope): TaskVisibility => {
-        if (value === 'my') {
-            return 'private';
-        }
-        if (value === 'channel') {
-            return 'channel';
-        }
-        return 'team';
-    };
-
     const scopeLabel = (task: TaskSummary) => {
         if (task.visibility === 'private') {
             return intl.formatMessage({id: 'tasks.editor.visibility_private', defaultMessage: 'Only me'});
         }
-        if (scope === 'team' || scope === 'channel') {
-            return undefined;
-        }
         if (task.channelId) {
             return channels[task.channelId]?.display_name ?? task.channelId;
         }
-        return teams[task.teamId]?.display_name ?? task.teamId;
+        return undefined;
     };
 
     const refreshTasks = () => dispatch(remoteEvent());
@@ -230,12 +210,10 @@ export default function TasksSidebar() {
     };
 
     const openCreate = () => {
-        const visibility = visibilityForScope(scope);
         setTaskEditor({
             defaults: {
                 teamId: teamID,
-                channelId: visibility === 'channel' ? channelID : undefined,
-                visibility,
+                visibility: 'team',
                 assigneeIds: currentUserId ? [currentUserId] : [],
             },
         });
@@ -257,14 +235,12 @@ export default function TasksSidebar() {
             setQuickAddError(intl.formatMessage({id: 'tasks.editor.title_required', defaultMessage: 'Enter a task title.'}));
             return;
         }
-        const visibility = visibilityForScope(scope);
         setQuickAddSaving(true);
         setQuickAddError(undefined);
         try {
             await createTask({
                 teamId: teamID,
-                channelId: visibility === 'channel' ? channelID : undefined,
-                visibility,
+                visibility: 'team',
                 title,
                 status: quickAddStatus,
                 priority: 'normal',
@@ -279,46 +255,6 @@ export default function TasksSidebar() {
             setQuickAddSaving(false);
         }
     };
-
-    const scopeTabs = [
-        {
-            key: 'my',
-            label: (
-                <FormattedMessage
-                    id='tasks.scope.my'
-                    defaultMessage='My tasks'
-                />
-            ),
-        },
-        {
-            key: 'team',
-            label: (
-                <FormattedMessage
-                    id='tasks.scope.team'
-                    defaultMessage='Team'
-                />
-            ),
-        },
-        {
-            key: 'channel',
-            label: (
-                <FormattedMessage
-                    id='tasks.scope.channel'
-                    defaultMessage='Channel'
-                />
-            ),
-            disabled: !channelID,
-        },
-        {
-            key: 'all',
-            label: (
-                <FormattedMessage
-                    id='tasks.scope.all'
-                    defaultMessage='All'
-                />
-            ),
-        },
-    ];
 
     if (openTaskId) {
         return (
@@ -359,39 +295,34 @@ export default function TasksSidebar() {
 
     return (
         <div className='Tasks-Sidebar'>
-            <div className='Tasks-Sidebar__header'>
-                <Tabs
-                    tabs={scopeTabs}
-                    activeKey={scope}
-                    onChange={(key) => {
-                        setScope(key as TaskScope);
-                        dispatch(closeTask());
-                    }}
-                    appearance='underlined'
-                    controls={(
-                        <>
-                            <IconButton
-                                size='small'
-                                toggled={view === 'list'}
-                                icon={<Icon glyph={<FormatListBulletedIcon/>}/>}
-                                aria-label={intl.formatMessage({id: 'tasks.view.list', defaultMessage: 'List view'})}
-                                onClick={() => setView('list')}
-                            />
-                            <IconButton
-                                size='small'
-                                toggled={view === 'board'}
-                                icon={<Icon glyph={<KanbanIcon/>}/>}
-                                aria-label={intl.formatMessage({id: 'tasks.view.board', defaultMessage: 'Board view'})}
-                                onClick={() => setView('board')}
-                            />
-                            <IconButton
-                                icon={<Icon glyph={<PlusIcon/>}/>}
-                                aria-label={intl.formatMessage({id: 'tasks.new', defaultMessage: 'New task'})}
-                                onClick={openCreate}
-                            />
-                        </>
-                    )}
-                />
+            <div className='Tasks-Sidebar__header Tasks-Sidebar__header--simple'>
+                <span className='Tasks-Sidebar__heading'>
+                    <FormattedMessage
+                        id='tasks.view.team_heading'
+                        defaultMessage='Team tasks'
+                    />
+                </span>
+                <div className='Tasks-Sidebar__actions'>
+                    <IconButton
+                        size='small'
+                        toggled={view === 'list'}
+                        icon={<Icon glyph={<FormatListBulletedIcon/>}/>}
+                        aria-label={intl.formatMessage({id: 'tasks.view.list', defaultMessage: 'List view'})}
+                        onClick={() => setView('list')}
+                    />
+                    <IconButton
+                        size='small'
+                        toggled={view === 'board'}
+                        icon={<Icon glyph={<KanbanIcon/>}/>}
+                        aria-label={intl.formatMessage({id: 'tasks.view.board', defaultMessage: 'Board view'})}
+                        onClick={() => setView('board')}
+                    />
+                    <IconButton
+                        icon={<Icon glyph={<PlusIcon/>}/>}
+                        aria-label={intl.formatMessage({id: 'tasks.new', defaultMessage: 'New task'})}
+                        onClick={openCreate}
+                    />
+                </div>
             </div>
 
             {actionError && (
@@ -404,19 +335,11 @@ export default function TasksSidebar() {
                 </div>
             )}
 
-            {scope === 'team' && !teamID && (
+            {!teamID && (
                 <div className='Tasks-Sidebar__notice'>
                     <SectionNotice
                         type='info'
                         title={intl.formatMessage({id: 'tasks.scope.no_team', defaultMessage: 'Join or open a team to see team tasks.'})}
-                    />
-                </div>
-            )}
-            {scope === 'channel' && !channelID && (
-                <div className='Tasks-Sidebar__notice'>
-                    <SectionNotice
-                        type='info'
-                        title={intl.formatMessage({id: 'tasks.scope.no_channel', defaultMessage: 'Open a channel to see its tasks.'})}
                     />
                 </div>
             )}

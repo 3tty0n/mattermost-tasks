@@ -93,7 +93,7 @@ describe('TasksSidebar', () => {
         expect(await screen.findByRole('button', {name: 'Pick up mail'})).toBeVisible();
         expect(screen.getByRole('button', {name: 'Write docs'})).toBeVisible();
         expect(fetchTasksMock).toHaveBeenCalledWith(
-            expect.objectContaining({scope: 'my'}),
+            expect.objectContaining({scope: 'team', teamId: ids.team}),
             expect.anything(),
         );
     });
@@ -117,22 +117,16 @@ describe('TasksSidebar', () => {
         await waitFor(() => expect(updateTaskMock).toHaveBeenCalledWith('task-1', {status: 'done'}));
     });
 
-    it('switches task scopes', async () => {
-        const user = userEvent.setup();
+    it('loads one team-global view without scope tabs', async () => {
         renderWithStore(<TasksSidebar/>);
         await screen.findByRole('button', {name: 'Pick up mail'});
 
-        await user.click(screen.getByRole('tab', {name: 'Channel'}));
-        await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
-            scope: 'channel',
-            channelId: ids.channel,
-        }), expect.anything()));
-
-        await user.click(screen.getByRole('tab', {name: 'Team'}));
         await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
             scope: 'team',
             teamId: ids.team,
         }), expect.anything()));
+        expect(screen.queryByRole('tab', {name: 'My tasks'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('tab', {name: 'All'})).not.toBeInTheDocument();
     });
 
     it('switches to a board grouped by status', async () => {
@@ -175,8 +169,7 @@ describe('TasksSidebar', () => {
         await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
             title: 'New card',
             status: 'todo',
-            visibility: 'private',
-            channelId: undefined,
+            visibility: 'team',
             assigneeIds: [ids.user],
         })));
     });

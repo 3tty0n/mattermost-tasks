@@ -15,7 +15,7 @@ system, no external service, no second database.
 
 | Plan and see work | Capture it quickly |
 | --- | --- |
-| My tasks, Team, Channel and All scopes | Create from any public/private channel post |
+| One team-global task view | Create from any public/private channel post |
 | Private, team-wide or channel-only visibility | Name-only quick add in each board column |
 | List and Kanban board views | Assignment autocomplete with avatars and usernames |
 | Todo / In progress / Done with drag-and-drop | Assignment notifications from a plugin bot |
@@ -25,23 +25,24 @@ system, no external service, no second database.
 **Due dates the way you expect:** a date is date-only by default. Open the calendar, choose a day,
 and press **OK**. Enable **Set time** only when you need a time.
 
-**Visibility follows the task, not the view:** create a task as **Only me** and it stays in your
-private index; create it for a **Team** and every team member can see it; create it in a
-**Channel** and only channel members can. Private-channel tasks are filtered from lists and return
-404 to non-members. Every route re-checks this on the server, and the plugin never fetches URLs or
-stores data outside the plugin KV store.
+**One view, team-global:** the sidebar always shows the current team's tasks plus your own
+**Only me** tasks. There are no My tasks / Team / Channel / All tabs to switch between. New tasks
+default to **Team** visibility; choose **Only me** in the editor, or use **Create task** on one of
+your own DM messages, to make a private task. Private-channel tasks are filtered from lists and
+return 404 to non-members. Every route re-checks this on the server, and the plugin never fetches
+URLs or stores data outside the plugin KV store.
 
 ## UI previews
 
 ### Board view
 
 Drag cards between Todo, In progress and Done (shown in the hero image above). Each column has a
-**+** for GitHub-Projects-style quick capture; card names are headlines and clicking a card shows
-its Markdown description.
+**+** for GitHub-Projects-style quick capture; card names are headlines and clicking a card opens
+the inline name/description editor.
 
 ### List view
 
-Hover a card to highlight it, then click anywhere on the card to open the task detail. Checkboxes,
+Hover a card to highlight it, then click anywhere on the card to open the inline editor. Checkboxes,
 status pills and filters keep routine updates to one click.
 
 ![Task list with filters, status pills and hover selection](docs/images/tasks-list.png)
@@ -75,21 +76,23 @@ webapps; use the `/task` slash command there.
 
 Click the check-circle icon in the channel header to open the Tasks sidebar.
 
-- **Scopes:** My tasks, Team, Channel, All. The scope decides the default visibility for a new
-  task: My tasks = **Only me**, Team = **Team**, Channel = **Channel**.
-- **Visibility:** change it in the task editor under the scope property. Only-me tasks are always
-  assigned to you; team tasks are visible to the team; channel tasks only to channel members.
+- **One view:** the sidebar shows all tasks in the current team that you can read, plus your own
+  **Only me** tasks. There are no My tasks / Team / Channel / All tabs.
+- **Visibility:** new tasks default to **Team**. Choose **Only me** in the editor to keep a task
+  private; it is always assigned to you. Channel visibility is still available for
+  channel-specific work. **Only me** tasks appear in the same team view, but only for you.
 - **Views:** switch between List and Board with the header icons. The board fetches up to 100
   cards; narrow the filters to see more.
-- **Quick add:** the **+** at the top right of each board column creates a task in that column and
-  in the current scope's visibility using only its name.
+- **Quick add:** the **+** at the top right of each board column creates a team-visible task in
+  that column using only its name.
 - **Assignees:** focusing the assignee box immediately lists eligible users. Results show the
   user's avatar, display name and `@username`; search matches username, first name, last name and
   nickname before you add them.
 - **Open and edit:** click a card. List cards open the interactive task view in the sidebar;
   board cards open the same view in a popup. Name and description start as previews (description
   is rendered Markdown). Click either field to edit; click outside to save, or press **Esc** to
-  cancel. **More fields** opens the full editor for scope, assignees, priority, status and due date.
+  cancel. **More fields** opens the full editor for visibility, assignees, priority, status and
+  due date.
 - **Due date:** click the due property, pick a day, then **OK**. Turn on **Set time** to include a
   time; leave it off for a date-only task.
 - **Filters:** status (list view), priority, assignee and due date; sort by due date, creation date
@@ -98,8 +101,18 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
 ### Tasks from posts
 
 Every post in a public or private channel has **Create task** in its **⋯** menu. The editor is
-prefilled with the post's first line, full message and channel. The task keeps a source backlink;
-the server re-checks the post's channel and the user's read permission.
+prefilled with the post's first line and body; a channel post creates a channel-visible task with
+a source backlink. On **your own DM message**, the same action creates an **Only me** task using
+the message text. The server re-checks the post's channel and the user's read permission.
+
+### Creating an Only-me task
+
+There are two ways:
+
+1. In the task editor, open **More fields → Who can see this task?** and choose **Only me**.
+2. In a DM, use **Create task** on one of your own messages.
+
+Normal creation from the Tasks sidebar and Name-only quick add create team-visible tasks.
 
 ### Slash commands
 
@@ -114,7 +127,7 @@ the server re-checks the post's channel and the user's read permission.
 
 | Operation | Who |
 | --- | --- |
-| View | Private: creator only. Team: team members. Channel: channel members. |
+| View | Private: creator only. Team: team members. Channel: channel members. The single sidebar view shows all of these that you can access. |
 | Create | Members who can read the scope; post tasks require channel read access |
 | Edit metadata | Creator or system administrator, with current scope access |
 | Change status | Creator, assignee or system administrator |

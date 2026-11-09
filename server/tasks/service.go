@@ -264,6 +264,17 @@ func (s *Service) List(actorID string, query model.TaskQuery) (*ListResult, erro
 			}
 			return cache.CanView(actorID, ref.TeamID, ref.ChannelID)
 		})
+		// The single team view also includes the actor's own private tasks. Other members never
+		// receive them because private refs are only in the creator's user index.
+		privateRefs, privateErr := s.store.ListTaskRefsByUser(actorID)
+		if privateErr != nil {
+			return nil, privateErr
+		}
+		refs = append(refs, filterRefs(privateRefs, func(ref model.TaskRef) bool {
+			return ref.TeamID == query.TeamID &&
+				ref.EffectiveVisibility() == model.TaskVisibilityPrivate &&
+				ref.CreatorID == actorID
+		})...)
 
 	case model.TaskScopeChannel:
 		scope, err := s.access.Resolve(actorID, "", query.ChannelID)

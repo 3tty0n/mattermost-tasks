@@ -177,3 +177,24 @@
     font-size: var(--font-size-50);
     line-height: var(--line-height-50);
 }
+
+.Tasks-Sidebar__header--simple {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-s);
+    padding-bottom: var(--spacing-s);
+}
+
+.Tasks-Sidebar__heading {
+    color: var(--center-channel-color);
+    font-size: var(--font-size-100);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-100);
+}
+
+.Tasks-Sidebar__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xxxs);
+}
