@@ -52,7 +52,7 @@
   },
   "dependencies": {
     "@mattermost/compass-icons": "0.1.64",
-    "@mattermost/compass-ui": "0.1.0-alpha.15",
+    "@mattermost/compass-ui": "0.1.0-alpha.27",
     "core-js": "3.51.0",
     "simplebar-react": "3.3.2"
   },
