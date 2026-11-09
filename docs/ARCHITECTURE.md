@@ -84,6 +84,8 @@ administrator. Assignment never grants access to a private channel.
   month. The board and calendar fetch up to 100 tasks and ask the user to narrow filters beyond
   that. Manual order is a float `position`; drops use the midpoint between the neighboring tasks,
   and old tasks without a position fall back to creation time.
+- The task detail view edits visibility, team, channel and assignees inline; source-post tasks
+  keep their fixed scope. There is no separate full-edit modal from the detail view.
 - The due calendar commits only on **OK**. Time is off by default and only a date is stored unless
   the user enables **Set time**. Recurrence stores a frequency, interval, stable start date,
   optional end date and IANA timezone in both the task and its compact ref. The calendar asks for

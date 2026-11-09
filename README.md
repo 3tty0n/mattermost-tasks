@@ -110,8 +110,8 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
 - **Open and edit:** click a card. List cards open the interactive task view in the sidebar;
   board cards open the same view in a popup. Name and description start as previews (description
   is rendered Markdown). Click either field to edit; click outside to save, or press **Esc** to
-  cancel. **More fields** opens the full editor for visibility, assignees, priority, status and
-  due date.
+  cancel. In the task facts, **Visible to**, **Team**, **Channel** and **Assignees** are inline
+  editable by clicking the value. Status is a dropdown in the detail header.
 - **Due date:** click the due property, pick a day, then **OK**. Turn on **Set time** to include a
   time; leave it off for a date-only task.
 - **Repeat:** with a due date set, open the **Repeat** property. Pick **Daily**, **Weekly**,
@@ -134,8 +134,9 @@ and the user's read permission.
 
 There are two ways:
 
-1. In the task editor, open **More fields → Who can see this task?** and choose **Only me**.
-2. In a DM, use **Create task** on one of your own messages.
+1. In the task detail view, click **Visible to** and choose **Only me**.
+2. While creating a task, choose **Only me** under **Who can see this task?**.
+3. In a DM, use **Create task** on one of your own messages.
 
 In a team channel, normal creation and Name-only quick add create team-visible tasks.
 

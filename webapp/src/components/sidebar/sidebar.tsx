@@ -362,7 +362,6 @@ export default function TasksSidebar() {
                     taskId={openTaskId}
                     revision={tasksRevision}
                     onClose={() => dispatch(closeTask())}
-                    onEdit={(task) => setTaskEditor({task})}
                     onChanged={refreshTasks}
                     onDeleted={() => {
                         dispatch(closeTask());
