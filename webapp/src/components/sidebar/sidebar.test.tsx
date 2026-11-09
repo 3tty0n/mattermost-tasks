@@ -222,6 +222,38 @@ describe('TasksSidebar', () => {
             dueAt: Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()),
             dueHasTime: false,
         })));
+        expect(screen.queryByRole('button', {name: 'Back to tasks'})).not.toBeInTheDocument();
+        expect(screen.getByRole('tab', {name: 'Month'})).toBeVisible();
+    });
+
+    it('returns to the list view after creating a task', async () => {
+        const user = userEvent.setup();
+        renderWithStore(<TasksSidebar/>);
+        await screen.findByRole('button', {name: 'Pick up mail'});
+
+        await user.click(screen.getByRole('button', {name: 'New task'}));
+        await user.type(screen.getByLabelText('Title'), 'Plan the offsite');
+        await user.click(screen.getByRole('button', {name: 'Add task'}));
+
+        await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({title: 'Plan the offsite'})));
+        expect(screen.queryByRole('button', {name: 'Back to tasks'})).not.toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'List view'})).toBeVisible();
+        expect(getTaskMock).not.toHaveBeenCalled();
+    });
+
+    it('returns to the board view after creating a task', async () => {
+        const user = userEvent.setup();
+        renderWithStore(<TasksSidebar/>);
+        await screen.findByRole('button', {name: 'Pick up mail'});
+        await user.click(screen.getByRole('button', {name: 'Board view'}));
+
+        await user.click(screen.getByRole('button', {name: 'New task'}));
+        await user.type(screen.getByLabelText('Title'), 'Plan the offsite');
+        await user.click(screen.getByRole('button', {name: 'Add task'}));
+
+        await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({title: 'Plan the offsite'})));
+        expect(screen.queryByRole('button', {name: 'Back to tasks'})).not.toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Add task to To do'})).toBeVisible();
     });
 
     it('opens task details when a list card is clicked', async () => {

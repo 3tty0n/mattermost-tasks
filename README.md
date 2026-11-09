@@ -93,7 +93,8 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   Channel visibility is still available for channel-specific work. **Only me** tasks appear in the
   Team view, but only for you.
 - **Views:** switch between List, Board and Calendar with the header icons. The board and calendar
-  fetch up to 100 tasks; narrow the filters to see more.
+  fetch up to 100 tasks; narrow the filters to see more. Creating a task closes the dialog and
+  returns to the current view instead of opening the task detail.
 - **Calendar:** only tasks with a due date appear. Week view lists each day's cards; month view
   uses compact per-day dots and counts, with the selected day's cards below the grid. Cards show
   the task name, priority, time and assignees. Use the arrows or **Today** to move, and

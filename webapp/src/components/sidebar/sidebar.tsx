@@ -373,9 +373,8 @@ export default function TasksSidebar() {
                         task={taskEditor.task}
                         defaults={taskEditor.defaults}
                         onClose={() => setTaskEditor(undefined)}
-                        onSaved={(saved) => {
+                        onSaved={() => {
                             setTaskEditor(undefined);
-                            dispatch(openTask(saved.id));
                             refreshTasks();
                         }}
                     />
@@ -798,9 +797,8 @@ export default function TasksSidebar() {
                     task={taskEditor.task}
                     defaults={taskEditor.defaults}
                     onClose={() => setTaskEditor(undefined)}
-                    onSaved={(saved) => {
+                    onSaved={() => {
                         setTaskEditor(undefined);
-                        dispatch(openTask(saved.id));
                         refreshTasks();
                     }}
                 />
