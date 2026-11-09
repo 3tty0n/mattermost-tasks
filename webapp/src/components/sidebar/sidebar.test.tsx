@@ -241,7 +241,8 @@ describe('TasksSidebar', () => {
         } as unknown as DataTransfer;
 
         fireEvent.dragStart(source, {dataTransfer});
-        fireEvent.dragOver(target, {dataTransfer});
+        fireEvent.dragOver(target, {dataTransfer, clientY: 0});
+        expect(target.className).toContain('Tasks-TaskRow--drop-before');
         fireEvent.drop(target, {dataTransfer, clientY: 0});
 
         await waitFor(() => expect(updateTaskMock).toHaveBeenCalledWith('task-2', {position: 0.5}));

@@ -20,6 +20,7 @@ type Props = {
     task: TaskSummary;
     profiles: Record<string, Profile>;
     dragging?: boolean;
+    dropPosition?: 'before' | 'after';
     onOpen: () => void;
     onToggleDone: () => void;
     onDragStart?: (event: DragEvent<HTMLElement>) => void;
@@ -30,7 +31,7 @@ type Props = {
 
 // TaskCard is the compact, horizontal card used by the board. The checkbox is fixed at the left
 // edge so the title always starts immediately beside it and can use the remaining width.
-export default function TaskCard({task, profiles, dragging, onOpen, onToggleDone, onDragStart, onDragEnd, onDragOver, onDrop}: Props) {
+export default function TaskCard({task, profiles, dragging, dropPosition, onOpen, onToggleDone, onDragStart, onDragEnd, onDragOver, onDrop}: Props) {
     const intl = useIntl();
     const dragActive = useRef(false);
     const done = task.status === 'done';
@@ -40,7 +41,7 @@ export default function TaskCard({task, profiles, dragging, onOpen, onToggleDone
 
     return (
         <article
-            className={`Tasks-TaskCard${dragging ? ' Tasks-TaskCard--dragging' : ''}`}
+            className={`Tasks-TaskCard${dragging ? ' Tasks-TaskCard--dragging' : ''}${dropPosition ? ` Tasks-TaskCard--drop-${dropPosition}` : ''}`}
             draggable={true}
             onClick={() => {
                 if (!dragActive.current) {

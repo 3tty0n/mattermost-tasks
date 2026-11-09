@@ -159,3 +159,26 @@
     align-self: center;
     color: rgba(var(--center-channel-color-rgb), 0.40);
 }
+
+.Tasks-TaskRow {
+    position: relative;
+}
+
+.Tasks-TaskRow--drop-before::before,
+.Tasks-TaskRow--drop-after::after {
+    position: absolute;
+    right: var(--spacing-s);
+    left: var(--spacing-s);
+    height: 2px;
+    border-radius: var(--radius-pill);
+    background: var(--button-bg);
+    content: '';
+}
+
+.Tasks-TaskRow--drop-before::before {
+    top: -1px;
+}
+
+.Tasks-TaskRow--drop-after::after {
+    bottom: -1px;
+}

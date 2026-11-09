@@ -88,6 +88,8 @@ export default function TasksSidebar() {
     const [quickAddSaving, setQuickAddSaving] = useState(false);
     const [quickAddError, setQuickAddError] = useState<string>();
     const [draggedTaskID, setDraggedTaskID] = useState<string>();
+    const [dropIndicator, setDropIndicator] = useState<{taskID: string; after: boolean}>();
+    const [dropColumn, setDropColumn] = useState<TaskStatus>();
 
     const isDM = currentChannel?.type === 'D';
     const canUseChannel = currentChannel && isTeamChannel(currentChannel);
@@ -102,6 +104,8 @@ export default function TasksSidebar() {
         setQuickAddStatus(undefined);
         setQuickAddError(undefined);
         setDraggedTaskID(undefined);
+        setDropIndicator(undefined);
+        setDropColumn(undefined);
     }, [view]);
 
     useEffect(() => {
@@ -207,6 +211,23 @@ export default function TasksSidebar() {
     const refreshTasks = () => dispatch(remoteEvent());
 
     const manualOrder = filters.sort === 'manual';
+
+    const setRowDropIndicator = (taskID: string, after: boolean) => {
+        setDropIndicator((current) => (current?.taskID === taskID && current.after === after ? current : {taskID, after}));
+        setDropColumn(undefined);
+    };
+
+    const clearDropIndicator = () => {
+        setDropIndicator(undefined);
+        setDropColumn(undefined);
+    };
+
+    const dropPositionFor = (taskID: string): 'before' | 'after' | undefined => {
+        if (!dropIndicator || dropIndicator.taskID !== taskID) {
+            return undefined;
+        }
+        return dropIndicator.after ? 'after' : 'before';
+    };
 
     const moveTask = async (taskID: string, status: TaskStatus, targetID?: string, after = false, withinStatus = true) => {
         const items = tasks.data?.items ?? [];
@@ -435,13 +456,20 @@ export default function TasksSidebar() {
                             <section
                                 key={status}
                                 className='Tasks-Sidebar__boardColumn'
-                                onDragOver={(event) => event.preventDefault()}
+                                onDragOver={(event) => {
+                                    event.preventDefault();
+                                    if (draggedTaskID) {
+                                        setDropColumn(status);
+                                        setDropIndicator(undefined);
+                                    }
+                                }}
                                 onDrop={(event) => {
                                     event.preventDefault();
                                     if (draggedTaskID) {
                                         moveTask(draggedTaskID, status);
                                         setDraggedTaskID(undefined);
                                     }
+                                    clearDropIndicator();
                                 }}
                             >
                                 <header className='Tasks-Sidebar__boardHeader'>
@@ -458,7 +486,7 @@ export default function TasksSidebar() {
                                         onClick={() => startQuickAdd(status)}
                                     />
                                 </header>
-                                <div className='Tasks-Sidebar__boardCards'>
+                                <div className={`Tasks-Sidebar__boardCards${dropColumn === status ? ' Tasks-Sidebar__boardCards--dropTarget' : ''}`}>
                                     {quickAddStatus === status && (
                                         <form
                                             className='Tasks-Sidebar__quickAdd'
@@ -530,24 +558,38 @@ export default function TasksSidebar() {
                                             task={task}
                                             profiles={profiles}
                                             dragging={draggedTaskID === task.id}
+                                            dropPosition={dropPositionFor(task.id)}
                                             onOpen={() => setPreviewTaskID(task.id)}
                                             onToggleDone={() => setTaskStatus(task.id, task.status === 'done' ? 'todo' : 'done')}
-                                            onDragStart={() => setDraggedTaskID(task.id)}
-                                            onDragEnd={() => setDraggedTaskID(undefined)}
-                                            onDragOver={(event) => {
-                                                event.preventDefault();
-                                                event.stopPropagation();
+                                            onDragStart={() => {
+                                                setDraggedTaskID(task.id);
+                                                clearDropIndicator();
                                             }}
-                                            onDrop={(event) => {
+                                            onDragEnd={() => {
+                                                setDraggedTaskID(undefined);
+                                                clearDropIndicator();
+                                            }}
+                                            onDragOver={(event) => {
                                                 event.preventDefault();
                                                 event.stopPropagation();
                                                 if (!draggedTaskID || draggedTaskID === task.id) {
                                                     return;
                                                 }
                                                 const rect = event.currentTarget.getBoundingClientRect();
+                                                setRowDropIndicator(task.id, event.clientY > rect.top + (rect.height / 2));
+                                            }}
+                                            onDrop={(event) => {
+                                                event.preventDefault();
+                                                event.stopPropagation();
+                                                if (!draggedTaskID || draggedTaskID === task.id) {
+                                                    clearDropIndicator();
+                                                    return;
+                                                }
+                                                const rect = event.currentTarget.getBoundingClientRect();
                                                 const after = event.clientY > rect.top + (rect.height / 2);
                                                 moveTask(draggedTaskID, task.status, task.id, after);
                                                 setDraggedTaskID(undefined);
+                                                clearDropIndicator();
                                             }}
                                         />
                                     ))}
@@ -588,6 +630,7 @@ export default function TasksSidebar() {
                                 scopeLabel={scopeLabel(task)}
                                 draggable={manualOrder}
                                 dragging={draggedTaskID === task.id}
+                                dropPosition={dropPositionFor(task.id)}
                                 onOpen={() => dispatch(openTask(task.id))}
                                 onToggleDone={() => setTaskStatus(task.id, task.status === 'done' ? 'todo' : 'done')}
                                 onCycleStatus={() => setTaskStatus(task.id, nextStatus(task.status))}
@@ -595,12 +638,25 @@ export default function TasksSidebar() {
                                     event.dataTransfer.setData('text/plain', task.id);
                                     event.dataTransfer.effectAllowed = 'move';
                                     setDraggedTaskID(task.id);
+                                    clearDropIndicator();
                                 }}
-                                onDragEnd={() => setDraggedTaskID(undefined)}
-                                onDragOver={(event) => event.preventDefault()}
+                                onDragEnd={() => {
+                                    setDraggedTaskID(undefined);
+                                    clearDropIndicator();
+                                }}
+                                onDragOver={(event) => {
+                                    event.preventDefault();
+                                    if (!draggedTaskID || draggedTaskID === task.id) {
+                                        setDropIndicator(undefined);
+                                        return;
+                                    }
+                                    const rect = event.currentTarget.getBoundingClientRect();
+                                    setRowDropIndicator(task.id, event.clientY > rect.top + (rect.height / 2));
+                                }}
                                 onDrop={(event) => {
                                     event.preventDefault();
                                     if (!draggedTaskID || draggedTaskID === task.id) {
+                                        clearDropIndicator();
                                         return;
                                     }
                                     const rect = event.currentTarget.getBoundingClientRect();
@@ -610,6 +666,7 @@ export default function TasksSidebar() {
                                         moveTask(draggedTaskID, dragged.status, task.id, after, false);
                                     }
                                     setDraggedTaskID(undefined);
+                                    clearDropIndicator();
                                 }}
                             />
                         ))}

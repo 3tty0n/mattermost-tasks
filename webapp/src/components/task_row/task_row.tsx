@@ -21,6 +21,7 @@ type Props = {
     task: TaskSummary;
     draggable?: boolean;
     dragging?: boolean;
+    dropPosition?: 'before' | 'after';
     onDragStart?: (event: DragEvent<HTMLLIElement>) => void;
     onDragEnd?: () => void;
     onDragOver?: (event: DragEvent<HTMLLIElement>) => void;
@@ -32,7 +33,7 @@ type Props = {
     onCycleStatus: () => void;
 };
 
-function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatus, draggable, dragging, onDragStart, onDragEnd, onDragOver, onDrop}: Props) {
+function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatus, draggable, dragging, dropPosition, onDragStart, onDragEnd, onDragOver, onDrop}: Props) {
     const intl = useIntl();
     const dragActive = useRef(false);
     const done = task.status === 'done';
@@ -42,7 +43,7 @@ function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatu
 
     return (
         <li
-            className={`Tasks-TaskRow${done ? ' Tasks-TaskRow--done' : ''}${dragging ? ' Tasks-TaskRow--dragging' : ''}`}
+            className={`Tasks-TaskRow${done ? ' Tasks-TaskRow--done' : ''}${dragging ? ' Tasks-TaskRow--dragging' : ''}${dropPosition ? ` Tasks-TaskRow--drop-${dropPosition}` : ''}`}
             draggable={draggable}
             data-draggable={draggable ? 'true' : 'false'}
             onClick={() => {

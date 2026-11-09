@@ -117,3 +117,22 @@
 .Tasks-TaskCard__content {
     padding-right: var(--spacing-s);
 }
+
+.Tasks-TaskCard--drop-before::before,
+.Tasks-TaskCard--drop-after::after {
+    position: absolute;
+    right: 0;
+    left: 0;
+    height: 2px;
+    border-radius: var(--radius-pill);
+    background: var(--button-bg);
+    content: '';
+}
+
+.Tasks-TaskCard--drop-before::before {
+    top: -3px;
+}
+
+.Tasks-TaskCard--drop-after::after {
+    bottom: -3px;
+}

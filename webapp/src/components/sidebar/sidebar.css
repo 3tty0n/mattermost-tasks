@@ -198,3 +198,12 @@
     align-items: center;
     gap: var(--spacing-xxxs);
 }
+
+.Tasks-Sidebar__boardCards--dropTarget::after {
+    height: 2px;
+    flex: none;
+    margin-top: var(--spacing-xs);
+    border-radius: var(--radius-pill);
+    background: var(--button-bg);
+    content: '';
+}
