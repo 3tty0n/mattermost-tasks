@@ -15,7 +15,7 @@ system, no external service, no second database.
 
 | Plan and see work | Capture it quickly |
 | --- | --- |
-| Team view in channels, My tasks in DMs | Create from any public/private channel post |
+| Team / My tasks switch, context-aware default | Create from any public/private channel post |
 | Private, team-wide or channel-only visibility | Name-only quick add in each board column |
 | List, board and calendar views | Assignment autocomplete with avatars and usernames |
 | Drag-and-drop manual ordering | Position persisted across reloads |
@@ -26,10 +26,11 @@ system, no external service, no second database.
 **Due dates the way you expect:** a date is date-only by default. Open the calendar, choose a day,
 and press **OK**. Enable **Set time** only when you need a time.
 
-**One contextual view:** in a team channel the sidebar is **Team** and shows the current team's
-tasks plus your own **Only me** tasks. In a DM it is **My tasks** and shows tasks assigned to you.
-There are no My tasks / Team / Channel / All tabs to switch between. New tasks default to **Team**
-in channels and **Only me** in DMs; you can also choose **Only me** explicitly in the editor.
+**Team and My tasks in one sidebar:** switch between them at the top. The sidebar opens on
+**Team** in a channel and **My tasks** in a DM. **Team** shows the current team's tasks plus your own
+**Only me** tasks; **My tasks** collects everything assigned to you, with each task's team or
+channel shown. New tasks default to **Team** in channels and **Only me** in DMs; you can also
+choose **Only me** explicitly in the editor.
 Private-channel tasks are filtered from lists and return 404 to non-members. Every route re-checks
 this on the server, and the plugin never fetches URLs or stores data outside the plugin KV store.
 
@@ -80,9 +81,10 @@ webapps; use the `/task` slash command there.
 
 Click the check-circle icon in the channel header to open the Tasks sidebar.
 
-- **Contextual view, no tabs:** in a team channel the heading is **Team** and the view shows the
-  current team's readable tasks plus your own **Only me** tasks. In a DM the heading is
-  **My tasks** and the view shows tasks assigned to you.
+- **Team / My tasks:** switch scopes with the tabs at the top. A channel starts on **Team**, which
+  shows the current team's readable tasks plus your own **Only me** tasks. A DM starts on
+  **My tasks**, which collects tasks assigned to you across teams; each row shows its team or
+  channel.
 - **Visibility:** new tasks default to **Team** in channels and **Only me** in DMs. Choose
   **Only me** explicitly in the editor to keep a task private; it is always assigned to you.
   Channel visibility is still available for channel-specific work. **Only me** tasks appear in the

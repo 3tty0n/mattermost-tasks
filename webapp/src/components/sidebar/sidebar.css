@@ -17,7 +17,15 @@
 }
 
 .Tasks-Sidebar__scopes {
-    margin-top: var(--spacing-xs);
+    flex: 1;
+    min-width: 0;
+}
+
+.Tasks-Sidebar__panel {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
 }
 
 .Tasks-Sidebar__notice {
@@ -184,13 +192,6 @@
     justify-content: space-between;
     gap: var(--spacing-s);
     padding-bottom: var(--spacing-s);
-}
-
-.Tasks-Sidebar__heading {
-    color: var(--center-channel-color);
-    font-size: var(--font-size-100);
-    font-weight: var(--font-weight-semibold);
-    line-height: var(--line-height-100);
 }
 
 .Tasks-Sidebar__actions {

@@ -27,6 +27,7 @@ import {Icon} from '@mattermost/compass-ui/components/icon';
 import {IconButton} from '@mattermost/compass-ui/components/icon-button';
 import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
 import {Spinner} from '@mattermost/compass-ui/components/spinner';
+import {Tabs} from '@mattermost/compass-ui/components/tabs';
 
 import {selectAllChannels, selectCurrentChannel, selectCurrentTeam, selectCurrentUserId, selectMyTeams, selectTeams} from 'selectors';
 
@@ -43,8 +44,12 @@ import type {Task, TaskQuery, TaskSort, TaskStatus, TaskSummary} from 'types';
 import './sidebar.css';
 
 type TaskEditorState = {task?: Task; defaults?: TaskEditorDefaults};
+type Scope = 'team' | 'my';
 
 const BOARD_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done'];
+const SCOPE_PANEL_ID = 'tasks-scope-panel';
+const TEAM_TAB_ID = 'tasks-scope-team-tab';
+const MY_TAB_ID = 'tasks-scope-my-tab';
 
 function isTeamChannel(channel: {type?: string; team_id?: string} | undefined) {
     return Boolean(channel && channel.team_id && (channel.type === 'O' || channel.type === 'P'));
@@ -78,6 +83,12 @@ export default function TasksSidebar() {
     const openTaskId = useSelector(getOpenTaskId);
     const composer = useSelector(getComposer);
 
+    const isDM = currentChannel?.type === 'D';
+    const canUseChannel = currentChannel && isTeamChannel(currentChannel);
+    const teamID = currentTeam?.id;
+    const channelID = canUseChannel ? currentChannel?.id : undefined;
+
+    const [scope, setScope] = useState<Scope>(isDM || !teamID ? 'my' : 'team');
     const [view, setView] = useState<'list' | 'board' | 'calendar'>('list');
     const [filters, setFilters] = useState<TaskFiltersState>(DEFAULT_TASK_FILTERS);
     const [page, setPage] = useState(0);
@@ -93,15 +104,24 @@ export default function TasksSidebar() {
     const [dropIndicator, setDropIndicator] = useState<{taskID: string; after: boolean}>();
     const [dropColumn, setDropColumn] = useState<TaskStatus>();
     const moveQueue = useRef<Promise<void>>(Promise.resolve());
-
-    const isDM = currentChannel?.type === 'D';
-    const canUseChannel = currentChannel && isTeamChannel(currentChannel);
-    const teamID = currentTeam?.id;
-    const channelID = canUseChannel ? currentChannel?.id : undefined;
+    const wasDM = useRef(isDM);
 
     useEffect(() => {
         setPage(0);
-    }, [teamID, channelID, view, isDM]);
+    }, [teamID, channelID, view, scope]);
+
+    useEffect(() => {
+        if (wasDM.current !== isDM) {
+            setScope(isDM || !teamID ? 'my' : 'team');
+            wasDM.current = isDM;
+        }
+    }, [isDM, teamID]);
+
+    useEffect(() => {
+        if (scope === 'team' && !teamID) {
+            setScope('my');
+        }
+    }, [scope, teamID]);
 
     useEffect(() => {
         setQuickAddStatus(undefined);
@@ -134,7 +154,7 @@ export default function TasksSidebar() {
     }, [composer]);
 
     const taskQuery = useMemo<TaskQuery | null>(() => {
-        if (view === 'calendar' || (!isDM && !teamID)) {
+        if (view === 'calendar' || (scope === 'team' && !teamID)) {
             return null;
         }
 
@@ -155,8 +175,8 @@ export default function TasksSidebar() {
 
         const {sortBy, direction} = sortFor(filters.sort);
         return {
-            scope: isDM ? 'my' : 'team',
-            teamId: isDM ? undefined : teamID,
+            scope,
+            teamId: scope === 'team' ? teamID : undefined,
             statuses: view === 'list' && filters.status ? [filters.status] : undefined,
             priority: filters.priority || undefined,
             assigneeId: filters.assigneeId || undefined,
@@ -171,7 +191,7 @@ export default function TasksSidebar() {
 
         // filters is replaced by setFilters, so its identity changes only on a real filter change.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [view, teamID, isDM, filters, page]);
+    }, [view, scope, teamID, filters, page]);
 
     const tasks = useTasks(taskQuery, tasksRevision + reload);
 
@@ -206,9 +226,12 @@ export default function TasksSidebar() {
             return intl.formatMessage({id: 'tasks.editor.visibility_private', defaultMessage: 'Only me'});
         }
         if (task.channelId) {
-            return channels[task.channelId]?.display_name ?? task.channelId;
+            return channels[task.channelId]?.display_name ?? teams[task.teamId]?.display_name ?? task.channelId;
         }
-        return isDM ? (teams[task.teamId]?.display_name ?? task.teamId) : undefined;
+        if (scope === 'my') {
+            return teams[task.teamId]?.display_name ?? task.teamId;
+        }
+        return undefined;
     };
 
     const refreshTasks = () => dispatch(remoteEvent());
@@ -360,19 +383,40 @@ export default function TasksSidebar() {
     return (
         <div className='Tasks-Sidebar'>
             <div className='Tasks-Sidebar__header Tasks-Sidebar__header--simple'>
-                <span className='Tasks-Sidebar__heading'>
-                    {isDM ? (
-                        <FormattedMessage
-                            id='tasks.view.my_heading'
-                            defaultMessage='My tasks'
-                        />
-                    ) : (
-                        <FormattedMessage
-                            id='tasks.view.team_heading'
-                            defaultMessage='Team'
-                        />
-                    )}
-                </span>
+                <Tabs
+                    className='Tasks-Sidebar__scopes'
+                    activeKey={scope}
+                    onChange={(key) => {
+                        setScope(key as Scope);
+                        setPage(0);
+                    }}
+                    tabs={[
+                        {
+                            key: 'team',
+                            id: TEAM_TAB_ID,
+                            panelId: SCOPE_PANEL_ID,
+                            label: (
+                                <FormattedMessage
+                                    id='tasks.scope.team'
+                                    defaultMessage='Team'
+                                />
+                            ),
+                            disabled: !teamID,
+                            title: teamID ? undefined : intl.formatMessage({id: 'tasks.scope.no_team', defaultMessage: 'Join or open a team to see team tasks.'}),
+                        },
+                        {
+                            key: 'my',
+                            id: MY_TAB_ID,
+                            panelId: SCOPE_PANEL_ID,
+                            label: (
+                                <FormattedMessage
+                                    id='tasks.scope.my'
+                                    defaultMessage='My tasks'
+                                />
+                            ),
+                        },
+                    ]}
+                />
                 <div className='Tasks-Sidebar__actions'>
                     <IconButton
                         size='small'
@@ -403,332 +447,339 @@ export default function TasksSidebar() {
                 </div>
             </div>
 
-            {actionError && (
-                <div className='Tasks-Sidebar__notice'>
-                    <SectionNotice
-                        type='danger'
-                        title={actionError}
-                        onDismiss={() => setActionError(undefined)}
-                    />
-                </div>
-            )}
+            <div
+                id={SCOPE_PANEL_ID}
+                className='Tasks-Sidebar__panel'
+                role='tabpanel'
+                aria-labelledby={scope === 'team' ? TEAM_TAB_ID : MY_TAB_ID}
+            >
+                {actionError && (
+                    <div className='Tasks-Sidebar__notice'>
+                        <SectionNotice
+                            type='danger'
+                            title={actionError}
+                            onDismiss={() => setActionError(undefined)}
+                        />
+                    </div>
+                )}
 
-            {!isDM && !teamID && (
-                <div className='Tasks-Sidebar__notice'>
-                    <SectionNotice
-                        type='info'
-                        title={intl.formatMessage({id: 'tasks.scope.no_team', defaultMessage: 'Join or open a team to see team tasks.'})}
-                    />
-                </div>
-            )}
+                {!isDM && !teamID && (
+                    <div className='Tasks-Sidebar__notice'>
+                        <SectionNotice
+                            type='info'
+                            title={intl.formatMessage({id: 'tasks.scope.no_team', defaultMessage: 'Join or open a team to see team tasks.'})}
+                        />
+                    </div>
+                )}
 
-            <TaskFilters
-                filters={filters}
-                assignees={filterAssignees.data}
-                showStatus={view === 'list'}
-                showDue={view !== 'calendar'}
-                showSort={view !== 'calendar'}
-                onChange={(next) => {
-                    setFilters((previous) => ({...previous, ...next}));
-                    setPage(0);
-                }}
-            />
-
-            {tasks.loading && !tasks.data && (
-                <div className='Tasks-Sidebar__centered'>
-                    <Spinner aria-label={intl.formatMessage({id: 'tasks.loading', defaultMessage: 'Loading…'})}/>
-                </div>
-            )}
-
-            {tasks.error && !tasks.loading && (
-                <div className='Tasks-Sidebar__notice'>
-                    <SectionNotice
-                        type='danger'
-                        title={intl.formatMessage({id: 'tasks.load_error', defaultMessage: 'Couldn’t load tasks'})}
-                        description={tasks.error}
-                        primaryButtonLabel={intl.formatMessage({id: 'tasks.retry', defaultMessage: 'Try again'})}
-                        onPrimaryAction={() => setReload((value) => value + 1)}
-                    />
-                </div>
-            )}
-
-            {!tasks.error && tasks.data && tasks.data.items.length === 0 && (
-                <EmptyState
-                    title={intl.formatMessage({id: 'tasks.empty', defaultMessage: 'No tasks here'})}
-                    description={intl.formatMessage({id: 'tasks.empty_description', defaultMessage: 'Create one, or assign a task to yourself.'})}
-                    action={{
-                        children: intl.formatMessage({id: 'tasks.new', defaultMessage: 'New task'}),
-                        emphasis: 'primary',
-                        size: 'small',
-                        onClick: openCreate,
+                <TaskFilters
+                    filters={filters}
+                    assignees={filterAssignees.data}
+                    showStatus={view === 'list'}
+                    showDue={view !== 'calendar'}
+                    showSort={view !== 'calendar'}
+                    onChange={(next) => {
+                        setFilters((previous) => ({...previous, ...next}));
+                        setPage(0);
                     }}
                 />
-            )}
 
-            {!tasks.error && tasks.data && tasks.data.items.length > 0 && view === 'board' && (
-                <>
-                    <div className='Tasks-Sidebar__board'>
-                        {BOARD_STATUSES.map((status) => (
-                            <section
-                                key={status}
-                                className='Tasks-Sidebar__boardColumn'
-                                onDragOver={(event) => {
-                                    event.preventDefault();
-                                    if (draggedTaskID) {
-                                        setDropColumn(status);
-                                        setDropIndicator(undefined);
-                                    }
-                                }}
-                                onDrop={(event) => {
-                                    event.preventDefault();
-                                    const taskID = event.dataTransfer.getData('text/plain');
-                                    if (taskID) {
-                                        moveTask(taskID, status);
-                                    }
-                                    setDraggedTaskID(undefined);
-                                    clearDropIndicator();
-                                }}
-                            >
-                                <header className='Tasks-Sidebar__boardHeader'>
-                                    <div className='Tasks-Sidebar__boardHeading'>
-                                        <span className={`Tasks-Sidebar__boardTitle Tasks-Sidebar__boardTitle--${status}`}>
-                                            {statusLabel(intl, status)}
-                                        </span>
-                                        <span className='Tasks-Sidebar__boardCount'>{board[status].length}</span>
-                                    </div>
-                                    <IconButton
-                                        size='x-small'
-                                        icon={<Icon glyph={<PlusIcon/>}/>}
-                                        aria-label={intl.formatMessage({id: 'tasks.board.add_task', defaultMessage: 'Add task to {status}'}, {status: statusLabel(intl, status)})}
-                                        onClick={() => startQuickAdd(status)}
-                                    />
-                                </header>
-                                <div className={`Tasks-Sidebar__boardCards${dropColumn === status ? ' Tasks-Sidebar__boardCards--dropTarget' : ''}`}>
-                                    {quickAddStatus === status && (
-                                        <form
-                                            className='Tasks-Sidebar__quickAdd'
-                                            onSubmit={submitQuickAdd}
-                                        >
-                                            <label
-                                                className='Tasks-Sidebar__srOnly'
-                                                htmlFor={`tasks-quick-add-${status}`}
+                {tasks.loading && !tasks.data && (
+                    <div className='Tasks-Sidebar__centered'>
+                        <Spinner aria-label={intl.formatMessage({id: 'tasks.loading', defaultMessage: 'Loading…'})}/>
+                    </div>
+                )}
+
+                {tasks.error && !tasks.loading && (
+                    <div className='Tasks-Sidebar__notice'>
+                        <SectionNotice
+                            type='danger'
+                            title={intl.formatMessage({id: 'tasks.load_error', defaultMessage: 'Couldn’t load tasks'})}
+                            description={tasks.error}
+                            primaryButtonLabel={intl.formatMessage({id: 'tasks.retry', defaultMessage: 'Try again'})}
+                            onPrimaryAction={() => setReload((value) => value + 1)}
+                        />
+                    </div>
+                )}
+
+                {!tasks.error && tasks.data && tasks.data.items.length === 0 && (
+                    <EmptyState
+                        title={intl.formatMessage({id: 'tasks.empty', defaultMessage: 'No tasks here'})}
+                        description={intl.formatMessage({id: 'tasks.empty_description', defaultMessage: 'Create one, or assign a task to yourself.'})}
+                        action={{
+                            children: intl.formatMessage({id: 'tasks.new', defaultMessage: 'New task'}),
+                            emphasis: 'primary',
+                            size: 'small',
+                            onClick: openCreate,
+                        }}
+                    />
+                )}
+
+                {!tasks.error && tasks.data && tasks.data.items.length > 0 && view === 'board' && (
+                    <>
+                        <div className='Tasks-Sidebar__board'>
+                            {BOARD_STATUSES.map((status) => (
+                                <section
+                                    key={status}
+                                    className='Tasks-Sidebar__boardColumn'
+                                    onDragOver={(event) => {
+                                        event.preventDefault();
+                                        if (draggedTaskID) {
+                                            setDropColumn(status);
+                                            setDropIndicator(undefined);
+                                        }
+                                    }}
+                                    onDrop={(event) => {
+                                        event.preventDefault();
+                                        const taskID = event.dataTransfer.getData('text/plain');
+                                        if (taskID) {
+                                            moveTask(taskID, status);
+                                        }
+                                        setDraggedTaskID(undefined);
+                                        clearDropIndicator();
+                                    }}
+                                >
+                                    <header className='Tasks-Sidebar__boardHeader'>
+                                        <div className='Tasks-Sidebar__boardHeading'>
+                                            <span className={`Tasks-Sidebar__boardTitle Tasks-Sidebar__boardTitle--${status}`}>
+                                                {statusLabel(intl, status)}
+                                            </span>
+                                            <span className='Tasks-Sidebar__boardCount'>{board[status].length}</span>
+                                        </div>
+                                        <IconButton
+                                            size='x-small'
+                                            icon={<Icon glyph={<PlusIcon/>}/>}
+                                            aria-label={intl.formatMessage({id: 'tasks.board.add_task', defaultMessage: 'Add task to {status}'}, {status: statusLabel(intl, status)})}
+                                            onClick={() => startQuickAdd(status)}
+                                        />
+                                    </header>
+                                    <div className={`Tasks-Sidebar__boardCards${dropColumn === status ? ' Tasks-Sidebar__boardCards--dropTarget' : ''}`}>
+                                        {quickAddStatus === status && (
+                                            <form
+                                                className='Tasks-Sidebar__quickAdd'
+                                                onSubmit={submitQuickAdd}
                                             >
-                                                <FormattedMessage
-                                                    id='tasks.board.task_name'
-                                                    defaultMessage='Task name'
+                                                <label
+                                                    className='Tasks-Sidebar__srOnly'
+                                                    htmlFor={`tasks-quick-add-${status}`}
+                                                >
+                                                    <FormattedMessage
+                                                        id='tasks.board.task_name'
+                                                        defaultMessage='Task name'
+                                                    />
+                                                </label>
+                                                <input
+                                                    id={`tasks-quick-add-${status}`}
+                                                    className='Tasks-Sidebar__quickAddInput'
+                                                    value={quickAddTitle}
+                                                    maxLength={200}
+                                                    placeholder={intl.formatMessage({id: 'tasks.board.task_name', defaultMessage: 'Task name'})}
+                                                    autoFocus={true}
+                                                    disabled={quickAddSaving}
+                                                    onChange={(event) => setQuickAddTitle(event.target.value)}
+                                                    onKeyDown={(event) => {
+                                                        if (event.key === 'Escape') {
+                                                            setQuickAddStatus(undefined);
+                                                        }
+                                                    }}
                                                 />
-                                            </label>
-                                            <input
-                                                id={`tasks-quick-add-${status}`}
-                                                className='Tasks-Sidebar__quickAddInput'
-                                                value={quickAddTitle}
-                                                maxLength={200}
-                                                placeholder={intl.formatMessage({id: 'tasks.board.task_name', defaultMessage: 'Task name'})}
-                                                autoFocus={true}
-                                                disabled={quickAddSaving}
-                                                onChange={(event) => setQuickAddTitle(event.target.value)}
-                                                onKeyDown={(event) => {
-                                                    if (event.key === 'Escape') {
-                                                        setQuickAddStatus(undefined);
+                                                <div className='Tasks-Sidebar__quickAddActions'>
+                                                    <Button
+                                                        emphasis='tertiary'
+                                                        size='small'
+                                                        type='button'
+                                                        disabled={quickAddSaving}
+                                                        onClick={() => setQuickAddStatus(undefined)}
+                                                    >
+                                                        <FormattedMessage
+                                                            id='tasks.cancel'
+                                                            defaultMessage='Cancel'
+                                                        />
+                                                    </Button>
+                                                    <Button
+                                                        emphasis='primary'
+                                                        size='small'
+                                                        type='submit'
+                                                        loading={quickAddSaving}
+                                                        disabled={!quickAddTitle.trim()}
+                                                    >
+                                                        <FormattedMessage
+                                                            id='tasks.board.add'
+                                                            defaultMessage='Add'
+                                                        />
+                                                    </Button>
+                                                </div>
+                                                {quickAddError && (
+                                                    <span
+                                                        className='Tasks-Sidebar__quickAddError'
+                                                        role='alert'
+                                                    >
+                                                        {quickAddError}
+                                                    </span>
+                                                )}
+                                            </form>
+                                        )}
+                                        {board[status].map((task) => (
+                                            <TaskCard
+                                                key={task.id}
+                                                task={task}
+                                                profiles={profiles}
+                                                dragging={draggedTaskID === task.id}
+                                                dropPosition={dropPositionFor(task.id)}
+                                                onOpen={() => setPreviewTaskID(task.id)}
+                                                onToggleDone={() => setTaskStatus(task.id, task.status === 'done' ? 'todo' : 'done')}
+                                                onDragStart={() => {
+                                                    setDraggedTaskID(task.id);
+                                                    clearDropIndicator();
+                                                }}
+                                                onDragEnd={() => {
+                                                    setDraggedTaskID(undefined);
+                                                    clearDropIndicator();
+                                                }}
+                                                onDragOver={(event) => {
+                                                    event.preventDefault();
+                                                    event.stopPropagation();
+                                                    if (!draggedTaskID || draggedTaskID === task.id) {
+                                                        return;
                                                     }
+                                                    const rect = event.currentTarget.getBoundingClientRect();
+                                                    setRowDropIndicator(task.id, event.clientY > rect.top + (rect.height / 2));
+                                                }}
+                                                onDrop={(event) => {
+                                                    event.preventDefault();
+                                                    event.stopPropagation();
+                                                    const taskID = event.dataTransfer.getData('text/plain');
+                                                    if (!taskID || taskID === task.id) {
+                                                        clearDropIndicator();
+                                                        return;
+                                                    }
+                                                    const rect = event.currentTarget.getBoundingClientRect();
+                                                    const after = event.clientY > rect.top + (rect.height / 2);
+                                                    moveTask(taskID, task.status, task.id, after);
+                                                    setDraggedTaskID(undefined);
+                                                    clearDropIndicator();
                                                 }}
                                             />
-                                            <div className='Tasks-Sidebar__quickAddActions'>
-                                                <Button
-                                                    emphasis='tertiary'
-                                                    size='small'
-                                                    type='button'
-                                                    disabled={quickAddSaving}
-                                                    onClick={() => setQuickAddStatus(undefined)}
-                                                >
-                                                    <FormattedMessage
-                                                        id='tasks.cancel'
-                                                        defaultMessage='Cancel'
-                                                    />
-                                                </Button>
-                                                <Button
-                                                    emphasis='primary'
-                                                    size='small'
-                                                    type='submit'
-                                                    loading={quickAddSaving}
-                                                    disabled={!quickAddTitle.trim()}
-                                                >
-                                                    <FormattedMessage
-                                                        id='tasks.board.add'
-                                                        defaultMessage='Add'
-                                                    />
-                                                </Button>
-                                            </div>
-                                            {quickAddError && (
-                                                <span
-                                                    className='Tasks-Sidebar__quickAddError'
-                                                    role='alert'
-                                                >
-                                                    {quickAddError}
-                                                </span>
-                                            )}
-                                        </form>
-                                    )}
-                                    {board[status].map((task) => (
-                                        <TaskCard
-                                            key={task.id}
-                                            task={task}
-                                            profiles={profiles}
-                                            dragging={draggedTaskID === task.id}
-                                            dropPosition={dropPositionFor(task.id)}
-                                            onOpen={() => setPreviewTaskID(task.id)}
-                                            onToggleDone={() => setTaskStatus(task.id, task.status === 'done' ? 'todo' : 'done')}
-                                            onDragStart={() => {
-                                                setDraggedTaskID(task.id);
-                                                clearDropIndicator();
-                                            }}
-                                            onDragEnd={() => {
-                                                setDraggedTaskID(undefined);
-                                                clearDropIndicator();
-                                            }}
-                                            onDragOver={(event) => {
-                                                event.preventDefault();
-                                                event.stopPropagation();
-                                                if (!draggedTaskID || draggedTaskID === task.id) {
-                                                    return;
-                                                }
-                                                const rect = event.currentTarget.getBoundingClientRect();
-                                                setRowDropIndicator(task.id, event.clientY > rect.top + (rect.height / 2));
-                                            }}
-                                            onDrop={(event) => {
-                                                event.preventDefault();
-                                                event.stopPropagation();
-                                                const taskID = event.dataTransfer.getData('text/plain');
-                                                if (!taskID || taskID === task.id) {
-                                                    clearDropIndicator();
-                                                    return;
-                                                }
-                                                const rect = event.currentTarget.getBoundingClientRect();
-                                                const after = event.clientY > rect.top + (rect.height / 2);
-                                                moveTask(taskID, task.status, task.id, after);
-                                                setDraggedTaskID(undefined);
-                                                clearDropIndicator();
-                                            }}
-                                        />
-                                    ))}
-                                    {board[status].length === 0 && quickAddStatus !== status && (
-                                        <p className='Tasks-Sidebar__boardEmpty'>
-                                            <FormattedMessage
-                                                id='tasks.board.empty_column'
-                                                defaultMessage='No tasks'
-                                            />
-                                        </p>
-                                    )}
-                                </div>
-                            </section>
-                        ))}
-                    </div>
-                    {tasks.data.total > tasks.data.items.length && (
-                        <div className='Tasks-Sidebar__notice'>
-                            <SectionNotice
-                                type='info'
-                                title={intl.formatMessage({id: 'tasks.board.limit', defaultMessage: 'Showing the first 100 matching tasks. Narrow the filters to see more.'})}
-                            />
+                                        ))}
+                                        {board[status].length === 0 && quickAddStatus !== status && (
+                                            <p className='Tasks-Sidebar__boardEmpty'>
+                                                <FormattedMessage
+                                                    id='tasks.board.empty_column'
+                                                    defaultMessage='No tasks'
+                                                />
+                                            </p>
+                                        )}
+                                    </div>
+                                </section>
+                            ))}
                         </div>
-                    )}
-                </>
-            )}
+                        {tasks.data.total > tasks.data.items.length && (
+                            <div className='Tasks-Sidebar__notice'>
+                                <SectionNotice
+                                    type='info'
+                                    title={intl.formatMessage({id: 'tasks.board.limit', defaultMessage: 'Showing the first 100 matching tasks. Narrow the filters to see more.'})}
+                                />
+                            </div>
+                        )}
+                    </>
+                )}
 
-            {!tasks.error && tasks.data && tasks.data.items.length > 0 && view === 'list' && (
-                <>
-                    <ul
-                        className='Tasks-Sidebar__list'
-                        aria-live='polite'
-                    >
-                        {tasks.data.items.map((task) => (
-                            <TaskRow
-                                key={task.id}
-                                task={task}
-                                profiles={profiles}
-                                scopeLabel={scopeLabel(task)}
-                                draggable={manualOrder}
-                                dragging={draggedTaskID === task.id}
-                                dropPosition={dropPositionFor(task.id)}
-                                onOpen={() => dispatch(openTask(task.id))}
-                                onToggleDone={() => setTaskStatus(task.id, task.status === 'done' ? 'todo' : 'done')}
-                                onCycleStatus={() => setTaskStatus(task.id, nextStatus(task.status))}
-                                onDragStart={(event) => {
-                                    event.dataTransfer.setData('text/plain', task.id);
-                                    event.dataTransfer.effectAllowed = 'move';
-                                    setDraggedTaskID(task.id);
-                                    clearDropIndicator();
-                                }}
-                                onDragEnd={() => {
-                                    setDraggedTaskID(undefined);
-                                    clearDropIndicator();
-                                }}
-                                onDragOver={(event) => {
-                                    event.preventDefault();
-                                    if (!draggedTaskID || draggedTaskID === task.id) {
-                                        setDropIndicator(undefined);
-                                        return;
-                                    }
-                                    const rect = event.currentTarget.getBoundingClientRect();
-                                    setRowDropIndicator(task.id, event.clientY > rect.top + (rect.height / 2));
-                                }}
-                                onDrop={(event) => {
-                                    event.preventDefault();
-                                    const taskID = event.dataTransfer.getData('text/plain');
-                                    if (!taskID || taskID === task.id) {
+                {!tasks.error && tasks.data && tasks.data.items.length > 0 && view === 'list' && (
+                    <>
+                        <ul
+                            className='Tasks-Sidebar__list'
+                            aria-live='polite'
+                        >
+                            {tasks.data.items.map((task) => (
+                                <TaskRow
+                                    key={task.id}
+                                    task={task}
+                                    profiles={profiles}
+                                    scopeLabel={scopeLabel(task)}
+                                    draggable={manualOrder}
+                                    dragging={draggedTaskID === task.id}
+                                    dropPosition={dropPositionFor(task.id)}
+                                    onOpen={() => dispatch(openTask(task.id))}
+                                    onToggleDone={() => setTaskStatus(task.id, task.status === 'done' ? 'todo' : 'done')}
+                                    onCycleStatus={() => setTaskStatus(task.id, nextStatus(task.status))}
+                                    onDragStart={(event) => {
+                                        event.dataTransfer.setData('text/plain', task.id);
+                                        event.dataTransfer.effectAllowed = 'move';
+                                        setDraggedTaskID(task.id);
                                         clearDropIndicator();
-                                        return;
-                                    }
-                                    const rect = event.currentTarget.getBoundingClientRect();
-                                    const after = event.clientY > rect.top + (rect.height / 2);
-                                    const dragged = tasks.data?.items.find((item) => item.id === taskID);
-                                    if (dragged) {
-                                        moveTask(taskID, dragged.status, task.id, after, false);
-                                    }
-                                    setDraggedTaskID(undefined);
-                                    clearDropIndicator();
-                                }}
-                            />
-                        ))}
-                    </ul>
-                    {(tasks.data.hasMore || page > 0) && (
-                        <div className='Tasks-Sidebar__pagination'>
-                            <Button
-                                emphasis='tertiary'
-                                size='small'
-                                disabled={page === 0}
-                                onClick={() => setPage((value) => Math.max(0, value - 1))}
-                            >
-                                <FormattedMessage
-                                    id='tasks.pagination.previous'
-                                    defaultMessage='Previous'
+                                    }}
+                                    onDragEnd={() => {
+                                        setDraggedTaskID(undefined);
+                                        clearDropIndicator();
+                                    }}
+                                    onDragOver={(event) => {
+                                        event.preventDefault();
+                                        if (!draggedTaskID || draggedTaskID === task.id) {
+                                            setDropIndicator(undefined);
+                                            return;
+                                        }
+                                        const rect = event.currentTarget.getBoundingClientRect();
+                                        setRowDropIndicator(task.id, event.clientY > rect.top + (rect.height / 2));
+                                    }}
+                                    onDrop={(event) => {
+                                        event.preventDefault();
+                                        const taskID = event.dataTransfer.getData('text/plain');
+                                        if (!taskID || taskID === task.id) {
+                                            clearDropIndicator();
+                                            return;
+                                        }
+                                        const rect = event.currentTarget.getBoundingClientRect();
+                                        const after = event.clientY > rect.top + (rect.height / 2);
+                                        const dragged = tasks.data?.items.find((item) => item.id === taskID);
+                                        if (dragged) {
+                                            moveTask(taskID, dragged.status, task.id, after, false);
+                                        }
+                                        setDraggedTaskID(undefined);
+                                        clearDropIndicator();
+                                    }}
                                 />
-                            </Button>
-                            <Button
-                                emphasis='tertiary'
-                                size='small'
-                                disabled={!tasks.data.hasMore}
-                                onClick={() => setPage((value) => value + 1)}
-                            >
-                                <FormattedMessage
-                                    id='tasks.pagination.next'
-                                    defaultMessage='Next'
-                                />
-                            </Button>
-                        </div>
-                    )}
-                </>
-            )}
+                            ))}
+                        </ul>
+                        {(tasks.data.hasMore || page > 0) && (
+                            <div className='Tasks-Sidebar__pagination'>
+                                <Button
+                                    emphasis='tertiary'
+                                    size='small'
+                                    disabled={page === 0}
+                                    onClick={() => setPage((value) => Math.max(0, value - 1))}
+                                >
+                                    <FormattedMessage
+                                        id='tasks.pagination.previous'
+                                        defaultMessage='Previous'
+                                    />
+                                </Button>
+                                <Button
+                                    emphasis='tertiary'
+                                    size='small'
+                                    disabled={!tasks.data.hasMore}
+                                    onClick={() => setPage((value) => value + 1)}
+                                >
+                                    <FormattedMessage
+                                        id='tasks.pagination.next'
+                                        defaultMessage='Next'
+                                    />
+                                </Button>
+                            </div>
+                        )}
+                    </>
+                )}
 
-            {view === 'calendar' && (isDM || teamID) && (
-                <Calendar
-                    scope={isDM ? 'my' : 'team'}
-                    teamId={isDM ? undefined : teamID}
-                    priority={filters.priority || undefined}
-                    assigneeId={filters.assigneeId || undefined}
-                    revision={tasksRevision}
-                    onOpenTask={openCalendarTask}
-                />
-            )}
+                {view === 'calendar' && (scope === 'my' || teamID) && (
+                    <Calendar
+                        scope={scope}
+                        teamId={scope === 'team' ? teamID : undefined}
+                        priority={filters.priority || undefined}
+                        assigneeId={filters.assigneeId || undefined}
+                        revision={tasksRevision}
+                        onOpenTask={openCalendarTask}
+                    />
+                )}
+            </div>
 
             {taskEditor && (
                 <TaskEditor

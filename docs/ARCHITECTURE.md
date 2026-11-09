@@ -76,13 +76,14 @@ administrator. Assignment never grants access to a private channel.
 - `registerPostDropdownMenuAction` adds **Create task** for public/private channel posts. On the
   actor's own DM message it opens a private task instead of a channel-visible one; DM tasks have no
   source backlink.
-- The sidebar has one contextual view (no My/Team/Channel/All tabs): team channels use a Team
-  query and the heading **Team**; DMs use the My-tasks query and the heading **My tasks**. The team
-  query returns readable team/channel tasks plus the actor's own private tasks. DM creation
-  defaults to a private task assigned to the actor.
-- The list and board share one query; the board fetches up to 100 cards and asks the user to narrow
-  filters beyond that. Manual order is a float `position`; drops use the midpoint between the
-  neighboring tasks, and old tasks without a position fall back to creation time.
+- The sidebar switches between **Team** and **My tasks** at the top. A channel opens on Team and a
+  DM on My tasks. The team query returns readable team/channel tasks plus the actor's own private
+  tasks; the My-tasks query collects tasks assigned to the actor across teams. DM creation defaults
+  to a private task assigned to the actor.
+- The list and board share one query; the calendar queries a due-date range for the visible week or
+  month. The board and calendar fetch up to 100 tasks and ask the user to narrow filters beyond
+  that. Manual order is a float `position`; drops use the midpoint between the neighboring tasks,
+  and old tasks without a position fall back to creation time.
 - The due calendar commits only on **OK**. Time is off by default and only a date is stored unless
   the user enables **Set time**.
 - The webapp uses the host's Redux store and local selectors rather than bundling Mattermost

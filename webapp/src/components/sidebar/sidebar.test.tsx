@@ -117,7 +117,7 @@ describe('TasksSidebar', () => {
         await waitFor(() => expect(updateTaskMock).toHaveBeenCalledWith('task-1', {status: 'done'}));
     });
 
-    it('loads one team-global view without scope tabs', async () => {
+    it('defaults to team tasks in a channel', async () => {
         renderWithStore(<TasksSidebar/>);
         await screen.findByRole('button', {name: 'Pick up mail'});
 
@@ -125,9 +125,47 @@ describe('TasksSidebar', () => {
             scope: 'team',
             teamId: ids.team,
         }), expect.anything()));
-        expect(screen.getByText('Team')).toBeVisible();
-        expect(screen.queryByRole('tab', {name: 'My tasks'})).not.toBeInTheDocument();
+        expect(screen.getByRole('tab', {name: 'Team'})).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('tab', {name: 'My tasks'})).toBeVisible();
         expect(screen.queryByRole('tab', {name: 'All'})).not.toBeInTheDocument();
+    });
+
+    it('switches between team tasks and my tasks', async () => {
+        const user = userEvent.setup();
+        renderWithStore(<TasksSidebar/>);
+        await screen.findByRole('button', {name: 'Pick up mail'});
+
+        await user.click(screen.getByRole('tab', {name: 'My tasks'}));
+
+        await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
+            scope: 'my',
+        }), expect.anything()));
+        expect(screen.getByRole('tab', {name: 'My tasks'})).toHaveAttribute('aria-selected', 'true');
+
+        await user.click(screen.getByRole('tab', {name: 'Team'}));
+        await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
+            scope: 'team',
+            teamId: ids.team,
+        }), expect.anything()));
+    });
+
+    it('falls back to My tasks without a team', async () => {
+        renderWithStore(<TasksSidebar/>, (state) => {
+            const teams = state.entities.teams as unknown as {
+                currentTeamId: string;
+                teams: Record<string, unknown>;
+                myMembers: Record<string, unknown>;
+            };
+            teams.currentTeamId = '';
+            teams.teams = {};
+            teams.myMembers = {};
+        });
+
+        expect(await screen.findByRole('tab', {name: 'My tasks'})).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('tab', {name: 'Team'})).toHaveAttribute('aria-disabled', 'true');
+        await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
+            scope: 'my',
+        }), expect.anything()));
     });
 
     it('switches to a board grouped by status', async () => {
@@ -230,7 +268,7 @@ describe('TasksSidebar', () => {
         });
         await screen.findByRole('button', {name: 'Pick up mail'});
 
-        expect(screen.getByText('My tasks')).toBeVisible();
+        expect(screen.getByRole('tab', {name: 'My tasks'})).toHaveAttribute('aria-selected', 'true');
         await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
             scope: 'my',
         }), expect.anything()));
