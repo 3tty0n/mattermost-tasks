@@ -64,7 +64,8 @@ jobs:
           set -euo pipefail
           bundle="dist/com.github.3tty0n.mattermost-tasks-${{ steps.version.outputs.version }}.tar.gz"
           test -f "$bundle"
-          tar -tzf "$bundle" | grep -qx "com.github.3tty0n.mattermost-tasks/plugin.json"
+          tar -tzf "$bundle" > dist/bundle-contents.txt
+          grep -qx "com.github.3tty0n.mattermost-tasks/plugin.json" dist/bundle-contents.txt
           sha256sum "$bundle" > dist/SHA256SUMS
 
       - name: Publish GitHub release
