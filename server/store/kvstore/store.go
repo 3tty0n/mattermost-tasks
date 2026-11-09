@@ -257,20 +257,22 @@ func (s *KVStore) syncTaskRefs(oldTask, nextTask *taskmodel.Task) error {
 		newTeam = nextTask.TeamID
 		newRef = nextTask.Ref()
 	}
+	oldTeamIndexed := indexedInTeam(oldTask)
+	newTeamIndexed := indexedInTeam(nextTask)
 
 	switch {
-	case oldTeam != newTeam:
-		if oldTeam != "" {
+	case oldTeam != newTeam || oldTeamIndexed != newTeamIndexed:
+		if oldTeamIndexed {
 			if err := s.removeTaskRef("task_team:", oldTeam, oldTask.ID); err != nil {
 				errs = append(errs, err)
 			}
 		}
-		if newTeam != "" {
+		if newTeamIndexed {
 			if err := s.upsertTaskRef("task_team:", newTeam, newRef); err != nil {
 				errs = append(errs, err)
 			}
 		}
-	case oldTask != nil && nextTask != nil:
+	case oldTeamIndexed && oldTask != nil && nextTask != nil:
 		if err := s.upsertTaskRef("task_team:", newTeam, newRef); err != nil {
 			errs = append(errs, err)
 		}
@@ -283,19 +285,21 @@ func (s *KVStore) syncTaskRefs(oldTask, nextTask *taskmodel.Task) error {
 	if nextTask != nil {
 		newChannel = nextTask.ChannelID
 	}
+	oldChannelIndexed := indexedInChannel(oldTask)
+	newChannelIndexed := indexedInChannel(nextTask)
 	switch {
-	case oldChannel != newChannel:
-		if oldChannel != "" {
+	case oldChannel != newChannel || oldChannelIndexed != newChannelIndexed:
+		if oldChannelIndexed {
 			if err := s.removeTaskRef("task_channel:", oldChannel, oldTask.ID); err != nil {
 				errs = append(errs, err)
 			}
 		}
-		if newChannel != "" {
+		if newChannelIndexed {
 			if err := s.upsertTaskRef("task_channel:", newChannel, newRef); err != nil {
 				errs = append(errs, err)
 			}
 		}
-	case oldTask != nil && nextTask != nil:
+	case oldChannelIndexed && oldTask != nil && nextTask != nil:
 		if err := s.upsertTaskRef("task_channel:", newChannel, newRef); err != nil {
 			errs = append(errs, err)
 		}
@@ -323,6 +327,14 @@ func (s *KVStore) syncTaskRefs(oldTask, nextTask *taskmodel.Task) error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+func indexedInTeam(task *taskmodel.Task) bool {
+	return task != nil && task.TeamID != "" && task.Visibility != taskmodel.TaskVisibilityPrivate
+}
+
+func indexedInChannel(task *taskmodel.Task) bool {
+	return task != nil && task.ChannelID != "" && task.Visibility == taskmodel.TaskVisibilityChannel
 }
 
 func (s *KVStore) upsertTaskRef(prefix, scopeID string, ref taskmodel.TaskRef) error {
@@ -388,6 +400,8 @@ func decodeTaskRefs(raw []byte) ([]taskmodel.TaskRef, error) {
 func taskRefFieldsEqual(a, b *taskmodel.TaskRef) bool {
 	return a.TeamID == b.TeamID &&
 		a.ChannelID == b.ChannelID &&
+		a.Visibility == b.Visibility &&
+		a.CreatorID == b.CreatorID &&
 		a.Title == b.Title &&
 		a.Status == b.Status &&
 		a.Priority == b.Priority &&

@@ -35,6 +35,7 @@ import {IconButton} from '@mattermost/compass-ui/components/icon-button';
 import {SearchInput} from '@mattermost/compass-ui/components/search-input';
 import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
 import {Select} from '@mattermost/compass-ui/components/select';
+import {UserAvatar} from '@mattermost/compass-ui/components/user-avatar';
 
 import {selectCurrentTeam, selectCurrentUserId, selectMyChannels, selectMyTeams} from 'selectors';
 
@@ -42,13 +43,14 @@ import Dialog from 'components/dialog/dialog';
 import DueDatePicker from 'components/due_date_picker/due_date_picker';
 import MarkdownText from 'components/markdown_text/markdown_text';
 
-import type {Task, TaskPriority, TaskStatus} from 'types';
+import type {Task, TaskPriority, TaskStatus, TaskVisibility} from 'types';
 
 import './task_editor.css';
 
 export type TaskEditorDefaults = {
     teamId?: string;
     channelId?: string;
+    visibility?: TaskVisibility;
     title?: string;
     description?: string;
     assigneeIds?: string[];
@@ -70,16 +72,26 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     const currentUserId = useSelector(selectCurrentUserId);
 
     const initialTeamID = task?.teamId ?? defaults?.teamId ?? currentTeam?.id ?? myTeams[0]?.id ?? '';
-    const initialChannelID = task ? (task.channelId ?? '') : (defaults?.channelId ?? '');
+    const defaultChannelID = task ? (task.channelId ?? '') : (defaults?.channelId ?? '');
+    const initialVisibility = task?.visibility ?? defaults?.visibility ?? (defaultChannelID ? 'channel' : 'team');
+    const initialChannelID = initialVisibility === 'channel' ? defaultChannelID : '';
     const [teamID, setTeamID] = useState(initialTeamID);
     const [channelID, setChannelID] = useState(initialChannelID);
+    const [visibility, setVisibility] = useState<TaskVisibility>(initialVisibility);
     const [title, setTitle] = useState(task?.title ?? defaults?.title ?? '');
     const [description, setDescription] = useState(task?.description ?? defaults?.description ?? '');
     const [status, setStatus] = useState<TaskStatus>(task?.status ?? 'todo');
     const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? 'normal');
     const [due, setDue] = useState(toDateTimeInput(task?.dueAt, task?.dueHasTime ?? false));
     const [dueHasTime, setDueHasTime] = useState(task?.dueHasTime ?? false);
-    const [assigneeIds, setAssigneeIds] = useState<string[]>(task?.assigneeIds ?? defaults?.assigneeIds ?? (currentUserId ? [currentUserId] : []));
+    let initialAssigneeIds = task?.assigneeIds ?? defaults?.assigneeIds;
+    if (initialVisibility === 'private') {
+        initialAssigneeIds = undefined;
+    }
+    if (!initialAssigneeIds) {
+        initialAssigneeIds = currentUserId ? [currentUserId] : [];
+    }
+    const [assigneeIds, setAssigneeIds] = useState<string[]>(initialAssigneeIds);
     const [assigneeTerm, setAssigneeTerm] = useState('');
     const [preview, setPreview] = useState(false);
     const [openProperty, setOpenProperty] = useState<'due' | 'priority' | 'status' | 'scope'>();
@@ -104,16 +116,45 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
         channelOptions.push({value: channelID, label: intl.formatMessage({id: 'tasks.editor.current_channel', defaultMessage: 'Current channel'})});
     }
 
+    const visibilityLabels: Record<TaskVisibility, string> = {
+        private: intl.formatMessage({id: 'tasks.editor.visibility_private', defaultMessage: 'Only me'}),
+        team: intl.formatMessage({id: 'tasks.editor.visibility_team', defaultMessage: 'Team'}),
+        channel: intl.formatMessage({id: 'tasks.editor.visibility_channel', defaultMessage: 'Channel'}),
+    };
     const statusOptions = Object.entries(STATUS_MESSAGES).map(([value, message]) => ({value, label: intl.formatMessage(message)}));
     const priorityOptions = Object.entries(PRIORITY_MESSAGES).map(([value, message]) => ({value, label: intl.formatMessage(message)}));
     const selectedTeam = myTeams.find((team) => team.id === teamID);
     const selectedChannel = myChannels.find((channel) => channel.id === channelID);
-    const scopeLabel = selectedChannel?.display_name ?? selectedTeam?.display_name ?? intl.formatMessage({id: 'tasks.editor.project', defaultMessage: 'Project'});
+    let scopeLabel = intl.formatMessage({id: 'tasks.editor.visibility_team', defaultMessage: 'Team'});
+    if (visibility === 'private') {
+        scopeLabel = intl.formatMessage({id: 'tasks.editor.visibility_private', defaultMessage: 'Only me'});
+    } else if (visibility === 'channel') {
+        scopeLabel = selectedChannel?.display_name ?? intl.formatMessage({id: 'tasks.editor.visibility_channel', defaultMessage: 'Channel'});
+    } else if (selectedTeam) {
+        scopeLabel = selectedTeam.display_name;
+    }
     const dueValue = fromDateTimeInput(due, dueHasTime);
     const scopeLocked = Boolean(task?.sourcePostId || defaults?.sourcePostId);
 
     const toggleAssignee = (userID: string) => {
         setAssigneeIds((previous) => (previous.includes(userID) ? previous.filter((id) => id !== userID) : [...previous, userID]));
+    };
+
+    const selectVisibility = (next: TaskVisibility) => {
+        setVisibility(next);
+        if (next === 'private') {
+            setChannelID('');
+            setAssigneeIds(currentUserId ? [currentUserId] : []);
+            return;
+        }
+        if (next === 'team') {
+            setChannelID('');
+            return;
+        }
+        if (!channelID) {
+            const fallback = myChannels.find((channel) => channel.id === defaultChannelID) ?? myChannels.find((channel) => channel.team_id === teamID && (channel.type === 'O' || channel.type === 'P'));
+            setChannelID(fallback?.id ?? '');
+        }
     };
 
     const replaceSelection = (before: string, after: string, placeholder: {id: string; defaultMessage: string}) => {
@@ -178,7 +219,8 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
             if (task) {
                 const updated = await updateTask(task.id, {
                     teamId: teamID,
-                    channelId: channelID,
+                    channelId: visibility === 'channel' ? channelID : undefined,
+                    visibility,
                     title: trimmed,
                     description,
                     assigneeIds,
@@ -191,7 +233,8 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
             } else {
                 const created = await createTask({
                     teamId: teamID || undefined,
-                    channelId: channelID || undefined,
+                    channelId: visibility === 'channel' ? (channelID || undefined) : undefined,
+                    visibility,
                     title: trimmed,
                     description,
                     assigneeIds,
@@ -541,6 +584,33 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                         )}
                         {openProperty === 'scope' && (
                             <div className='Tasks-TaskEditor__propertyBody'>
+                                <span className='Tasks-TaskEditor__propertyLabel'>
+                                    <FormattedMessage
+                                        id='tasks.editor.visibility'
+                                        defaultMessage='Who can see this task?'
+                                    />
+                                </span>
+                                <div
+                                    className='Tasks-TaskEditor__quickOptions'
+                                    role='group'
+                                    aria-label={intl.formatMessage({id: 'tasks.editor.visibility', defaultMessage: 'Who can see this task?'})}
+                                >
+                                    {(['private', 'team', 'channel'] as TaskVisibility[]).map((value) => {
+                                        const selected = visibility === value;
+                                        return (
+                                            <button
+                                                key={value}
+                                                type='button'
+                                                className={`Tasks-TaskEditor__quickOption${selected ? ' Tasks-TaskEditor__quickOption--selected' : ''}`}
+                                                aria-pressed={selected}
+                                                disabled={scopeLocked}
+                                                onClick={() => selectVisibility(value)}
+                                            >
+                                                {visibilityLabels[value]}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                                 <Select
                                     label={intl.formatMessage({id: 'tasks.editor.team', defaultMessage: 'Team'})}
                                     options={teamOptions}
@@ -549,19 +619,21 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                                     onChange={(value) => {
                                         setTeamID(value);
                                         setChannelID('');
-                                        setAssigneeIds([]);
+                                        setAssigneeIds(visibility === 'private' && currentUserId ? [currentUserId] : []);
                                     }}
                                 />
-                                <Select
-                                    label={intl.formatMessage({id: 'tasks.editor.channel', defaultMessage: 'Channel'})}
-                                    options={channelOptions}
-                                    value={channelID}
-                                    disabled={scopeLocked}
-                                    onChange={(value) => {
-                                        setChannelID(value);
-                                        setAssigneeIds([]);
-                                    }}
-                                />
+                                {visibility === 'channel' && (
+                                    <Select
+                                        label={intl.formatMessage({id: 'tasks.editor.channel', defaultMessage: 'Channel'})}
+                                        options={channelOptions}
+                                        value={channelID}
+                                        disabled={scopeLocked}
+                                        onChange={(value) => {
+                                            setChannelID(value);
+                                            setAssigneeIds([]);
+                                        }}
+                                    />
+                                )}
                                 {scopeLocked && (
                                     <p className='Tasks-TaskEditor__hint'>
                                         <FormattedMessage
@@ -598,7 +670,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                                     <Chip
                                         key={id}
                                         leadingAvatar={src ? {src, alt: name} : undefined}
-                                        onRemove={() => toggleAssignee(id)}
+                                        onRemove={visibility === 'private' ? undefined : () => toggleAssignee(id)}
                                     >
                                         {name}
                                     </Chip>
@@ -606,14 +678,23 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                             })}
                         </div>
                     )}
-                    <SearchInput
-                        label={intl.formatMessage({id: 'tasks.editor.add_assignee', defaultMessage: 'Add assignee'})}
-                        value={assigneeTerm}
-                        onChange={(event) => setAssigneeTerm(event.target.value)}
-                        onClear={() => setAssigneeTerm('')}
-                        clearLabel={intl.formatMessage({id: 'tasks.search.clear', defaultMessage: 'Clear search'})}
-                    />
-                    {assigneeResults.loading && (
+                    {visibility === 'private' ? (
+                        <span className='Tasks-TaskEditor__hint'>
+                            <FormattedMessage
+                                id='tasks.editor.private_assignee_hint'
+                                defaultMessage='Private tasks are visible only to you and are always assigned to you.'
+                            />
+                        </span>
+                    ) : (
+                        <SearchInput
+                            label={intl.formatMessage({id: 'tasks.editor.add_assignee', defaultMessage: 'Add assignee'})}
+                            value={assigneeTerm}
+                            onChange={(event) => setAssigneeTerm(event.target.value)}
+                            onClear={() => setAssigneeTerm('')}
+                            clearLabel={intl.formatMessage({id: 'tasks.search.clear', defaultMessage: 'Clear search'})}
+                        />
+                    )}
+                    {visibility !== 'private' && assigneeResults.loading && (
                         <span className='Tasks-TaskEditor__hint'>
                             <FormattedMessage
                                 id='tasks.loading'
@@ -621,17 +702,19 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                             />
                         </span>
                     )}
-                    {assigneeResults.error && (
+                    {visibility !== 'private' && assigneeResults.error && (
                         <span className='Tasks-TaskEditor__hint Tasks-TaskEditor__hint--error'>
                             {assigneeResults.error}
                         </span>
                     )}
-                    {assigneeTerm.trim() !== '' && assigneeResults.data && assigneeResults.data.length > 0 && (
+                    {visibility !== 'private' && assigneeTerm.trim() !== '' && assigneeResults.data && assigneeResults.data.length > 0 && (
                         <ul className='Tasks-TaskEditor__results'>
                             {assigneeResults.data.
                                 filter((assignee) => !assigneeIds.includes(assignee.id)).
                                 map((assignee) => {
                                     const name = profileName(assignee, assignee.username);
+                                    const username = assignee.username ? `@${assignee.username}` : '';
+                                    const src = getProfilePictureUrl({id: assignee.id, last_picture_update: assignee.lastPictureUpdate});
                                     return (
                                         <li
                                             key={assignee.id}
@@ -641,7 +724,20 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                                                 checked={assigneeIds.includes(assignee.id)}
                                                 onChange={() => toggleAssignee(assignee.id)}
                                             >
-                                                {name}
+                                                <span className='Tasks-TaskEditor__resultIdentity'>
+                                                    <UserAvatar
+                                                        alt={name}
+                                                        name={name}
+                                                        src={src}
+                                                        size='24'
+                                                    />
+                                                    <span className='Tasks-TaskEditor__resultNames'>
+                                                        <span className='Tasks-TaskEditor__resultName'>{name}</span>
+                                                        {username && name !== assignee.username && (
+                                                            <span className='Tasks-TaskEditor__resultUsername'>{username}</span>
+                                                        )}
+                                                    </span>
+                                                </span>
                                             </Checkbox>
                                         </li>
                                     );

@@ -272,3 +272,41 @@ func TestTaskAPIDueTime(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	assert.False(t, decodeResponse[taskmodel.Task](t, w).DueHasTime)
 }
+
+func TestTaskAPIVisibility(t *testing.T) {
+	env := newAPITestEnv(t)
+	teamID, channelID := model.NewId(), model.NewId()
+	creatorID, otherID := model.NewId(), model.NewId()
+	allowChannel(env.api, creatorID, channelID, teamID)
+	env.api.On("GetTeam", teamID).Return(&model.Team{Id: teamID}, nil).Maybe()
+	env.api.On("HasPermissionToTeam", creatorID, teamID, model.PermissionViewTeam).Return(true).Maybe()
+	denyAdmin(env.api, creatorID)
+
+	body := `{"teamId":"` + teamID + `","visibility":"private","title":"Only me"}`
+	w := env.serve(http.MethodPost, "/api/v1/tasks", body, creatorID)
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	privateTask := decodeResponse[taskmodel.Task](t, w)
+	assert.Equal(t, taskmodel.TaskVisibilityPrivate, privateTask.Visibility)
+	assert.Equal(t, []string{creatorID}, privateTask.AssigneeIDs)
+
+	w = env.serve(http.MethodGet, "/api/v1/tasks/"+privateTask.ID, "", otherID)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	w = env.serve(http.MethodGet, "/api/v1/tasks?scope=my", "", creatorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	list := decodeResponse[tasks.ListResult](t, w)
+	require.Len(t, list.Items, 1)
+	assert.Equal(t, privateTask.ID, list.Items[0].ID)
+
+	teamVisibility := `{"teamId":"` + teamID + `","visibility":"team","title":"Everyone"}`
+	w = env.serve(http.MethodPost, "/api/v1/tasks", teamVisibility, creatorID)
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	teamTask := decodeResponse[taskmodel.Task](t, w)
+	assert.Equal(t, taskmodel.TaskVisibilityTeam, teamTask.Visibility)
+	assert.Empty(t, teamTask.ChannelID)
+
+	w = env.serve(http.MethodGet, "/api/v1/tasks?scope=team&team_id="+teamID, "", creatorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	list = decodeResponse[tasks.ListResult](t, w)
+	assert.Equal(t, 1, list.Total, "the private task must not appear in the team index")
+}

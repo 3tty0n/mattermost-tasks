@@ -298,3 +298,32 @@
 .Tasks-TaskEditor__quickOptionDot--done {
     background: var(--online-indicator, #3db887);
 }
+
+.Tasks-TaskEditor__resultIdentity {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    min-width: 0;
+}
+
+.Tasks-TaskEditor__resultNames {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: var(--line-height-75);
+}
+
+.Tasks-TaskEditor__resultName {
+    overflow: hidden;
+    color: var(--center-channel-color);
+    font-size: var(--font-size-75);
+    font-weight: var(--font-weight-semibold);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.Tasks-TaskEditor__resultUsername {
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-50);
+    font-weight: var(--font-weight-regular);
+}

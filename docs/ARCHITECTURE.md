@@ -19,8 +19,8 @@ No code was copied from those projects. The implementation follows the public pl
 
 ```
 server/
-  model/        Task, compact index references, validation, query/compare rules
-  store/        KV abstraction + indexed plugin-KV implementation
+  model/        Task + visibility, compact index references, validation/query rules
+  store/        KV abstraction + visibility-aware indexed plugin-KV implementation
   access/       one place for team/channel/system permission checks
   tasks/        task use cases and audit records
   api/          REST routing, JSON decoding, error mapping
@@ -37,7 +37,12 @@ The plugin has one RHS, one channel header button and one post dropdown action.
 ## Storage model
 
 - Full record: `task:<id>` (JSON). It includes the Markdown description, assignees, status,
-  priority, due timestamp, optional `dueHasTime` flag, source post and a compare-and-swap version.
+  priority, visibility, due timestamp, optional `dueHasTime` flag, source post and a
+  compare-and-swap version.
+- Visibility is `private`, `team` or `channel`. Private tasks are not written to the team or
+  channel indexes and are always assigned to their creator; team tasks go to the team index;
+  channel tasks go to both the team and channel indexes and are filtered by channel permission in
+  team views. All tasks are in the assignee index, which also powers My tasks.
 - Index reference: `task_team:<teamID>:<shard>`, `task_channel:<channelID>:<shard>` and
   `task_user:<userID>:<shard>`.
 - `shard = fnv32a(taskID) % 4`. Four shards keep each index value small and reduce CAS contention.
@@ -61,6 +66,7 @@ from a post. Private-channel tasks are filtered from lists and return 404 to non
 
 The creator or a system administrator may edit task metadata. The creator, an assignee or a
 system administrator may change status. Delete is limited to the creator or a system
+administrator. A private task is readable and editable only by its creator, even for a system
 administrator. Assignment never grants access to a private channel.
 
 ## Webapp

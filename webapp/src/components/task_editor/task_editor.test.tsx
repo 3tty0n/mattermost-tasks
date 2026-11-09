@@ -38,6 +38,7 @@ const savedTask: Task = {
     id: 'task-1',
     teamId: ids.team,
     channelId: ids.channel,
+    visibility: 'channel',
     title: 'Ship the release',
     status: 'todo',
     priority: 'high',
@@ -76,7 +77,8 @@ describe('TaskEditor', () => {
         await user.type(screen.getByLabelText('Title'), 'Ship the release');
         await user.type(screen.getByLabelText('Description'), 'Before Friday');
         await user.type(screen.getByLabelText('Add assignee'), 'alice');
-        const alice = await screen.findByRole('checkbox', {name: 'Alice'});
+        const alice = await screen.findByRole('checkbox', {name: /Alice/});
+        expect(screen.getByText('@alice')).toBeVisible();
         await user.click(alice);
 
         await user.click(screen.getByRole('button', {name: 'Add task'}));
@@ -173,6 +175,30 @@ describe('TaskEditor', () => {
         await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
             priority: 'urgent',
             status: 'in_progress',
+        })));
+    });
+
+    it('switches to a private task and assigns only the current user', async () => {
+        const user = userEvent.setup();
+        createTaskMock.mockResolvedValueOnce({...savedTask, visibility: 'private', channelId: undefined, assigneeIds: [ids.user]});
+        renderWithStore(
+            <TaskEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel'}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Private task');
+        await user.click(screen.getByRole('button', {name: 'Town Square'}));
+        await user.click(screen.getByRole('button', {name: 'Only me'}));
+        expect(screen.getByText(/Private tasks are visible only to you/)).toBeVisible();
+        await user.click(screen.getByRole('button', {name: 'Add task'}));
+
+        await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
+            visibility: 'private',
+            channelId: undefined,
+            assigneeIds: [ids.user],
         })));
     });
 

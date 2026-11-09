@@ -37,7 +37,7 @@ import TaskEditor, {type TaskEditorDefaults} from 'components/task_editor/task_e
 import TaskFilters, {DEFAULT_TASK_FILTERS, type TaskFiltersState} from 'components/task_filters/task_filters';
 import TaskRow from 'components/task_row/task_row';
 
-import type {Task, TaskQuery, TaskScope, TaskSort, TaskStatus, TaskSummary} from 'types';
+import type {Task, TaskQuery, TaskScope, TaskSort, TaskStatus, TaskSummary, TaskVisibility} from 'types';
 
 import './sidebar.css';
 
@@ -110,6 +110,7 @@ export default function TasksSidebar() {
             defaults: {
                 teamId: teamID,
                 channelId: composer.channelId ?? channelID,
+                visibility: 'channel',
                 title: composer.title,
                 description: composer.description,
                 assigneeIds: currentUserId ? [currentUserId] : [],
@@ -193,7 +194,20 @@ export default function TasksSidebar() {
         return groups;
     }, [tasks.data]);
 
+    const visibilityForScope = (value: TaskScope): TaskVisibility => {
+        if (value === 'my') {
+            return 'private';
+        }
+        if (value === 'channel') {
+            return 'channel';
+        }
+        return 'team';
+    };
+
     const scopeLabel = (task: TaskSummary) => {
+        if (task.visibility === 'private') {
+            return intl.formatMessage({id: 'tasks.editor.visibility_private', defaultMessage: 'Only me'});
+        }
         if (scope === 'team' || scope === 'channel') {
             return undefined;
         }
@@ -216,10 +230,12 @@ export default function TasksSidebar() {
     };
 
     const openCreate = () => {
+        const visibility = visibilityForScope(scope);
         setTaskEditor({
             defaults: {
                 teamId: teamID,
-                channelId: channelID,
+                channelId: visibility === 'channel' ? channelID : undefined,
+                visibility,
                 assigneeIds: currentUserId ? [currentUserId] : [],
             },
         });
@@ -241,12 +257,14 @@ export default function TasksSidebar() {
             setQuickAddError(intl.formatMessage({id: 'tasks.editor.title_required', defaultMessage: 'Enter a task title.'}));
             return;
         }
+        const visibility = visibilityForScope(scope);
         setQuickAddSaving(true);
         setQuickAddError(undefined);
         try {
             await createTask({
                 teamId: teamID,
-                channelId: scope === 'team' ? undefined : channelID,
+                channelId: visibility === 'channel' ? channelID : undefined,
+                visibility,
                 title,
                 status: quickAddStatus,
                 priority: 'normal',

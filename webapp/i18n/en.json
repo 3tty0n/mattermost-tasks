@@ -94,7 +94,6 @@
   "tasks.editor.preview": "Preview",
   "tasks.editor.edit_description": "Edit description",
   "tasks.editor.no_description": "Nothing to preview yet.",
-  "tasks.editor.project": "Project",
   "tasks.view.list": "List view",
   "tasks.view.board": "Board view",
   "tasks.board.empty_column": "No tasks",
@@ -112,5 +111,11 @@
   "tasks.description.load_error": "Couldn’t load the description",
   "tasks.description.open_task": "Open task",
   "tasks.description.title": "Task",
-  "tasks.due.set_time": "Set time"
+  "tasks.due.set_time": "Set time",
+  "tasks.editor.private_assignee_hint": "Private tasks are visible only to you and are always assigned to you.",
+  "tasks.editor.visibility": "Who can see this task?",
+  "tasks.editor.visibility_private": "Only me",
+  "tasks.editor.visibility_team": "Team",
+  "tasks.editor.visibility_channel": "Channel",
+  "tasks.detail.visibility": "Visible to"
 }

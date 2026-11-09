@@ -37,6 +37,12 @@ import type {Task, TaskStatus} from 'types';
 
 import './task_detail.css';
 
+const VISIBILITY_MESSAGES = {
+    private: {id: 'tasks.editor.visibility_private', defaultMessage: 'Only me'},
+    team: {id: 'tasks.editor.visibility_team', defaultMessage: 'Team'},
+    channel: {id: 'tasks.editor.visibility_channel', defaultMessage: 'Channel'},
+};
+
 type Props = {
     taskId: string;
     revision: number;
@@ -255,6 +261,15 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
             </div>
 
             <dl className='Tasks-TaskDetail__facts'>
+                <dt className='Tasks-TaskDetail__term'>
+                    <FormattedMessage
+                        id='tasks.detail.visibility'
+                        defaultMessage='Visible to'
+                    />
+                </dt>
+                <dd className='Tasks-TaskDetail__value'>
+                    <FormattedMessage {...VISIBILITY_MESSAGES[task.visibility]}/>
+                </dd>
                 <dt className='Tasks-TaskDetail__term'>
                     <FormattedMessage
                         id='tasks.detail.team'

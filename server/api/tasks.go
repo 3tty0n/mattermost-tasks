@@ -12,6 +12,7 @@ import (
 type createTaskRequest struct {
 	TeamID       string   `json:"teamId"`
 	ChannelID    string   `json:"channelId"`
+	Visibility   string   `json:"visibility"`
 	Title        string   `json:"title"`
 	Description  string   `json:"description"`
 	AssigneeIDs  []string `json:"assigneeIds"`
@@ -27,6 +28,7 @@ func (req createTaskRequest) input() taskmodel.CreateTaskInput {
 	return taskmodel.CreateTaskInput{
 		TeamID:       req.TeamID,
 		ChannelID:    req.ChannelID,
+		Visibility:   req.Visibility,
 		Title:        req.Title,
 		Description:  req.Description,
 		AssigneeIDs:  req.AssigneeIDs,
@@ -42,6 +44,7 @@ func (req createTaskRequest) input() taskmodel.CreateTaskInput {
 type updateTaskRequest struct {
 	TeamID       *string   `json:"teamId"`
 	ChannelID    *string   `json:"channelId"`
+	Visibility   *string   `json:"visibility"`
 	Title        *string   `json:"title"`
 	Description  *string   `json:"description"`
 	AssigneeIDs  *[]string `json:"assigneeIds"`
@@ -57,6 +60,7 @@ func (req updateTaskRequest) patch() taskmodel.TaskPatch {
 	return taskmodel.TaskPatch{
 		TeamID:       req.TeamID,
 		ChannelID:    req.ChannelID,
+		Visibility:   req.Visibility,
 		Title:        req.Title,
 		Description:  req.Description,
 		AssigneeIDs:  req.AssigneeIDs,

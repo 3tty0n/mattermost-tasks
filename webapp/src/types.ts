@@ -3,6 +3,7 @@
 
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
 export type TaskPriority = 'none' | 'low' | 'normal' | 'high' | 'urgent';
+export type TaskVisibility = 'private' | 'team' | 'channel';
 
 export const TASK_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done'];
 export const TASK_PRIORITIES: TaskPriority[] = ['none', 'low', 'normal', 'high', 'urgent'];
@@ -11,6 +12,7 @@ export type TaskSummary = {
     id: string;
     teamId: string;
     channelId?: string;
+    visibility: TaskVisibility;
     title: string;
     status: TaskStatus;
     priority: TaskPriority;
@@ -70,6 +72,7 @@ export type Assignee = {
 export type CreateTaskInput = {
     teamId?: string;
     channelId?: string;
+    visibility?: TaskVisibility;
     title: string;
     description?: string;
     assigneeIds: string[];
@@ -83,6 +86,7 @@ export type CreateTaskInput = {
 export type UpdateTaskInput = {
     teamId?: string;
     channelId?: string;
+    visibility?: TaskVisibility;
     title?: string;
     description?: string;
     assigneeIds?: string[];

@@ -191,3 +191,39 @@ func TestPrivateChannelIsolationIntegration(t *testing.T) {
 	response, _ = pluginRequest(t, th, nil, http.MethodGet, "/tasks?scope=my", nil)
 	assert.Equal(t, http.StatusUnauthorized, response.StatusCode)
 }
+
+func TestTaskVisibilityIntegration(t *testing.T) {
+	th := testhelper.Setup(t)
+
+	privateTask := createTaskIntegration(t, th, th.AdminClient, map[string]any{
+		"teamId":     th.Team.Id,
+		"visibility": "private",
+		"title":      "Admin only",
+	})
+	assert.Equal(t, "private", privateTask.Visibility)
+	assert.Equal(t, []string{th.AdminUser.Id}, privateTask.AssigneeIDs)
+
+	response, payload := pluginRequest(t, th, th.Client, http.MethodGet, "/tasks/"+privateTask.ID, nil)
+	assert.Equal(t, http.StatusNotFound, response.StatusCode, string(payload))
+
+	teamTask := createTaskIntegration(t, th, th.AdminClient, map[string]any{
+		"teamId":     th.Team.Id,
+		"visibility": "team",
+		"title":      "Visible to the team",
+	})
+	response, payload = pluginRequest(t, th, th.Client, http.MethodGet, "/tasks/"+teamTask.ID, nil)
+	require.Equal(t, http.StatusOK, response.StatusCode, string(payload))
+
+	response, payload = pluginRequest(t, th, th.Client, http.MethodGet, "/tasks?scope=team&team_id="+th.Team.Id, nil)
+	require.Equal(t, http.StatusOK, response.StatusCode, string(payload))
+	var list tasks.ListResult
+	require.NoError(t, json.Unmarshal(payload, &list))
+	foundTeamTask := false
+	for _, item := range list.Items {
+		assert.NotEqual(t, privateTask.ID, item.ID)
+		if item.ID == teamTask.ID {
+			foundTeamTask = true
+		}
+	}
+	assert.True(t, foundTeamTask, "a team-visible task should be listed for a team member")
+}

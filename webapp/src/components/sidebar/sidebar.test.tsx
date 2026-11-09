@@ -48,6 +48,7 @@ const task = (overrides: Partial<TaskSummary> = {}): TaskSummary => ({
     id: 'task-1',
     teamId: ids.team,
     channelId: ids.channel,
+    visibility: 'channel',
     title: 'Pick up mail',
     status: 'todo',
     priority: 'high',
@@ -174,6 +175,8 @@ describe('TasksSidebar', () => {
         await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
             title: 'New card',
             status: 'todo',
+            visibility: 'private',
+            channelId: undefined,
             assigneeIds: [ids.user],
         })));
     });

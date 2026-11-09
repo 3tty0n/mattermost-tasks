@@ -16,10 +16,15 @@ func newTestStore() *KVStore {
 }
 
 func testTask(id, teamID, channelID string, assignees ...string) *taskmodel.Task {
+	visibility := taskmodel.TaskVisibilityTeam
+	if channelID != "" {
+		visibility = taskmodel.TaskVisibilityChannel
+	}
 	return &taskmodel.Task{
 		ID:          id,
 		TeamID:      teamID,
 		ChannelID:   channelID,
+		Visibility:  visibility,
 		Title:       "Task " + id,
 		CreatorID:   "creator",
 		AssigneeIDs: assignees,
@@ -196,4 +201,43 @@ func TestMemoryKVUpdateNoChange(t *testing.T) {
 	var raw []byte
 	require.NoError(t, kv.Get("key", &raw))
 	assert.Empty(t, raw)
+}
+
+func TestPrivateTaskIndexes(t *testing.T) {
+	store := newTestStore()
+	task := testTask("private-1", "team-a", "", "creator")
+	task.Visibility = taskmodel.TaskVisibilityPrivate
+	require.NoError(t, store.CreateTask(task))
+
+	teamRefs, err := store.ListTaskRefsByTeam("team-a")
+	require.NoError(t, err)
+	assert.Empty(t, teamRefs)
+	channelRefs, err := store.ListTaskRefsByChannel("channel-a")
+	require.NoError(t, err)
+	assert.Empty(t, channelRefs)
+	userRefs, err := store.ListTaskRefsByUser("creator")
+	require.NoError(t, err)
+	require.Len(t, userRefs, 1)
+	assert.Equal(t, taskmodel.TaskVisibilityPrivate, userRefs[0].Visibility)
+
+	// Switching to team visibility adds the team ref but still keeps it out of channel indexes.
+	_, err = store.UpdateTask("private-1", func(current *taskmodel.Task) (*taskmodel.Task, error) {
+		current.Visibility = taskmodel.TaskVisibilityTeam
+		return current, nil
+	})
+	require.NoError(t, err)
+	teamRefs, err = store.ListTaskRefsByTeam("team-a")
+	require.NoError(t, err)
+	require.Len(t, teamRefs, 1)
+
+	// Switching to channel visibility adds the channel ref.
+	_, err = store.UpdateTask("private-1", func(current *taskmodel.Task) (*taskmodel.Task, error) {
+		current.Visibility = taskmodel.TaskVisibilityChannel
+		current.ChannelID = "channel-a"
+		return current, nil
+	})
+	require.NoError(t, err)
+	channelRefs, err = store.ListTaskRefsByChannel("channel-a")
+	require.NoError(t, err)
+	require.Len(t, channelRefs, 1)
 }

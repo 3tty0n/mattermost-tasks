@@ -16,7 +16,8 @@ system, no external service, no second database.
 | Plan and see work | Capture it quickly |
 | --- | --- |
 | My tasks, Team, Channel and All scopes | Create from any public/private channel post |
-| List and Kanban board views | Name-only quick add in each board column |
+| Private, team-wide or channel-only visibility | Name-only quick add in each board column |
+| List and Kanban board views | Assignment autocomplete with avatars and usernames |
 | Todo / In progress / Done with drag-and-drop | Assignment notifications from a plugin bot |
 | Filters, sorting and pagination | `/task` slash commands for keyboard and mobile |
 | Markdown descriptions and source backlinks | Hover selection and click-to-open cards |
@@ -24,9 +25,11 @@ system, no external service, no second database.
 **Due dates the way you expect:** a date is date-only by default. Open the calendar, choose a day,
 and press **OK**. Enable **Set time** only when you need a time.
 
-**Safe by construction:** every route re-checks Mattermost team/channel permissions on the server.
-Private-channel tasks are filtered from lists and return 404 to non-members. The plugin never
-fetches URLs and stores everything in the plugin KV store.
+**Visibility follows the task, not the view:** create a task as **Only me** and it stays in your
+private index; create it for a **Team** and every team member can see it; create it in a
+**Channel** and only channel members can. Private-channel tasks are filtered from lists and return
+404 to non-members. Every route re-checks this on the server, and the plugin never fetches URLs or
+stores data outside the plugin KV store.
 
 ## UI previews
 
@@ -72,12 +75,16 @@ webapps; use the `/task` slash command there.
 
 Click the check-circle icon in the channel header to open the Tasks sidebar.
 
-- **Scopes:** My tasks, Team, Channel, All. Creating a task from a channel defaults it to that
-  channel.
+- **Scopes:** My tasks, Team, Channel, All. The scope decides the default visibility for a new
+  task: My tasks = **Only me**, Team = **Team**, Channel = **Channel**.
+- **Visibility:** change it in the task editor under the scope property. Only-me tasks are always
+  assigned to you; team tasks are visible to the team; channel tasks only to channel members.
 - **Views:** switch between List and Board with the header icons. The board fetches up to 100
   cards; narrow the filters to see more.
-- **Quick add:** the **+** at the top right of each board column creates a task in that column
-  using only its name.
+- **Quick add:** the **+** at the top right of each board column creates a task in that column and
+  in the current scope's visibility using only its name.
+- **Assignees:** type a name in the assignee search; results show the user's avatar, display name
+  and `@username` before you add them.
 - **Open a task:** click a card. Board cards open a description popup with an **Open task**
   action; list cards open the full detail view.
 - **Due date:** click the due property, pick a day, then **OK**. Turn on **Set time** to include a
@@ -104,14 +111,16 @@ the server re-checks the post's channel and the user's read permission.
 
 | Operation | Who |
 | --- | --- |
-| View | Members who can read the task's team or channel |
+| View | Private: creator only. Team: team members. Channel: channel members. |
 | Create | Members who can read the scope; post tasks require channel read access |
 | Edit metadata | Creator or system administrator, with current scope access |
 | Change status | Creator, assignee or system administrator |
 | Delete | Creator or system administrator |
 
-Assignment never grants access to a private channel. Hiding UI is not a permission check; the
-server enforces each rule on every request.
+A private task is visible only to its creator, even to a system administrator. Team tasks are
+indexed per team; channel tasks additionally require channel read permission. Assignment never
+grants access to a private channel, and hiding UI is not a permission check; the server enforces
+each rule on every request.
 
 ## Development
 
@@ -128,8 +137,9 @@ The bundle is written to `dist/com.github.3tty0n.mattermost-tasks-<version>.tar.
 
 ## Architecture and storage
 
-- Full records: `task:<id>`.
-- Compact indexes: `task_team:`, `task_channel:`, `task_user:` (four shards each).
+- Full records: `task:<id>` with `visibility` (`private`, `team`, `channel`).
+- Compact indexes: `task_team:` (team + channel visible), `task_channel:` (channel visible only),
+  `task_user:` (assignees; private tasks are always assigned to their creator), four shards each.
 - No full KV scans: a list reads at most four shards per scope.
 - No outbound HTTP; the webapp uses the host's Compass components and local selectors.
 

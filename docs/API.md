@@ -35,6 +35,8 @@ Response:
       "id": "26characterid",
       "teamId": "teamid",
       "channelId": "channelid",
+      "visibility": "channel",
+      "creatorId": "creatorid",
       "title": "Ship the release",
       "status": "todo",
       "priority": "high",
@@ -52,7 +54,9 @@ Response:
 }
 ```
 
-`dueHasTime` absent or false means the due value is date-only and the UI must not show a time.
+`visibility` is `private`, `team` or `channel`. A private task is only returned to its creator;
+team tasks to team members; channel tasks to channel members. `dueHasTime` absent or false means
+the due value is date-only and the UI must not show a time.
 
 ## Create task
 
@@ -64,6 +68,7 @@ Response:
   "channelId": "channelid",
   "title": "Ship the release",
   "description": "Optional **Markdown** text",
+  "visibility": "team",
   "assigneeIds": ["userid"],
   "status": "todo",
   "priority": "high",
@@ -74,8 +79,15 @@ Response:
 ```
 
 `teamId` or `channelId` selects the scope; when `channelId` is present the server derives the team
-and rejects a mismatched `teamId`. `dueHasTime: true` requires a non-zero `dueAt`. A source post
-must be in an accessible public/private channel.
+and rejects a mismatched `teamId`. `visibility` defaults from the scope (channel when a channel is
+present, team otherwise):
+- `private`: only the creator can read it; the server forces `assigneeIds` to the creator and
+  ignores `channelId`.
+- `team`: every member of `teamId` can read it; `channelId` is cleared.
+- `channel`: only members of `channelId` can read it; a channel is required.
+
+`dueHasTime: true` requires a non-zero `dueAt`. A source post must be in an accessible
+public/private channel and is always channel-visible.
 
 Returns 201 with the full task.
 
@@ -83,8 +95,9 @@ Returns 201 with the full task.
 
 `GET /tasks/{id}`
 
-Returns the full task, including `description`, `creatorId`, `version` and `completedAt`. Non-members
-of a private channel receive 404.
+Returns the full task, including `description`, `visibility`, `creatorId`, `version` and
+`completedAt`. Non-members of a private channel receive 404; private tasks return 404 to everyone
+except their creator.
 
 ## Update task
 
@@ -98,6 +111,7 @@ The POST alias exists because some reverse proxies reject PATCH. The body accept
   "channelId": "channelid",
   "title": "New title",
   "description": "New description",
+  "visibility": "channel",
   "assigneeIds": ["userid"],
   "status": "in_progress",
   "priority": "urgent",
@@ -108,9 +122,14 @@ The POST alias exists because some reverse proxies reject PATCH. The body accept
 ```
 
 An empty object is rejected. Set `dueAt` to `0` to clear the due date; clearing also resets
-`dueHasTime`. Metadata edits require the creator or a system administrator with current scope
-access. Status changes are allowed for the creator, an assignee or a system administrator. A
-status-only body skips the metadata checks but still checks scope access.
+`dueHasTime`. Changing `visibility` follows the same rules as create: private tasks must have only
+the creator as assignee, team tasks have no channel, channel tasks require a channel, and a task
+with a source post must remain channel-visible.
+
+Metadata edits require the creator or a system administrator with current scope access. Status
+changes are allowed for the creator, an assignee or a system administrator. Private tasks are
+editable only by their creator. A status-only body skips the metadata checks but still checks
+scope access.
 
 Returns 200 with the updated full task.
 

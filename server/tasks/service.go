@@ -110,6 +110,13 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 	if input.DueHasTime && input.DueAt == 0 {
 		return nil, fmt.Errorf("%w: a due time requires a due date", model.ErrInvalid)
 	}
+	visibility := input.Visibility
+	if visibility == "" {
+		visibility = model.DefaultTaskVisibility(input.ChannelID)
+	}
+	if !model.IsValidTaskVisibility(visibility) {
+		return nil, fmt.Errorf("%w: unknown visibility", model.ErrInvalid)
+	}
 	assigneeIDs, err := model.NormalizeIDs(input.AssigneeIDs, "assignees", model.MaxAssignees)
 	if err != nil {
 		return nil, err
@@ -134,6 +141,19 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 			return nil, fmt.Errorf("%w: the task team must match the post's team", model.ErrInvalid)
 		}
 		teamID, channelID = postScope.TeamID, postScope.ChannelID
+		visibility = model.TaskVisibilityChannel
+	}
+	if visibility != model.TaskVisibilityChannel {
+		channelID = ""
+	}
+	if visibility == model.TaskVisibilityChannel && channelID == "" {
+		return nil, fmt.Errorf("%w: channel visibility requires a channel", model.ErrInvalid)
+	}
+	if visibility == model.TaskVisibilityPrivate {
+		if teamID == "" {
+			return nil, fmt.Errorf("%w: a private task requires a team", model.ErrInvalid)
+		}
+		assigneeIDs = []string{actorID}
 	}
 
 	scope, err := s.access.Resolve(actorID, teamID, channelID)
@@ -155,6 +175,7 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 		ID:           mmodel.NewId(),
 		TeamID:       scope.TeamID,
 		ChannelID:    scope.ChannelID,
+		Visibility:   visibility,
 		Title:        title,
 		Description:  description,
 		CreatorID:    actorID,
@@ -196,7 +217,7 @@ func (s *Service) Get(actorID, taskID string) (*model.Task, error) {
 	if err != nil {
 		return nil, mapStoreError(err)
 	}
-	if !s.access.CanView(actorID, task.TeamID, task.ChannelID) {
+	if !s.canViewTask(actorID, task) {
 		// Do not reveal that a task exists in a channel the user can not read.
 		return nil, model.ErrNotFound
 	}
@@ -222,6 +243,9 @@ func (s *Service) List(actorID string, query model.TaskQuery) (*ListResult, erro
 			return nil, err
 		}
 		refs = filterRefs(loaded, func(ref model.TaskRef) bool {
+			if ref.Visibility == model.TaskVisibilityPrivate {
+				return ref.CreatorID == actorID
+			}
 			return slices.Contains(ref.AssigneeIDs, actorID) && cache.CanView(actorID, ref.TeamID, ref.ChannelID)
 		})
 
@@ -234,7 +258,7 @@ func (s *Service) List(actorID string, query model.TaskQuery) (*ListResult, erro
 			return nil, err
 		}
 		refs = filterRefs(loaded, func(ref model.TaskRef) bool {
-			if ref.TeamID != query.TeamID {
+			if ref.TeamID != query.TeamID || ref.Visibility == model.TaskVisibilityPrivate {
 				return false
 			}
 			return cache.CanView(actorID, ref.TeamID, ref.ChannelID)
@@ -251,7 +275,9 @@ func (s *Service) List(actorID string, query model.TaskQuery) (*ListResult, erro
 			return nil, err
 		}
 		refs = filterRefs(loaded, func(ref model.TaskRef) bool {
-			return ref.ChannelID == query.ChannelID && ref.TeamID == scope.TeamID
+			return ref.ChannelID == query.ChannelID &&
+				ref.TeamID == scope.TeamID &&
+				ref.Visibility == model.TaskVisibilityChannel
 		})
 
 	case model.TaskScopeAll:
@@ -262,14 +288,23 @@ func (s *Service) List(actorID string, query model.TaskQuery) (*ListResult, erro
 		refs = make([]model.TaskRef, 0, 64)
 		for _, team := range teams {
 			cache.Seed(team.Id, "", true)
-			loaded, err := s.store.ListTaskRefsByTeam(team.Id)
-			if err != nil {
-				return nil, err
+			loaded, loadErr := s.store.ListTaskRefsByTeam(team.Id)
+			if loadErr != nil {
+				return nil, loadErr
 			}
 			refs = append(refs, filterRefs(loaded, func(ref model.TaskRef) bool {
-				return ref.TeamID == team.Id && cache.CanView(actorID, ref.TeamID, ref.ChannelID)
+				return ref.TeamID == team.Id &&
+					ref.Visibility != model.TaskVisibilityPrivate &&
+					cache.CanView(actorID, ref.TeamID, ref.ChannelID)
 			})...)
 		}
+		privateRefs, err := s.store.ListTaskRefsByUser(actorID)
+		if err != nil {
+			return nil, err
+		}
+		refs = append(refs, filterRefs(privateRefs, func(ref model.TaskRef) bool {
+			return ref.Visibility == model.TaskVisibilityPrivate && ref.CreatorID == actorID
+		})...)
 	}
 
 	filtered := refs[:0]
@@ -326,7 +361,7 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 	next, err := s.store.UpdateTask(taskID, func(current *model.Task) (*model.Task, error) {
 		before = current.Clone()
 
-		if !s.access.CanView(actorID, current.TeamID, current.ChannelID) {
+		if !s.canViewTask(actorID, current) {
 			return nil, model.ErrNotFound
 		}
 		isAdmin := s.access.IsAdmin(actorID)
@@ -340,6 +375,12 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 			return nil, model.ErrForbidden
 		}
 
+		oldVisibility := current.Visibility
+		newVisibility := oldVisibility
+		if normalized.visibility != nil {
+			newVisibility = *normalized.visibility
+		}
+
 		newTeam, newChannel := current.TeamID, current.ChannelID
 		if patch.TeamID != nil {
 			newTeam = *patch.TeamID
@@ -347,7 +388,15 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 		if patch.ChannelID != nil {
 			newChannel = *patch.ChannelID
 		}
-		scopeChanged := newTeam != current.TeamID || newChannel != current.ChannelID
+		if newVisibility != model.TaskVisibilityChannel {
+			newChannel = ""
+		}
+		if newVisibility == model.TaskVisibilityChannel && newChannel == "" {
+			return nil, fmt.Errorf("%w: channel visibility requires a channel", model.ErrInvalid)
+		}
+		scopeChanged := newTeam != current.TeamID ||
+			newChannel != current.ChannelID ||
+			newVisibility != oldVisibility
 
 		var scope *access.Scope
 		if scopeChanged || patch.AssigneeIDs != nil || patch.SourcePostID != nil {
@@ -355,7 +404,12 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 			if err != nil {
 				return nil, err
 			}
-			newTeam, newChannel = scope.TeamID, scope.ChannelID
+			newTeam = scope.TeamID
+			if newVisibility == model.TaskVisibilityChannel {
+				newChannel = scope.ChannelID
+			} else {
+				newChannel = ""
+			}
 		}
 
 		if patch.SourcePostID != nil && *patch.SourcePostID != "" {
@@ -365,6 +419,11 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 			}
 			if postScope.TeamID != newTeam || postScope.ChannelID != newChannel {
 				return nil, fmt.Errorf("%w: the post must be in the task's channel", model.ErrInvalid)
+			}
+		}
+		if current.SourcePostID != "" || (patch.SourcePostID != nil && *patch.SourcePostID != "") {
+			if newVisibility != model.TaskVisibilityChannel {
+				return nil, fmt.Errorf("%w: a task with a source post must be channel-visible", model.ErrInvalid)
 			}
 		}
 		if scopeChanged && current.SourcePostID != "" && (patch.SourcePostID == nil || *patch.SourcePostID != "") {
@@ -418,6 +477,15 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 		if normalized.sourcePostID != nil {
 			current.SourcePostID = *normalized.sourcePostID
 		}
+		current.Visibility = newVisibility
+		if current.Visibility == model.TaskVisibilityPrivate {
+			for _, assigneeID := range current.AssigneeIDs {
+				if assigneeID != current.CreatorID {
+					return nil, fmt.Errorf("%w: a private task can only be assigned to its creator", model.ErrInvalid)
+				}
+			}
+			current.AssigneeIDs = []string{current.CreatorID}
+		}
 		if normalized.parentTaskID != nil {
 			current.ParentTaskID = *normalized.parentTaskID
 		}
@@ -427,7 +495,11 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 				return nil, err
 			}
 			current.TeamID = scope.TeamID
-			current.ChannelID = scope.ChannelID
+			if current.Visibility == model.TaskVisibilityChannel {
+				current.ChannelID = scope.ChannelID
+			} else {
+				current.ChannelID = ""
+			}
 		}
 		if normalized.parentTaskID != nil && current.ParentTaskID != "" {
 			if err = s.validateParent(actorID, current.ID, current.ParentTaskID, current.TeamID); err != nil {
@@ -468,7 +540,7 @@ func (s *Service) Delete(c *plugin.Context, path, actorID, taskID string) error 
 	if err != nil {
 		return mapStoreError(err)
 	}
-	if !s.access.CanView(actorID, current.TeamID, current.ChannelID) {
+	if !s.canViewTask(actorID, current) {
 		return model.ErrNotFound
 	}
 	if current.CreatorID != actorID && !s.access.IsAdmin(actorID) {
@@ -491,6 +563,7 @@ type normalizedPatch struct {
 	priority     *string
 	dueAt        *int64
 	dueHasTime   *bool
+	visibility   *string
 	assignees    *[]string
 	sourcePostID *string
 	parentTaskID *string
@@ -536,6 +609,13 @@ func normalizePatch(patch model.TaskPatch) (*normalizedPatch, error) {
 	if patch.DueHasTime != nil {
 		value := *patch.DueHasTime
 		out.dueHasTime = &value
+	}
+	if patch.Visibility != nil {
+		if !model.IsValidTaskVisibility(*patch.Visibility) {
+			return nil, fmt.Errorf("%w: unknown visibility", model.ErrInvalid)
+		}
+		value := *patch.Visibility
+		out.visibility = &value
 	}
 	if patch.AssigneeIDs != nil {
 		value, err := model.NormalizeIDs(*patch.AssigneeIDs, "assignees", model.MaxAssignees)
@@ -668,6 +748,13 @@ const maxDueAt = 253402300799999 // 9999-12-31T23:59:59.999Z, the largest JS Dat
 // Now returns the service clock, exposed so tests can build expected timestamps.
 func (s *Service) Now() int64 {
 	return s.now()
+}
+
+func (s *Service) canViewTask(actorID string, task *model.Task) bool {
+	if task.Visibility == model.TaskVisibilityPrivate {
+		return task.CreatorID == actorID
+	}
+	return s.access.CanView(actorID, task.TeamID, task.ChannelID)
 }
 
 // FormatDue renders a due date for notifications and slash commands.

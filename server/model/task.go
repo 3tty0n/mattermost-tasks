@@ -18,6 +18,14 @@ const (
 	TaskStatusDone       = "done"
 )
 
+// Task visibility levels. A private task is visible only to its creator, a team task to the whole
+// team, and a channel task to members of its channel.
+const (
+	TaskVisibilityPrivate = "private"
+	TaskVisibilityTeam    = "team"
+	TaskVisibilityChannel = "channel"
+)
+
 // Task priorities, from lowest to highest.
 const (
 	TaskPriorityNone   = "none"
@@ -28,7 +36,8 @@ const (
 )
 
 var (
-	TaskStatuses = []string{TaskStatusTodo, TaskStatusInProgress, TaskStatusDone}
+	TaskStatuses     = []string{TaskStatusTodo, TaskStatusInProgress, TaskStatusDone}
+	TaskVisibilities = []string{TaskVisibilityPrivate, TaskVisibilityTeam, TaskVisibilityChannel}
 
 	TaskPriorities = []string{
 		TaskPriorityNone,
@@ -38,8 +47,9 @@ var (
 		TaskPriorityUrgent,
 	}
 
-	taskStatusSet   = toSet(TaskStatuses)
-	taskPrioritySet = toSet(TaskPriorities)
+	taskStatusSet     = toSet(TaskStatuses)
+	taskPrioritySet   = toSet(TaskPriorities)
+	taskVisibilitySet = toSet(TaskVisibilities)
 )
 
 func toSet(values []string) map[string]struct{} {
@@ -60,6 +70,21 @@ func IsValidTaskStatus(status string) bool {
 func IsValidTaskPriority(priority string) bool {
 	_, ok := taskPrioritySet[priority]
 	return ok
+}
+
+// IsValidTaskVisibility reports whether visibility is one of the documented levels.
+func IsValidTaskVisibility(visibility string) bool {
+	_, ok := taskVisibilitySet[visibility]
+	return ok
+}
+
+// DefaultTaskVisibility derives the visibility for API clients that only send a scope. The webapp
+// always sends an explicit value.
+func DefaultTaskVisibility(channelID string) string {
+	if channelID != "" {
+		return TaskVisibilityChannel
+	}
+	return TaskVisibilityTeam
 }
 
 // PriorityRank turns a priority into a comparable number. Unknown values sort as none.
@@ -83,6 +108,7 @@ type Task struct {
 	ID           string   `json:"id"`
 	TeamID       string   `json:"teamId"`
 	ChannelID    string   `json:"channelId,omitempty"`
+	Visibility   string   `json:"visibility"`
 	Title        string   `json:"title"`
 	Description  string   `json:"description,omitempty"`
 	CreatorID    string   `json:"creatorId"`
@@ -119,6 +145,8 @@ type TaskRef struct {
 	ID          string   `json:"i"`
 	TeamID      string   `json:"t"`
 	ChannelID   string   `json:"c,omitempty"`
+	Visibility  string   `json:"z"`
+	CreatorID   string   `json:"o"`
 	Title       string   `json:"n"`
 	Status      string   `json:"s"`
 	Priority    string   `json:"p"`
@@ -137,6 +165,8 @@ func (t *Task) Ref() TaskRef {
 		ID:          t.ID,
 		TeamID:      t.TeamID,
 		ChannelID:   t.ChannelID,
+		Visibility:  t.Visibility,
+		CreatorID:   t.CreatorID,
 		Title:       truncateRunes(t.Title, MaxTitleRunes),
 		Status:      t.Status,
 		Priority:    t.Priority,
@@ -154,6 +184,8 @@ type TaskSummary struct {
 	ID          string   `json:"id"`
 	TeamID      string   `json:"teamId"`
 	ChannelID   string   `json:"channelId,omitempty"`
+	Visibility  string   `json:"visibility"`
+	CreatorID   string   `json:"creatorId"`
 	Title       string   `json:"title"`
 	Status      string   `json:"status"`
 	Priority    string   `json:"priority"`
@@ -174,6 +206,8 @@ func (r TaskRef) Summary() TaskSummary {
 		ID:          r.ID,
 		TeamID:      r.TeamID,
 		ChannelID:   r.ChannelID,
+		Visibility:  r.Visibility,
+		CreatorID:   r.CreatorID,
 		Title:       r.Title,
 		Status:      r.Status,
 		Priority:    r.Priority,
@@ -189,6 +223,7 @@ func (r TaskRef) Summary() TaskSummary {
 type CreateTaskInput struct {
 	TeamID       string
 	ChannelID    string
+	Visibility   string
 	Title        string
 	Description  string
 	AssigneeIDs  []string
@@ -205,6 +240,7 @@ type CreateTaskInput struct {
 type TaskPatch struct {
 	TeamID       *string
 	ChannelID    *string
+	Visibility   *string
 	Title        *string
 	Description  *string
 	AssigneeIDs  *[]string
@@ -218,7 +254,7 @@ type TaskPatch struct {
 
 // IsZero reports whether the patch changes nothing.
 func (p TaskPatch) IsZero() bool {
-	return p.TeamID == nil && p.ChannelID == nil && p.Title == nil && p.Description == nil &&
+	return p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil && p.Description == nil &&
 		p.AssigneeIDs == nil && p.Status == nil && p.Priority == nil && p.DueAt == nil &&
 		p.DueHasTime == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }
@@ -226,7 +262,7 @@ func (p TaskPatch) IsZero() bool {
 // OnlyStatus reports whether the patch only changes the status. Assignees may change status
 // without being allowed to edit task metadata.
 func (p TaskPatch) OnlyStatus() bool {
-	return p.Status != nil && p.TeamID == nil && p.ChannelID == nil && p.Title == nil &&
+	return p.Status != nil && p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
 		p.Description == nil && p.AssigneeIDs == nil && p.Priority == nil && p.DueAt == nil &&
 		p.DueHasTime == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }

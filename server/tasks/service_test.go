@@ -79,6 +79,12 @@ func allowAdmin(api *testutil.API, userID string) {
 
 func storeTestTask(t *testing.T, store kvstore.Store, task *taskmodel.Task) *taskmodel.Task {
 	t.Helper()
+	if task.Visibility == "" {
+		task.Visibility = taskmodel.DefaultTaskVisibility(task.ChannelID)
+	}
+	if task.Visibility == taskmodel.TaskVisibilityPrivate && len(task.AssigneeIDs) == 0 {
+		task.AssigneeIDs = []string{task.CreatorID}
+	}
 	task.Version = 1
 	task.CreatedAt = 1
 	task.UpdatedAt = 1
@@ -423,4 +429,99 @@ func TestDeletePermissions(t *testing.T) {
 	require.NoError(t, env.service.Delete(nil, "/tasks", creatorID, task.ID))
 	_, err := env.store.GetTask(task.ID)
 	assert.ErrorIs(t, err, kvstore.ErrNotFound)
+}
+
+func TestCreateTaskVisibility(t *testing.T) {
+	env := newTestEnv(t)
+	teamID, channelID := model.NewId(), model.NewId()
+	actorID, otherID := model.NewId(), model.NewId()
+	allowChannel(env.api, actorID, channelID, teamID)
+	allowChannel(env.api, otherID, channelID, teamID)
+	env.api.On("GetTeam", teamID).Return(&model.Team{Id: teamID}, nil).Maybe()
+	env.api.On("HasPermissionToTeam", actorID, teamID, model.PermissionViewTeam).Return(true).Maybe()
+
+	privateTask, err := env.service.Create(nil, "/tasks", actorID, taskmodel.CreateTaskInput{
+		TeamID:      teamID,
+		Visibility:  taskmodel.TaskVisibilityPrivate,
+		Title:       "My private task",
+		AssigneeIDs: []string{otherID},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, taskmodel.TaskVisibilityPrivate, privateTask.Visibility)
+	assert.Empty(t, privateTask.ChannelID)
+	assert.Equal(t, []string{actorID}, privateTask.AssigneeIDs, "private tasks are always assigned to their creator")
+	teamRefs, err := env.store.ListTaskRefsByTeam(teamID)
+	require.NoError(t, err)
+	assert.Empty(t, teamRefs)
+	_, err = env.service.Get(otherID, privateTask.ID)
+	assert.ErrorIs(t, err, taskmodel.ErrNotFound)
+
+	teamTask, err := env.service.Create(nil, "/tasks", actorID, taskmodel.CreateTaskInput{
+		TeamID:     teamID,
+		Visibility: taskmodel.TaskVisibilityTeam,
+		Title:      "Team task",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, taskmodel.TaskVisibilityTeam, teamTask.Visibility)
+	assert.Empty(t, teamTask.ChannelID)
+	teamRefs, err = env.store.ListTaskRefsByTeam(teamID)
+	require.NoError(t, err)
+	require.Len(t, teamRefs, 1)
+
+	channelTask, err := env.service.Create(nil, "/tasks", actorID, taskmodel.CreateTaskInput{
+		ChannelID:  channelID,
+		Visibility: taskmodel.TaskVisibilityChannel,
+		Title:      "Channel task",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, taskmodel.TaskVisibilityChannel, channelTask.Visibility)
+	assert.Equal(t, channelID, channelTask.ChannelID)
+	channelRefs, err := env.store.ListTaskRefsByChannel(channelID)
+	require.NoError(t, err)
+	require.Len(t, channelRefs, 1)
+}
+
+func TestUpdateVisibilityAndPrivateAccess(t *testing.T) {
+	env := newTestEnv(t)
+	teamID, channelID := model.NewId(), model.NewId()
+	creatorID, otherID := model.NewId(), model.NewId()
+	allowChannel(env.api, creatorID, channelID, teamID)
+	allowChannel(env.api, otherID, channelID, teamID)
+	env.api.On("GetTeam", teamID).Return(&model.Team{Id: teamID}, nil).Maybe()
+	env.api.On("HasPermissionToTeam", creatorID, teamID, model.PermissionViewTeam).Return(true).Maybe()
+	denyAdmin(env.api, creatorID)
+
+	task := storeTestTask(t, env.store, &taskmodel.Task{
+		ID: model.NewId(), TeamID: teamID, ChannelID: channelID,
+		Visibility: taskmodel.TaskVisibilityChannel, Title: "Original",
+		CreatorID: creatorID, AssigneeIDs: []string{creatorID, otherID},
+		Status: taskmodel.TaskStatusTodo, Priority: taskmodel.TaskPriorityNormal,
+	})
+
+	privateVisibility := taskmodel.TaskVisibilityPrivate
+	_, err := env.service.Update(nil, "/tasks", creatorID, task.ID, taskmodel.TaskPatch{Visibility: &privateVisibility})
+	assert.ErrorIs(t, err, taskmodel.ErrInvalid, "private tasks can not keep other assignees")
+
+	// Remove the other assignee and switch to private.
+	onlyCreator := []string{creatorID}
+	updated, err := env.service.Update(nil, "/tasks", creatorID, task.ID, taskmodel.TaskPatch{
+		Visibility:  &privateVisibility,
+		AssigneeIDs: &onlyCreator,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, taskmodel.TaskVisibilityPrivate, updated.Visibility)
+	assert.Empty(t, updated.ChannelID)
+	assert.Equal(t, []string{creatorID}, updated.AssigneeIDs)
+
+	_, err = env.service.Get(otherID, task.ID)
+	assert.ErrorIs(t, err, taskmodel.ErrNotFound)
+
+	// The creator can still see it and move it back to the team.
+	_, err = env.service.Get(creatorID, task.ID)
+	require.NoError(t, err)
+	teamVisibility := taskmodel.TaskVisibilityTeam
+	updated, err = env.service.Update(nil, "/tasks", creatorID, task.ID, taskmodel.TaskPatch{Visibility: &teamVisibility})
+	require.NoError(t, err)
+	assert.Equal(t, taskmodel.TaskVisibilityTeam, updated.Visibility)
+	assert.Empty(t, updated.ChannelID)
 }
