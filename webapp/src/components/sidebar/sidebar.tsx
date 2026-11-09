@@ -657,6 +657,7 @@ export default function TasksSidebar() {
                         setPreviewTaskID(undefined);
                         dispatch(openTask(taskID));
                     }}
+                    onChanged={refreshTasks}
                 />
             )}
         </div>

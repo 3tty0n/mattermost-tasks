@@ -31,7 +31,7 @@ import type {GlobalState} from '@mattermost/types/store';
 
 import {selectChannel, selectCurrentUserId, selectIsSystemAdmin, selectTeam} from 'selectors';
 
-import MarkdownText from 'components/markdown_text/markdown_text';
+import TaskInlineEditor from 'components/task_inline_editor/task_inline_editor';
 
 import type {Task, TaskStatus} from 'types';
 
@@ -167,8 +167,8 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
                             onClick={() => onEdit(task)}
                         >
                             <FormattedMessage
-                                id='tasks.detail.edit'
-                                defaultMessage='Edit'
+                                id='tasks.detail.more_fields'
+                                defaultMessage='More fields'
                             />
                         </Button>
                     )}
@@ -230,7 +230,13 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
                 </div>
             )}
 
-            <h2 className='Tasks-TaskDetail__title'>{task.title}</h2>
+            <TaskInlineEditor
+                task={task}
+                onTaskUpdated={(updated) => {
+                    setTask(updated);
+                    onChanged();
+                }}
+            />
 
             <div className='Tasks-TaskDetail__meta'>
                 {canChangeStatus ? (
@@ -353,20 +359,6 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
                 )}
             </dl>
 
-            {task.description && (
-                <section className='Tasks-TaskDetail__description'>
-                    <h3 className='Tasks-TaskDetail__sectionTitle'>
-                        <FormattedMessage
-                            id='tasks.detail.description'
-                            defaultMessage='Description'
-                        />
-                    </h3>
-                    <MarkdownText
-                        text={task.description}
-                        className='Tasks-TaskDetail__text'
-                    />
-                </section>
-            )}
         </div>
     );
 }

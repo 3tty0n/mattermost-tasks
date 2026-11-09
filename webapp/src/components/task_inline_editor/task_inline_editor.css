@@ -1,0 +1,103 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-TaskInlineEditor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.Tasks-TaskInlineEditor__titlePreview {
+    width: 100%;
+    padding: var(--spacing-xxxs) var(--spacing-xxs);
+    border: 1px solid transparent;
+    border-radius: var(--radius-s);
+    background: transparent;
+    color: var(--center-channel-color);
+    cursor: text;
+    font-family: inherit;
+    font-size: var(--font-size-500);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-500);
+    text-align: left;
+}
+
+.Tasks-TaskInlineEditor__titlePreview:hover {
+    border-color: rgba(var(--center-channel-color-rgb), 0.16);
+    background: rgba(var(--center-channel-color-rgb), 0.03);
+}
+
+.Tasks-TaskInlineEditor__titleInput {
+    box-sizing: border-box;
+    width: 100%;
+    padding: var(--spacing-xxxs) var(--spacing-xxs);
+    border: 1px solid var(--button-bg);
+    border-radius: var(--radius-s);
+    background: var(--center-channel-bg);
+    color: var(--center-channel-color);
+    font-family: inherit;
+    font-size: var(--font-size-500);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-500);
+}
+
+.Tasks-TaskInlineEditor__titleInput:focus-visible {
+    outline: 2px solid rgba(var(--button-bg-rgb), 0.24);
+    outline-offset: 1px;
+}
+
+.Tasks-TaskInlineEditor__descriptionPreview {
+    min-height: 64px;
+    padding: var(--spacing-s);
+    border: 1px solid transparent;
+    border-radius: var(--radius-s);
+    color: var(--center-channel-color);
+    cursor: text;
+}
+
+.Tasks-TaskInlineEditor__descriptionPreview:hover {
+    border-color: rgba(var(--center-channel-color-rgb), 0.16);
+    background: rgba(var(--center-channel-color-rgb), 0.03);
+}
+
+.Tasks-TaskInlineEditor__descriptionPreview:focus-visible {
+    border-color: var(--button-bg);
+    outline: 2px solid rgba(var(--button-bg-rgb), 0.24);
+    outline-offset: 1px;
+}
+
+.Tasks-TaskInlineEditor__descriptionInput {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 140px;
+    padding: var(--spacing-s);
+    border: 1px solid var(--button-bg);
+    border-radius: var(--radius-s);
+    background: var(--center-channel-bg);
+    color: var(--center-channel-color);
+    font-family: inherit;
+    font-size: var(--font-size-100);
+    line-height: var(--line-height-200);
+    resize: vertical;
+}
+
+.Tasks-TaskInlineEditor__descriptionInput:focus-visible {
+    outline: 2px solid rgba(var(--button-bg-rgb), 0.24);
+    outline-offset: 1px;
+}
+
+.Tasks-TaskInlineEditor__placeholder {
+    color: rgba(var(--center-channel-color-rgb), 0.48);
+    font-size: var(--font-size-100);
+}
+
+.Tasks-TaskInlineEditor__hint {
+    color: rgba(var(--center-channel-color-rgb), 0.48);
+    font-size: var(--font-size-50);
+    line-height: var(--line-height-50);
+}
+
+.Tasks-TaskInlineEditor__saving {
+    display: flex;
+    justify-content: flex-end;
+}

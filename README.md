@@ -20,7 +20,7 @@ system, no external service, no second database.
 | List and Kanban board views | Assignment autocomplete with avatars and usernames |
 | Todo / In progress / Done with drag-and-drop | Assignment notifications from a plugin bot |
 | Filters, sorting and pagination | `/task` slash commands for keyboard and mobile |
-| Markdown descriptions and source backlinks | Hover selection and click-to-open cards |
+| Markdown descriptions and source backlinks | Click-to-edit name and description |
 
 **Due dates the way you expect:** a date is date-only by default. Open the calendar, choose a day,
 and press **OK**. Enable **Set time** only when you need a time.
@@ -85,8 +85,10 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   in the current scope's visibility using only its name.
 - **Assignees:** type a name in the assignee search; results show the user's avatar, display name
   and `@username` before you add them.
-- **Open a task:** click a card. Board cards open a description popup with an **Open task**
-  action; list cards open the full detail view.
+- **Open and edit:** click a card. List cards open the interactive task view in the sidebar;
+  board cards open the same view in a popup. Name and description start as previews (description
+  is rendered Markdown). Click either field to edit; click outside to save, or press **Esc** to
+  cancel. **More fields** opens the full editor for scope, assignees, priority, status and due date.
 - **Due date:** click the due property, pick a day, then **OK**. Turn on **Set time** to include a
   time; leave it off for a date-only task.
 - **Filters:** status (list view), priority, assignee and due date; sort by due date, creation date

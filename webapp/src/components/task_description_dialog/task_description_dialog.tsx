@@ -10,7 +10,7 @@ import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
 import {Spinner} from '@mattermost/compass-ui/components/spinner';
 
 import Dialog from 'components/dialog/dialog';
-import MarkdownText from 'components/markdown_text/markdown_text';
+import TaskInlineEditor from 'components/task_inline_editor/task_inline_editor';
 
 import type {Task} from 'types';
 
@@ -20,11 +20,12 @@ type Props = {
     taskID: string;
     onClose: () => void;
     onOpenTask: (taskID: string) => void;
+    onChanged: () => void;
 };
 
 // The board has only summaries, so the description is loaded when the card is opened. This keeps
 // list queries small while still showing the full Markdown description in a popup.
-export default function TaskDescriptionDialog({taskID, onClose, onOpenTask}: Props) {
+export default function TaskDescriptionDialog({taskID, onClose, onOpenTask, onChanged}: Props) {
     const intl = useIntl();
     const [task, setTask] = useState<Task>();
     const [loading, setLoading] = useState(true);
@@ -77,7 +78,7 @@ export default function TaskDescriptionDialog({taskID, onClose, onOpenTask}: Pro
 
     return (
         <Dialog
-            title={task?.title ?? intl.formatMessage({id: 'tasks.description.title', defaultMessage: 'Task'})}
+            title={intl.formatMessage({id: 'tasks.description.edit_task', defaultMessage: 'Edit task'})}
             onClose={onClose}
             footer={footer}
         >
@@ -95,16 +96,13 @@ export default function TaskDescriptionDialog({taskID, onClose, onOpenTask}: Pro
                     />
                 )}
                 {!loading && !error && task && (
-                    task.description ? (
-                        <MarkdownText text={task.description}/>
-                    ) : (
-                        <p className='Tasks-TaskDescriptionDialog__empty'>
-                            <FormattedMessage
-                                id='tasks.description.empty'
-                                defaultMessage='No description'
-                            />
-                        </p>
-                    )
+                    <TaskInlineEditor
+                        task={task}
+                        onTaskUpdated={(updated) => {
+                            setTask(updated);
+                            onChanged();
+                        }}
+                    />
                 )}
             </div>
         </Dialog>
