@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/3tty0n/mattermost-tasks/server/access"
+	"github.com/3tty0n/mattermost-tasks/server/events"
 	taskmodel "github.com/3tty0n/mattermost-tasks/server/model"
 	"github.com/3tty0n/mattermost-tasks/server/store/kvstore"
 	"github.com/3tty0n/mattermost-tasks/server/tasks"
@@ -25,11 +26,14 @@ type noopPublisher struct{}
 
 func (noopPublisher) TaskChanged(string, *taskmodel.Task) {}
 
+func (noopPublisher) EventChanged(string, *taskmodel.Event) {}
+
 type apiTestEnv struct {
 	handler *Handler
 	api     *testutil.API
 	store   kvstore.Store
 	tasks   *tasks.Service
+	events  *events.EventService
 }
 
 func newAPITestEnv(t *testing.T) *apiTestEnv {
@@ -41,11 +45,13 @@ func newAPITestEnv(t *testing.T) *apiTestEnv {
 	store := kvstore.NewStoreWithKV(kvstore.NewMemoryKV())
 	publisher := noopPublisher{}
 	taskService := tasks.NewService(client, store, checker, publisher, nil, tasks.WithClock(func() int64 { return 1000 }))
+	eventService := events.NewEventService(client, store, checker, publisher, events.WithEventClock(func() int64 { return 1000 }))
 	return &apiTestEnv{
-		handler: NewHandler(api, client, checker, taskService),
+		handler: NewHandler(api, client, checker, taskService, eventService),
 		api:     api,
 		store:   store,
 		tasks:   taskService,
+		events:  eventService,
 	}
 }
 
@@ -93,6 +99,11 @@ func TestAllRoutesRejectUnauthenticatedRequests(t *testing.T) {
 		{http.MethodGet, "/api/v1/tasks/" + id},
 		{http.MethodPatch, "/api/v1/tasks/" + id},
 		{http.MethodDelete, "/api/v1/tasks/" + id},
+		{http.MethodGet, "/api/v1/events"},
+		{http.MethodPost, "/api/v1/events"},
+		{http.MethodGet, "/api/v1/events/" + id},
+		{http.MethodPatch, "/api/v1/events/" + id},
+		{http.MethodDelete, "/api/v1/events/" + id},
 		{http.MethodGet, "/api/v1/assignees"},
 	}
 	for _, route := range routes {
@@ -416,5 +427,55 @@ func TestTaskAPIRecurrence(t *testing.T) {
 	assert.Nil(t, decodeResponse[taskmodel.Task](t, w).Recurrence)
 
 	w = env.serve(http.MethodPost, "/api/v1/tasks", `{"channelId":"`+channelID+`","title":"Bad repeat","recurrence":{"frequency":"daily"}}`, actorID)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestEventAPILifecycle(t *testing.T) {
+	env := newAPITestEnv(t)
+	teamID, channelID := model.NewId(), model.NewId()
+	creatorID, strangerID := model.NewId(), model.NewId()
+	allowChannel(env.api, creatorID, channelID, teamID)
+	env.api.On("HasPermissionToTeam", creatorID, teamID, model.PermissionViewTeam).Return(true).Maybe()
+	denyAdmin(env.api, creatorID)
+	env.api.On("HasPermissionToChannel", strangerID, channelID, model.PermissionReadChannel).Return(false).Maybe()
+
+	start := int64(1767225600000) // 2026-01-01 00:00 UTC
+	end := int64(1767229200000)   // 2026-01-01 01:00 UTC
+	body := `{"channelId":"` + channelID + `","title":"Sprint planning","startAt":` +
+		strconv.FormatInt(start, 10) + `,"endAt":` + strconv.FormatInt(end, 10) +
+		`,"allDay":false,"timezone":"UTC","visibility":"channel"}`
+	w := env.serve(http.MethodPost, "/api/v1/events", body, creatorID)
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	created := decodeResponse[taskmodel.Event](t, w)
+	assert.Equal(t, "Sprint planning", created.Title)
+	assert.Equal(t, channelID, created.ChannelID)
+	assert.Equal(t, taskmodel.TaskVisibilityChannel, created.Visibility)
+
+	w = env.serve(http.MethodGet, "/api/v1/events/"+created.ID, "", creatorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Equal(t, created.ID, decodeResponse[taskmodel.Event](t, w).ID)
+
+	w = env.serve(http.MethodGet, "/api/v1/events/"+created.ID, "", strangerID)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	rangeQuery := "/api/v1/events?scope=team&team_id=" + teamID +
+		"&from=" + strconv.FormatInt(start-86400000, 10) +
+		"&to=" + strconv.FormatInt(end+86400000, 10)
+	w = env.serve(http.MethodGet, rangeQuery, "", creatorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	result := decodeResponse[events.EventListResult](t, w)
+	require.Len(t, result.Items, 1)
+	assert.Equal(t, created.ID, result.Items[0].ID)
+
+	w = env.serve(http.MethodPatch, "/api/v1/events/"+created.ID, `{"title":"Sprint planning v2"}`, creatorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Equal(t, "Sprint planning v2", decodeResponse[taskmodel.Event](t, w).Title)
+
+	w = env.serve(http.MethodDelete, "/api/v1/events/"+created.ID, "", creatorID)
+	require.Equal(t, http.StatusNoContent, w.Code, w.Body.String())
+	w = env.serve(http.MethodGet, "/api/v1/events/"+created.ID, "", creatorID)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	w = env.serve(http.MethodPost, "/api/v1/events", `{"channelId":"`+channelID+`","title":"Bad","startAt":`+strconv.FormatInt(end, 10)+`,"endAt":`+strconv.FormatInt(start, 10)+`}`, creatorID)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

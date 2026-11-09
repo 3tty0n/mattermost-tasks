@@ -2,7 +2,8 @@
 // See LICENSE.txt for license information.
 
 import {addLocalDays, calendarQueryBounds, calendarRange, localDateKey, startOfLocalDay, startOfWeek, weekStartsOn, type CalendarMode} from 'calendar_utils';
-import {useProfiles, useTasks} from 'hooks';
+import {compareEventOccurrences, eventOccurrencesForDays, type CalendarEventOccurrence} from 'event_utils';
+import {useEvents, useProfiles, useTasks} from 'hooks';
 import {type KeyboardEvent, useMemo, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {compareOccurrences, occurrencesForTask, type CalendarOccurrence} from 'recurrence_utils';
@@ -10,6 +11,7 @@ import {compareOccurrences, occurrencesForTask, type CalendarOccurrence} from 'r
 import CalendarCheckOutlineIcon from '@mattermost/compass-icons/components/calendar-check-outline';
 import ChevronLeftIcon from '@mattermost/compass-icons/components/chevron-left';
 import ChevronRightIcon from '@mattermost/compass-icons/components/chevron-right';
+import PlusIcon from '@mattermost/compass-icons/components/plus';
 import {Button} from '@mattermost/compass-ui/components/button';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 import {IconButton} from '@mattermost/compass-ui/components/icon-button';
@@ -18,9 +20,10 @@ import {Spinner} from '@mattermost/compass-ui/components/spinner';
 import {Tabs} from '@mattermost/compass-ui/components/tabs';
 import {Tag} from '@mattermost/compass-ui/components/tag';
 
+import EventCalendarCard from 'components/event_calendar_card/event_calendar_card';
 import TaskCalendarCard from 'components/task_calendar_card/task_calendar_card';
 
-import type {TaskPriority, TaskQuery} from 'types';
+import type {EventQuery, TaskPriority, TaskQuery} from 'types';
 
 import './calendar.css';
 
@@ -36,6 +39,8 @@ type Props = {
     revision: number;
     onOpenTask: (taskID: string) => void;
     onCreateTask: (day: Date) => void;
+    onOpenEvent: (eventID: string) => void;
+    onCreateEvent: (day: Date) => void;
 };
 
 function defaultSelectedKey(mode: CalendarMode, cursor: Date, weekStart: number): string {
@@ -50,7 +55,7 @@ function defaultSelectedKey(mode: CalendarMode, cursor: Date, weekStart: number)
     return range.startKey;
 }
 
-export default function Calendar({scope, teamId, priority, assigneeId, revision, onOpenTask, onCreateTask}: Props) {
+export default function Calendar({scope, teamId, priority, assigneeId, revision, onOpenTask, onCreateTask, onOpenEvent, onCreateEvent}: Props) {
     const intl = useIntl();
     const [mode, setMode] = useState<CalendarMode>('month');
     const [cursor, setCursor] = useState(() => startOfLocalDay(new Date()));
@@ -84,6 +89,20 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
     }, [scope, teamId, priority, assigneeId, bounds]);
 
     const tasks = useTasks(query, revision + reload);
+    const eventQuery = useMemo<EventQuery | null>(() => {
+        if (scope === 'team' && !teamId) {
+            return null;
+        }
+        return {
+            scope,
+            teamId: scope === 'team' ? teamId : undefined,
+            from: bounds.dueAfter,
+            to: bounds.dueBefore,
+            page: 0,
+            perPage: 100,
+        };
+    }, [scope, teamId, bounds]);
+    const events = useEvents(eventQuery, revision + reload);
 
     const assigneeIds = useMemo(() => {
         const ids = new Set<string>();
@@ -95,6 +114,27 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
         return [...ids];
     }, [tasks.data]);
     const profiles = useProfiles(assigneeIds);
+
+    const eventsByDay = useMemo(() => {
+        const days = new Map<string, CalendarEventOccurrence[]>();
+        for (const event of events.data?.items ?? []) {
+            for (const occurrence of eventOccurrencesForDays(event, range.days)) {
+                if (occurrence.dateKey < range.startKey || occurrence.dateKey > range.endKey) {
+                    continue;
+                }
+                const bucket = days.get(occurrence.dateKey);
+                if (bucket) {
+                    bucket.push(occurrence);
+                } else {
+                    days.set(occurrence.dateKey, [occurrence]);
+                }
+            }
+        }
+        for (const bucket of days.values()) {
+            bucket.sort(compareEventOccurrences);
+        }
+        return days;
+    }, [events.data, range.days, range.startKey, range.endKey]);
 
     const tasksByDay = useMemo(() => {
         const days = new Map<string, CalendarOccurrence[]>();
@@ -119,7 +159,10 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
 
     const selectedDate = range.days.find((day) => localDateKey(day) === selectedKey) ?? range.days[0];
     const selectedTasks = tasksByDay.get(localDateKey(selectedDate)) ?? [];
-    const periodEmpty = Boolean(tasks.data && tasksByDay.size === 0);
+    const selectedEvents = eventsByDay.get(localDateKey(selectedDate)) ?? [];
+    const loading = tasks.loading || events.loading;
+    const calendarError = tasks.error ?? events.error;
+    const periodEmpty = Boolean(tasks.data && events.data && tasksByDay.size === 0 && eventsByDay.size === 0);
 
     const showWeekYear = range.start.getFullYear() !== new Date().getFullYear();
     const periodLabel = mode === 'month' ? intl.formatDate(cursor, {month: 'short', year: 'numeric'}) : intl.formatDateTimeRange(range.start, range.end, {month: 'short', day: 'numeric', ...(showWeekYear ? {year: 'numeric'} : {})});
@@ -129,12 +172,18 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
         {count},
     );
 
-    const dayLabel = (day: Date, count: number) => intl.formatMessage(
-        {id: 'tasks.calendar.day_label', defaultMessage: '{date}, {count, plural, =0 {no tasks} one {# task} other {# tasks}}'},
+    const dayLabel = (day: Date, taskCount: number, eventCount: number) => intl.formatMessage(
+        {id: 'tasks.calendar.day_label', defaultMessage: '{date}, {tasks, plural, =0 {no tasks} one {# task} other {# tasks}}, {events, plural, =0 {no events} one {# event} other {# events}}'},
         {
             date: intl.formatDate(day, {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}),
-            count,
+            tasks: taskCount,
+            events: eventCount,
         },
+    );
+
+    const eventCountLabel = (count: number) => intl.formatMessage(
+        {id: 'tasks.calendar.event_count', defaultMessage: '{count, plural, =0 {No events} one {# event} other {# events}}'},
+        {count},
     );
 
     const goTo = (nextCursor: Date, nextMode: CalendarMode = mode) => {
@@ -215,6 +264,18 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
         </div>
     );
 
+    const renderEventCards = (items: CalendarEventOccurrence[]) => (
+        <div className='Tasks-Calendar__cards Tasks-Calendar__cards--events'>
+            {items.map((occurrence) => (
+                <EventCalendarCard
+                    key={`${occurrence.event.id}:${occurrence.dateKey}`}
+                    event={occurrence.event}
+                    onOpen={onOpenEvent}
+                />
+            ))}
+        </div>
+    );
+
     return (
         <div className='Tasks-Calendar'>
             <div className='Tasks-Calendar__toolbar'>
@@ -237,7 +298,7 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                         aria-label={intl.formatMessage({id: 'tasks.calendar.next', defaultMessage: 'Next period'})}
                         onClick={() => navigate(1)}
                     />
-                    {tasks.loading && (
+                    {loading && (
                         <Spinner
                             size='12'
                             aria-label={intl.formatMessage({id: 'tasks.loading', defaultMessage: 'Loading…'})}
@@ -299,30 +360,30 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                 className='Tasks-Calendar__body'
                 role='tabpanel'
                 aria-labelledby={mode === 'week' ? WEEK_TAB_ID : MONTH_TAB_ID}
-                aria-busy={tasks.loading}
+                aria-busy={loading}
             >
-                {tasks.error && !tasks.loading && (
+                {calendarError && !loading && (
                     <div className='Tasks-Calendar__notice'>
                         <SectionNotice
                             type='danger'
                             title={intl.formatMessage({id: 'tasks.load_error', defaultMessage: 'Couldn’t load tasks'})}
-                            description={tasks.error}
+                            description={calendarError}
                             primaryButtonLabel={intl.formatMessage({id: 'tasks.retry', defaultMessage: 'Try again'})}
                             onPrimaryAction={() => setReload((value) => value + 1)}
                         />
                     </div>
                 )}
 
-                {!tasks.error && periodEmpty && (
+                {!calendarError && periodEmpty && (
                     <p className='Tasks-Calendar__periodEmpty'>
                         <FormattedMessage
                             id='tasks.calendar.no_due_tasks'
-                            defaultMessage='No tasks with due dates in this period.'
+                            defaultMessage='No tasks or events in this period.'
                         />
                     </p>
                 )}
 
-                {!tasks.error && tasks.data && tasks.data.total > tasks.data.items.length && (
+                {!calendarError && tasks.data && tasks.data.total > tasks.data.items.length && (
                     <div className='Tasks-Calendar__notice'>
                         <SectionNotice
                             type='info'
@@ -334,7 +395,19 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                     </div>
                 )}
 
-                {!tasks.error && tasks.data && mode === 'month' && (
+                {!calendarError && events.data && events.data.total > events.data.items.length && (
+                    <div className='Tasks-Calendar__notice'>
+                        <SectionNotice
+                            type='info'
+                            title={intl.formatMessage({
+                                id: 'tasks.calendar.event_limit',
+                                defaultMessage: 'Showing the first 100 events in this period.',
+                            })}
+                        />
+                    </div>
+                )}
+
+                {!calendarError && tasks.data && events.data && mode === 'month' && (
                     <>
                         <div
                             className='Tasks-Calendar__month'
@@ -358,6 +431,7 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                 {range.days.map((day) => {
                                     const key = localDateKey(day);
                                     const dayTasks = tasksByDay.get(key) ?? [];
+                                    const dayEvents = eventsByDay.get(key) ?? [];
                                     const outside = day.getMonth() !== cursor.getMonth();
                                     return (
                                         <button
@@ -370,7 +444,7 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                             tabIndex={key === selectedKey ? 0 : -1}
                                             aria-pressed={key === selectedKey}
                                             aria-current={key === todayKey ? 'date' : undefined}
-                                            aria-label={dayLabel(day, dayTasks.length)}
+                                            aria-label={dayLabel(day, dayTasks.length, dayEvents.length)}
                                             title={intl.formatMessage({id: 'tasks.calendar.add_hint', defaultMessage: 'Double-click to add a task'})}
                                             onClick={() => selectDay(day)}
                                             onDoubleClick={() => onCreateTask(day)}
@@ -394,6 +468,19 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                                         <span
                                                             key={`${occurrence.task.id}:${occurrence.dueAt}`}
                                                             className={`Tasks-Calendar__dot Tasks-Calendar__dot--${occurrence.task.priority}`}
+                                                        />
+                                                    ))}
+                                                </span>
+                                            )}
+                                            {dayEvents.length > 0 && (
+                                                <span
+                                                    className='Tasks-Calendar__eventBars'
+                                                    aria-hidden='true'
+                                                >
+                                                    {dayEvents.slice(0, 2).map((occurrence) => (
+                                                        <span
+                                                            key={`${occurrence.event.id}:${occurrence.dateKey}`}
+                                                            className='Tasks-Calendar__eventBar'
                                                         />
                                                     ))}
                                                 </span>
@@ -425,31 +512,62 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                         size='x-small'
                                     />
                                 )}
-                                {selectedTasks.length > 0 && (
-                                    <span className='Tasks-Calendar__agendaCount'>
-                                        {countLabel(selectedTasks.length)}
-                                    </span>
-                                )}
+                                <IconButton
+                                    className='Tasks-Calendar__agendaAdd'
+                                    size='x-small'
+                                    icon={<Icon glyph={<PlusIcon/>}/>}
+                                    aria-label={intl.formatMessage({id: 'tasks.event.add_on_day', defaultMessage: 'Add event on {date}'}, {date: intl.formatDate(selectedDate, {month: 'long', day: 'numeric'})})}
+                                    onClick={() => onCreateEvent(selectedDate)}
+                                />
                             </header>
-                            {selectedTasks.length > 0 ? (
-                                renderCards(selectedTasks)
-                            ) : (
-                                <p className='Tasks-Calendar__empty'>
+                            <div className='Tasks-Calendar__agendaSection'>
+                                <h5 className='Tasks-Calendar__sectionTitle'>
                                     <FormattedMessage
-                                        id='tasks.calendar.no_tasks_day'
-                                        defaultMessage='No tasks due this day.'
+                                        id='tasks.calendar.events'
+                                        defaultMessage='Events'
                                     />
-                                </p>
-                            )}
+                                    <span className='Tasks-Calendar__sectionCount'>{eventCountLabel(selectedEvents.length)}</span>
+                                </h5>
+                                {selectedEvents.length > 0 ? (
+                                    renderEventCards(selectedEvents)
+                                ) : (
+                                    <p className='Tasks-Calendar__empty'>
+                                        <FormattedMessage
+                                            id='tasks.calendar.no_events_day'
+                                            defaultMessage='No events this day.'
+                                        />
+                                    </p>
+                                )}
+                            </div>
+                            <div className='Tasks-Calendar__agendaSection'>
+                                <h5 className='Tasks-Calendar__sectionTitle'>
+                                    <FormattedMessage
+                                        id='tasks.calendar.due_tasks'
+                                        defaultMessage='Due tasks'
+                                    />
+                                    <span className='Tasks-Calendar__sectionCount'>{countLabel(selectedTasks.length)}</span>
+                                </h5>
+                                {selectedTasks.length > 0 ? (
+                                    renderCards(selectedTasks)
+                                ) : (
+                                    <p className='Tasks-Calendar__empty'>
+                                        <FormattedMessage
+                                            id='tasks.calendar.no_tasks_day'
+                                            defaultMessage='No tasks due this day.'
+                                        />
+                                    </p>
+                                )}
+                            </div>
                         </section>
                     </>
                 )}
 
-                {!tasks.error && tasks.data && mode === 'week' && (
+                {!calendarError && tasks.data && events.data && mode === 'week' && (
                     <div className='Tasks-Calendar__week'>
                         {range.days.map((day) => {
                             const key = localDateKey(day);
                             const dayTasks = tasksByDay.get(key) ?? [];
+                            const dayEvents = eventsByDay.get(key) ?? [];
                             return (
                                 <section
                                     key={key}
@@ -474,10 +592,22 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                                 size='x-small'
                                             />
                                         )}
-                                        {dayTasks.length > 0 && (
-                                            <span className='Tasks-Calendar__weekDayCount'>{countLabel(dayTasks.length)}</span>
-                                        )}
+                                        <span className='Tasks-Calendar__weekDayCounts'>
+                                            {dayEvents.length > 0 && (
+                                                <span className='Tasks-Calendar__weekDayCount'>{eventCountLabel(dayEvents.length)}</span>
+                                            )}
+                                            {dayTasks.length > 0 && (
+                                                <span className='Tasks-Calendar__weekDayCount'>{countLabel(dayTasks.length)}</span>
+                                            )}
+                                        </span>
+                                        <IconButton
+                                            size='x-small'
+                                            icon={<Icon glyph={<PlusIcon/>}/>}
+                                            aria-label={intl.formatMessage({id: 'tasks.event.add_on_day', defaultMessage: 'Add event on {date}'}, {date: intl.formatDate(day, {month: 'long', day: 'numeric'})})}
+                                            onClick={() => onCreateEvent(day)}
+                                        />
                                     </header>
+                                    {dayEvents.length > 0 && renderEventCards(dayEvents)}
                                     {dayTasks.length > 0 && renderCards(dayTasks)}
                                 </section>
                             );

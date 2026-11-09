@@ -1,10 +1,10 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {fetchAssignees, fetchTasks, getProfiles, type Profile} from 'client';
+import {fetchAssignees, fetchEvents, fetchTasks, getProfiles, type Profile} from 'client';
 import {useEffect, useRef, useState} from 'react';
 
-import type {Assignee, ListResult, TaskQuery, TaskSummary} from 'types';
+import type {Assignee, EventQuery, EventSummary, ListResult, TaskQuery, TaskSummary} from 'types';
 
 type AsyncState<T> = {
     data?: T;
@@ -53,6 +53,10 @@ function useList<T>(query: TaskQuery | null, revision: number, fetcher: (query: 
 
 export function useTasks(query: TaskQuery | null, revision: number) {
     return useList<TaskSummary>(query, revision, fetchTasks);
+}
+
+export function useEvents(query: EventQuery | null, revision: number) {
+    return useList<EventSummary>(query, revision, fetchEvents);
 }
 
 export function useAssignees(teamId: string | undefined, channelId: string | undefined, term: string, enabled: boolean) {

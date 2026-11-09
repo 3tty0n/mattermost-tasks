@@ -43,6 +43,58 @@ export type Task = TaskSummary & {
     version: number;
 };
 
+export type Event = {
+    id: string;
+    teamId: string;
+    channelId?: string;
+    visibility: TaskVisibility;
+    creatorId: string;
+    title: string;
+    description?: string;
+    startAt: number;
+    endAt: number;
+    allDay?: boolean;
+    timezone?: string;
+    createdAt: number;
+    updatedAt: number;
+    version: number;
+};
+
+export type EventSummary = Omit<Event, 'description'>;
+
+export type EventQuery = {
+    scope: 'my' | 'team';
+    teamId?: string;
+    from: number;
+    to: number;
+    page?: number;
+    perPage?: number;
+};
+
+export type CreateEventInput = {
+    teamId?: string;
+    channelId?: string;
+    visibility?: TaskVisibility;
+    title: string;
+    description?: string;
+    startAt: number;
+    endAt: number;
+    allDay?: boolean;
+    timezone?: string;
+};
+
+export type UpdateEventInput = {
+    teamId?: string;
+    channelId?: string;
+    visibility?: TaskVisibility;
+    title?: string;
+    description?: string;
+    startAt?: number;
+    endAt?: number;
+    allDay?: boolean;
+    timezone?: string;
+};
+
 export type ListResult<T> = {
     items: T[];
     total: number;

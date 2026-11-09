@@ -23,8 +23,9 @@ type Plugin struct {
 
 	client   *pluginapi.Client
 	access   *access.Checker
-	store    kvstore.Store
+	store    *kvstore.KVStore
 	tasks    *tasks.Service
+	events   *events.EventService
 	notifier *notifications.Notifier
 
 	// commandClient is the slash-command fallback.
@@ -59,6 +60,7 @@ func (p *Plugin) OnActivate() error {
 
 	publisher := events.New(p.client)
 	p.tasks = tasks.NewService(p.client, p.store, p.access, publisher, p.notifier)
+	p.events = events.NewEventService(p.client, p.store, p.access, publisher)
 
 	commandClient, err := command.NewCommandHandler(p.client, p.tasks)
 	if err != nil {
@@ -67,7 +69,7 @@ func (p *Plugin) OnActivate() error {
 	}
 	p.commandClient = commandClient
 
-	p.httpHandler = api.NewHandler(p.API, p.client, p.access, p.tasks)
+	p.httpHandler = api.NewHandler(p.API, p.client, p.access, p.tasks, p.events)
 	return nil
 }
 

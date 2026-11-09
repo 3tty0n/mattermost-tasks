@@ -42,7 +42,7 @@ The plugin has one RHS, one channel header button and one post dropdown action.
 - Visibility is `private`, `team` or `channel`. Private tasks are not written to the team or
   channel indexes and are always assigned to their creator; team tasks go to the team index;
   channel tasks go to both the team and channel indexes and are filtered by channel permission in
-  team views. All tasks are in the assignee index, which also powers My tasks.
+  team views. All tasks are in the assignee index, which also powers the Mine scope.
 - Index reference: `task_team:<teamID>:<shard>`, `task_channel:<channelID>:<shard>` and
   `task_user:<userID>:<shard>`.
 - `shard = fnv32a(taskID) % 4`. Four shards keep each index value small and reduce CAS contention.
@@ -76,10 +76,15 @@ administrator. Assignment never grants access to a private channel.
 - `registerPostDropdownMenuAction` adds **Create task** for public/private channel posts. On the
   actor's own DM message it opens a private task instead of a channel-visible one; DM tasks have no
   source backlink.
-- The sidebar switches between **Team** and **My tasks** at the top. A channel opens on Team and a
-  DM on My tasks. The team query returns readable team/channel tasks plus the actor's own private
-  tasks; the My-tasks query collects tasks assigned to the actor across teams. DM creation defaults
-  to a private task assigned to the actor.
+- The sidebar switches between **Team** and **Mine** at the top. A channel opens on Team and a DM
+  on Mine. The team query returns readable team/channel tasks and events plus the actor's own
+  private items; Mine collects tasks assigned to the actor and events created by the actor.
+- Events are a separate aggregate (`event:` records and `event_team:` / `event_channel:` /
+  `event_user:` indexes) with the same visibility and access rules as tasks. They have start/end
+  times, an all-day flag and no status, priority or completion. The calendar fetches tasks and
+  events separately for the same range and merges them on the client. In the UI, events use an
+  accent-bordered card with a time range and task cards keep priority/assignee metadata; month
+  cells show tasks as dots and events as bars.
 - The list and board share one query; the calendar queries a due-date range for the visible week or
   month. The board and calendar fetch up to 100 tasks and ask the user to narrow filters beyond
   that. Manual order is a float `position`; drops use the midpoint between the neighboring tasks,
@@ -113,7 +118,8 @@ notifications but leaves tasks working.
 
 ## Performance
 
-- No full KV scans: each list reads at most `4` shards per requested index.
+- No full KV scans: each list reads at most `4` shards per requested index. A calendar range
+  performs one task query and one event query.
 - The list response is bounded to 100 per page; the webapp loads 20 by default.
 - No outbound HTTP.
 - Release builds use `-trimpath -ldflags "-s -w -buildid="`. The default bundle contains only a
@@ -125,5 +131,6 @@ notifications but leaves tasks working.
 
 - Mobile clients do not load plugin webapps; use the slash command.
 - Full-page task boards are not provided; the board lives in the RHS.
+- Events are currently one-off; event recurrence and attendees are not implemented yet.
 - Subtasks are not exposed in the UI yet. `parentTaskId` is reserved.
 - Bookmarks are a separate app in `mattermost-bookmarks`.

@@ -19,7 +19,7 @@ responses set `Cache-Control: no-store` because task titles and descriptions are
 `GET /tasks?scope=my|team|channel|all&team_id=...&channel_id=...&status=todo,in_progress&assignee_id=...&priority=...&due_before=...&due_after=...&has_due=true&include_recurring=true&sort=due|created|priority&direction=asc|desc&page=0&per_page=20`
 
 - `scope=my` returns tasks assigned to the actor in teams they can read, plus their own private
-  tasks. It powers the webapp's **My tasks** scope.
+  tasks. It powers the webapp's **Mine** scope.
 - `scope=team` requires `team_id` and powers the webapp's **Team** scope. It includes team/channel
   tasks the actor can read plus the actor's own private tasks in that team.
 - `scope=channel` requires `channel_id`.
@@ -180,6 +180,50 @@ Returns 200 with the updated full task.
 
 Requires the creator or a system administrator. Returns 204. The record and its index entries are
 removed.
+
+## Events
+
+Events are calendar appointments and are stored separately from tasks. They have no status,
+priority or assignees. Routes use the same authentication and error format as tasks.
+
+```text
+GET    /events?scope=my|team&team_id=...&from=...&to=...&page=0&per_page=20
+POST   /events
+GET    /events/{id}
+PATCH  /events/{id}   (POST is accepted too)
+DELETE /events/{id}
+```
+
+`from` and `to` are required epoch-millisecond bounds (exclusive end); the server returns events
+whose interval overlaps them. `scope=my` lists events created by the actor; `scope=team` requires
+`team_id` and lists readable team/channel events plus the actor's own private events.
+
+Create body:
+
+```json
+{
+  "teamId": "teamid",
+  "channelId": "channelid",
+  "visibility": "channel",
+  "title": "Sprint planning",
+  "description": "Optional text",
+  "startAt": 1767225600000,
+  "endAt": 1767229200000,
+  "allDay": false,
+  "timezone": "Asia/Tokyo"
+}
+```
+
+- `startAt` and `endAt` are epoch milliseconds; `endAt` must be after `startAt`.
+- All-day events use UTC midnight boundaries and an exclusive `endAt` (a one-day event starts at
+  midnight and ends at the following midnight).
+- `timezone` is an IANA name used for display/recurrence metadata; it defaults to `UTC`.
+- `visibility` follows task rules: `private` is creator-only, `team` is team-readable and
+  `channel` is channel-readable. A channel is required for channel visibility.
+- Only the creator or a system administrator may update or delete an event.
+- Events are one-off in this version; recurrence is not yet exposed.
+
+The response summary omits `description`; `GET /events/{id}` returns the full record.
 
 ## Assignees
 

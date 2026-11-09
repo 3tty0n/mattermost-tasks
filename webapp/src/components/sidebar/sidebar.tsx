@@ -32,6 +32,7 @@ import {Tabs} from '@mattermost/compass-ui/components/tabs';
 import {selectAllChannels, selectCurrentChannel, selectCurrentTeam, selectCurrentUserId, selectMyTeams, selectTeams} from 'selectors';
 
 import Calendar from 'components/calendar/calendar';
+import EventEditor, {type EventEditorDefaults} from 'components/event_editor/event_editor';
 import TaskCard from 'components/task_card/task_card';
 import TaskDescriptionDialog from 'components/task_description_dialog/task_description_dialog';
 import TaskDetail from 'components/task_detail/task_detail';
@@ -39,11 +40,12 @@ import TaskEditor, {type TaskEditorDefaults} from 'components/task_editor/task_e
 import TaskFilters, {DEFAULT_TASK_FILTERS, type TaskFiltersState} from 'components/task_filters/task_filters';
 import TaskRow from 'components/task_row/task_row';
 
-import type {Task, TaskQuery, TaskSort, TaskStatus, TaskSummary} from 'types';
+import type {Task, TaskQuery, TaskSort, TaskStatus, TaskSummary, TaskVisibility} from 'types';
 
 import './sidebar.css';
 
 type TaskEditorState = {task?: Task; defaults?: TaskEditorDefaults};
+type EventEditorState = {eventId?: string; defaults?: EventEditorDefaults};
 type Scope = 'team' | 'my';
 
 const BOARD_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done'];
@@ -95,6 +97,7 @@ export default function TasksSidebar() {
     const [reload, setReload] = useState(0);
     const [actionError, setActionError] = useState<string>();
     const [taskEditor, setTaskEditor] = useState<TaskEditorState>();
+    const [eventEditor, setEventEditor] = useState<EventEditorState>();
     const [previewTaskID, setPreviewTaskID] = useState<string>();
     const [quickAddStatus, setQuickAddStatus] = useState<TaskStatus>();
     const [quickAddTitle, setQuickAddTitle] = useState('');
@@ -310,6 +313,25 @@ export default function TasksSidebar() {
         setTaskEditor({defaults});
     };
 
+    const openCreateEvent = useCallback((day: Date) => {
+        const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 9, 0, 0, 0);
+        let visibility: TaskVisibility = 'team';
+        if (scope === 'my' || isDM) {
+            visibility = 'private';
+        } else if (canUseChannel && currentChannel) {
+            visibility = 'channel';
+        }
+        setEventEditor({
+            defaults: {
+                teamId: teamID ?? myTeams[0]?.id,
+                channelId: visibility === 'channel' ? currentChannel?.id : undefined,
+                visibility,
+                startAt: start.getTime(),
+                allDay: false,
+            },
+        });
+    }, [scope, isDM, canUseChannel, currentChannel, teamID, myTeams]);
+
     const openCreateForDay = useCallback((day: Date) => {
         setTaskEditor({
             defaults: {
@@ -425,7 +447,7 @@ export default function TasksSidebar() {
                             label: (
                                 <FormattedMessage
                                     id='tasks.scope.my'
-                                    defaultMessage='My tasks'
+                                    defaultMessage='Mine'
                                 />
                             ),
                         },
@@ -792,6 +814,8 @@ export default function TasksSidebar() {
                         revision={tasksRevision}
                         onOpenTask={openCalendarTask}
                         onCreateTask={openCreateForDay}
+                        onOpenEvent={(eventID) => setEventEditor({eventId: eventID})}
+                        onCreateEvent={openCreateEvent}
                     />
                 )}
             </div>
@@ -803,6 +827,21 @@ export default function TasksSidebar() {
                     onClose={() => setTaskEditor(undefined)}
                     onSaved={() => {
                         setTaskEditor(undefined);
+                        refreshTasks();
+                    }}
+                />
+            )}
+            {eventEditor && (
+                <EventEditor
+                    eventId={eventEditor.eventId}
+                    defaults={eventEditor.defaults}
+                    onClose={() => setEventEditor(undefined)}
+                    onSaved={() => {
+                        setEventEditor(undefined);
+                        refreshTasks();
+                    }}
+                    onDeleted={() => {
+                        setEventEditor(undefined);
                         refreshTasks();
                     }}
                 />

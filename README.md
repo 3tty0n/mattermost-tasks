@@ -15,7 +15,7 @@ system, no external service, no second database.
 
 | Plan and see work | Capture it quickly |
 | --- | --- |
-| Team / My tasks switch, context-aware default | Create from any public/private channel post |
+| Team / Mine switch, context-aware default | Create from any public/private channel post |
 | Private, team-wide or channel-only visibility | Name-only quick add in each board column |
 | List, board and calendar views | Assignment autocomplete with avatars and usernames |
 | Drag-and-drop manual ordering | Position persisted across reloads |
@@ -23,17 +23,18 @@ system, no external service, no second database.
 | Filters, sorting and pagination | `/task` slash commands for keyboard and mobile |
 | Markdown descriptions and source backlinks | Click-to-edit name and description |
 | Repeating tasks: daily, weekly, monthly, yearly or custom | Optional end date or endless series |
+| Calendar events, separate from tasks | Timed or all-day, with task/event visual distinction |
 
 **Due dates the way you expect:** a date is date-only by default. Open the calendar, choose a day,
 and press **OK**. Enable **Set time** only when you need a time. Set **Repeat** to daily, weekly,
 monthly, yearly or a custom interval; choose when the series ends, or leave it endless. Completing
 a repeating task moves it to its next occurrence.
 
-**Team and My tasks in one sidebar:** switch between them at the top. The sidebar opens on
-**Team** in a channel and **My tasks** in a DM. **Team** shows the current team's tasks plus your own
-**Only me** tasks; **My tasks** collects everything assigned to you, with each task's team or
-channel shown. New tasks default to **Team** in channels and **Only me** in DMs; you can also
-choose **Only me** explicitly in the editor.
+**Team and Mine in one sidebar:** switch between them at the top. The sidebar opens on **Team**
+in a channel and **Mine** in a DM. **Team** shows the current team's tasks and events plus your own
+**Only me** items; **Mine** collects tasks assigned to you and events you created. New tasks default
+to **Team** in channels and **Only me** in DMs; you can also choose **Only me** explicitly in the
+editor.
 Private-channel tasks are filtered from lists and return 404 to non-members. Every route re-checks
 this on the server, and the plugin never fetches URLs or stores data outside the plugin KV store.
 
@@ -86,10 +87,9 @@ webapps; use the `/task` slash command there.
 
 Click the check-circle icon in the channel header to open the Tasks sidebar.
 
-- **Team / My tasks:** switch scopes with the tabs at the top. A channel starts on **Team**, which
-  shows the current team's readable tasks plus your own **Only me** tasks. A DM starts on
-  **My tasks**, which collects tasks assigned to you across teams; each row shows its team or
-  channel.
+- **Team / Mine:** switch scopes with the tabs at the top. A channel starts on **Team**, which
+  shows the current team's readable tasks and events plus your own **Only me** items. A DM starts
+  on **Mine**, which collects tasks assigned to you and events you created across teams.
 - **Visibility:** new tasks default to **Team** in channels and **Only me** in DMs. Choose
   **Only me** explicitly in the editor to keep a task private; it is always assigned to you.
   Channel visibility is still available for channel-specific work. **Only me** tasks appear in the
@@ -104,6 +104,12 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   month grid (or a week day header) to open **New task** with that date prefilled. The calendar's
   **New task** button defaults the due date to today; double-clicking a day overrides it with that
   day. Repeating tasks appear on every occurrence, not just their next due date.
+- **Events:** create an event with the **+** in a day header (week view) or in the selected day's
+  agenda (month view). Events have a start/end time, an optional all-day flag, visibility and an
+  optional description. They are deliberately separate from tasks: no checkbox, priority or
+  assignee. Events appear as accent-colored cards with a calendar icon and time range; tasks keep
+  their priority dots and assignee avatars, and month cells show tasks as dots and events as bars.
+  Click an event to edit it; creators and administrators can delete it.
 - **Manual order:** the default sort is **Manual**. Drag a list row or board card to reorder it;
   drop on the upper/lower half to place before/after the target. Positions are saved on the server.
 - **Quick add:** the **+** at the top right of each board column creates a task in that column
@@ -133,7 +139,7 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
 Every post in a public or private channel has **Create task** in its **⋯** menu. The editor is
 prefilled with the post's first line and body; a channel post creates a channel-visible task with
 a source backlink. On **your own DM message**, the same action creates an **Only me** task using
-the message text; the DM view shows it under **My tasks**. The server re-checks the post's channel
+the message text; the DM view shows it under **Mine**. The server re-checks the post's channel
 and the user's read permission.
 
 ### Creating an Only-me task
@@ -186,10 +192,12 @@ The bundle is written to `dist/com.github.3tty0n.mattermost-tasks-<version>.tar.
 
 ## Architecture and storage
 
-- Full records: `task:<id>` with `visibility` (`private`, `team`, `channel`).
-- Compact indexes: `task_team:` (team + channel visible), `task_channel:` (channel visible only),
-  `task_user:` (assignees; private tasks are always assigned to their creator), four shards each.
-- No full KV scans: a list reads at most four shards per scope.
+- Full records: `task:<id>` and `event:<id>` with `visibility` (`private`, `team`, `channel`).
+- Compact indexes: `task_team:`, `task_channel:`, `task_user:` for tasks; `event_team:`,
+  `event_channel:`, `event_user:` for events. Each has four shards.
+- No full KV scans: a list reads at most four shards per scope and index.
+- Events are additive and use the same visibility and permission rules; reading a calendar range
+  makes one scoped task query and one scoped event query.
 - No outbound HTTP; the webapp uses the host's Compass components and local selectors.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/API.md](docs/API.md) and

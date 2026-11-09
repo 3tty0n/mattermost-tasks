@@ -5,11 +5,16 @@ import manifest from 'manifest';
 
 import type {
     Assignee,
+    CreateEventInput,
     CreateTaskInput,
+    Event,
+    EventQuery,
+    EventSummary,
     ListResult,
     Task,
     TaskQuery,
     TaskSummary,
+    UpdateEventInput,
     UpdateTaskInput,
 } from './types';
 
@@ -145,6 +150,34 @@ export async function fetchTasks(query: TaskQuery, signal?: AbortSignal): Promis
         per_page: query.perPage,
     };
     return doFetch<ListResult<TaskSummary>>(withQuery('/tasks', params), {}, signal);
+}
+
+export async function fetchEvents(query: EventQuery, signal?: AbortSignal): Promise<ListResult<EventSummary>> {
+    const params: Record<string, QueryValue> = {
+        scope: query.scope,
+        team_id: query.teamId,
+        from: query.from,
+        to: query.to,
+        page: query.page,
+        per_page: query.perPage,
+    };
+    return doFetch<ListResult<EventSummary>>(withQuery('/events', params), {}, signal);
+}
+
+export async function getEvent(id: string, signal?: AbortSignal): Promise<Event> {
+    return doFetch<Event>(`/events/${encodeURIComponent(id)}`, {}, signal);
+}
+
+export async function createEvent(input: CreateEventInput): Promise<Event> {
+    return doFetch<Event>('/events', {method: 'post', body: JSON.stringify(input)});
+}
+
+export async function updateEvent(id: string, patch: UpdateEventInput): Promise<Event> {
+    return doFetch<Event>(`/events/${encodeURIComponent(id)}`, {method: 'post', body: JSON.stringify(patch)});
+}
+
+export async function deleteEvent(id: string): Promise<void> {
+    await doFetch<void>(`/events/${encodeURIComponent(id)}`, {method: 'delete'});
 }
 
 export async function getTask(id: string, signal?: AbortSignal): Promise<Task> {

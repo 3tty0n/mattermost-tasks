@@ -35,6 +35,23 @@ func (p *Publisher) TaskChanged(action string, task *taskmodel.Task) {
 	}, broadcast(task.TeamID, task.ChannelID))
 }
 
+// EventChanged notifies the event's channel, team or creator. Private events are sent only to
+// their creator, because every WebSocket recipient can read the payload.
+func (p *Publisher) EventChanged(action string, event *taskmodel.Event) {
+	payload := map[string]any{
+		"entity":    "event",
+		"action":    action,
+		"eventId":   event.ID,
+		"teamId":    event.TeamID,
+		"channelId": event.ChannelID,
+	}
+	if event.EffectiveVisibility() == taskmodel.TaskVisibilityPrivate {
+		p.client.Frontend.PublishWebSocketEvent(Event, payload, &model.WebsocketBroadcast{UserId: event.CreatorID})
+		return
+	}
+	p.client.Frontend.PublishWebSocketEvent(Event, payload, broadcast(event.TeamID, event.ChannelID))
+}
+
 func broadcast(teamID, channelID string) *model.WebsocketBroadcast {
 	if channelID != "" {
 		return &model.WebsocketBroadcast{ChannelId: channelID}

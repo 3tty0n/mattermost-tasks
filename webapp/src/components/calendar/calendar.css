@@ -181,6 +181,21 @@
     background: var(--error-text);
 }
 
+.Tasks-Calendar__eventBars {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    margin-top: 1px;
+}
+
+.Tasks-Calendar__eventBar {
+    width: 100%;
+    height: 3px;
+    border-radius: var(--radius-pill);
+    background: rgba(var(--button-bg-rgb), 0.56);
+}
+
 .Tasks-Calendar__agenda {
     flex: none;
     margin-top: var(--spacing-s);
@@ -207,12 +222,39 @@
     white-space: nowrap;
 }
 
-.Tasks-Calendar__agendaCount {
+.Tasks-Calendar__agendaAdd {
     flex: none;
     margin-left: auto;
+}
+
+.Tasks-Calendar__agendaSection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.Tasks-Calendar__agendaSection + .Tasks-Calendar__agendaSection {
+    margin-top: var(--spacing-s);
+    padding-top: var(--spacing-s);
+    border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+}
+
+.Tasks-Calendar__sectionTitle {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin: 0;
     color: rgba(var(--center-channel-color-rgb), 0.56);
     font-size: var(--font-size-25);
+    font-weight: var(--font-weight-semibold);
     line-height: var(--line-height-25);
+    text-transform: uppercase;
+}
+
+.Tasks-Calendar__sectionCount {
+    margin-left: auto;
+    font-weight: var(--font-weight-normal);
+    text-transform: none;
 }
 
 .Tasks-Calendar__cards {
@@ -278,9 +320,15 @@
     }
 }
 
-.Tasks-Calendar__weekDayCount {
+.Tasks-Calendar__weekDayCounts {
+    display: flex;
     flex: none;
+    align-items: center;
+    gap: var(--spacing-xxs);
     margin-left: auto;
+}
+
+.Tasks-Calendar__weekDayCount {
     color: rgba(var(--center-channel-color-rgb), 0.56);
     font-size: var(--font-size-25);
     line-height: var(--line-height-25);

@@ -4,7 +4,7 @@
 import {screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {localDateKey} from 'calendar_utils';
-import {fetchTasks, getProfilePictureUrl, getProfiles} from 'client';
+import {fetchEvents, fetchTasks, getProfilePictureUrl, getProfiles} from 'client';
 
 import type {ListResult, TaskSummary} from 'types';
 
@@ -15,6 +15,7 @@ import {renderWithStore, ids} from '../../../tests/test_utils';
 jest.mock('client', () => ({
     ApiError: class ApiError extends Error {},
     fetchAssignees: jest.fn(),
+    fetchEvents: jest.fn(),
     fetchTasks: jest.fn(),
     getProfiles: jest.fn(),
     getProfilePictureUrl: jest.fn(),
@@ -23,6 +24,7 @@ jest.mock('client', () => ({
 }));
 
 const fetchTasksMock = fetchTasks as jest.MockedFunction<typeof fetchTasks>;
+const fetchEventsMock = fetchEvents as jest.MockedFunction<typeof fetchEvents>;
 const getProfilesMock = getProfiles as jest.MockedFunction<typeof getProfiles>;
 
 const todayAt = (hour: number) => {
@@ -49,7 +51,7 @@ function page(items: TaskSummary[]): ListResult<TaskSummary> {
     return {items, total: items.length, page: 0, perPage: 100, hasMore: false};
 }
 
-function renderCalendar(onCreateTask: (day: Date) => void = jest.fn()) {
+function renderCalendar(onCreateTask: (day: Date) => void = jest.fn(), onOpenEvent: (eventID: string) => void = jest.fn()) {
     return renderWithStore(
         <Calendar
             scope='team'
@@ -57,6 +59,8 @@ function renderCalendar(onCreateTask: (day: Date) => void = jest.fn()) {
             revision={0}
             onOpenTask={jest.fn()}
             onCreateTask={onCreateTask}
+            onOpenEvent={onOpenEvent}
+            onCreateEvent={jest.fn()}
         />,
     );
 }
@@ -68,6 +72,7 @@ describe('Calendar', () => {
             task({id: 'task-2', title: 'Write docs', priority: 'normal', assigneeIds: [], dueAt: todayAt(9)}),
         ]));
         getProfilesMock.mockResolvedValue({});
+        fetchEventsMock.mockResolvedValue({items: [], total: 0, page: 0, perPage: 100, hasMore: false});
         (getProfilePictureUrl as jest.Mock).mockReturnValue(undefined);
     });
 
@@ -138,6 +143,41 @@ describe('Calendar', () => {
         );
     });
 
+    it('shows events with a distinct card and opens them', async () => {
+        const onOpenEvent = jest.fn();
+        fetchTasksMock.mockResolvedValue(page([]));
+        fetchEventsMock.mockResolvedValue({
+            items: [{
+                id: 'event-1',
+                teamId: ids.team,
+                visibility: 'team',
+                creatorId: ids.user,
+                title: 'Sprint planning',
+                startAt: todayAt(10),
+                endAt: todayAt(11),
+                allDay: false,
+                timezone: 'UTC',
+                createdAt: 1,
+                updatedAt: 1,
+                version: 1,
+            }],
+            total: 1,
+            page: 0,
+            perPage: 100,
+            hasMore: false,
+        });
+        const {container} = renderCalendar(jest.fn(), onOpenEvent);
+
+        expect(await screen.findByRole('button', {name: 'Sprint planning'})).toBeVisible();
+        expect(screen.getByText('Events')).toBeVisible();
+        expect(container.querySelector('.Tasks-EventCard')).toBeVisible();
+        expect(container.querySelector('.Tasks-Calendar__eventBar')).toBeVisible();
+        expect(container.querySelector('.Tasks-CalendarCard')).not.toBeInTheDocument();
+
+        await userEvent.setup().click(screen.getByRole('button', {name: 'Sprint planning'}));
+        expect(onOpenEvent).toHaveBeenCalledWith('event-1');
+    });
+
     it('moves to the next period', async () => {
         const user = userEvent.setup();
         renderCalendar();
@@ -166,7 +206,7 @@ describe('Calendar', () => {
         fetchTasksMock.mockResolvedValue(page([]));
         renderCalendar();
 
-        expect(await screen.findByText('No tasks with due dates in this period.')).toBeVisible();
+        expect(await screen.findByText('No tasks or events in this period.')).toBeVisible();
         expect(screen.getByText('No tasks due this day.')).toBeVisible();
         expect(screen.getByRole('tab', {name: 'Month'})).toBeVisible();
     });

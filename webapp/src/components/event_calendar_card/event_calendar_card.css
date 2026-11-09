@@ -1,0 +1,51 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-EventCard {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    padding: var(--spacing-xs) var(--spacing-s);
+    border: 1px solid rgba(var(--button-bg-rgb), 0.24);
+    border-left: 3px solid var(--button-bg);
+    border-radius: var(--radius-s);
+    background: rgba(var(--button-bg-rgb), 0.06);
+    cursor: pointer;
+}
+
+.Tasks-EventCard:hover {
+    border-color: rgba(var(--button-bg-rgb), 0.56);
+    background: rgba(var(--button-bg-rgb), 0.10);
+}
+
+.Tasks-EventCard__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xxs);
+    color: var(--button-bg);
+    font-size: var(--font-size-25);
+    line-height: var(--line-height-25);
+}
+
+.Tasks-EventCard__title {
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    background: none;
+    color: var(--center-channel-color);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--font-size-75);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-75);
+    overflow-wrap: anywhere;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.Tasks-EventCard:hover .Tasks-EventCard__title {
+    color: var(--button-bg);
+}

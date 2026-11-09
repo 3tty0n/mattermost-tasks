@@ -20,6 +20,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
 
 	"github.com/3tty0n/mattermost-tasks/server/access"
+	"github.com/3tty0n/mattermost-tasks/server/events"
 	taskmodel "github.com/3tty0n/mattermost-tasks/server/model"
 	"github.com/3tty0n/mattermost-tasks/server/tasks"
 )
@@ -30,16 +31,18 @@ type Handler struct {
 	client    *pluginapi.Client
 	access    *access.Checker
 	tasks     *tasks.Service
+	events    *events.EventService
 	router    *mux.Router
 }
 
 // NewHandler builds the API router.
-func NewHandler(pluginAPI plugin.API, client *pluginapi.Client, checker *access.Checker, tasksService *tasks.Service) *Handler {
+func NewHandler(pluginAPI plugin.API, client *pluginapi.Client, checker *access.Checker, tasksService *tasks.Service, eventService *events.EventService) *Handler {
 	h := &Handler{
 		pluginAPI: pluginAPI,
 		client:    client,
 		access:    checker,
 		tasks:     tasksService,
+		events:    eventService,
 	}
 	h.router = h.initRouter()
 	return h
@@ -62,6 +65,12 @@ func (h *Handler) initRouter() *mux.Router {
 	// production reverse proxies reject PATCH before the request reaches Mattermost.
 	apiRouter.HandleFunc("/tasks/{task_id}", h.handleUpdateTask).Methods(http.MethodPatch, http.MethodPost)
 	apiRouter.HandleFunc("/tasks/{task_id}", h.handleDeleteTask).Methods(http.MethodDelete)
+
+	apiRouter.HandleFunc("/events", h.handleListEvents).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/events", h.handleCreateEvent).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/events/{event_id}", h.handleGetEvent).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/events/{event_id}", h.handleUpdateEvent).Methods(http.MethodPatch, http.MethodPost)
+	apiRouter.HandleFunc("/events/{event_id}", h.handleDeleteEvent).Methods(http.MethodDelete)
 
 	apiRouter.HandleFunc("/assignees", h.handleListAssignees).Methods(http.MethodGet)
 

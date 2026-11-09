@@ -4,8 +4,10 @@
 import {fireEvent, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
+    createEvent,
     createTask,
     fetchAssignees,
+    fetchEvents,
     fetchTasks,
     getProfiles,
     getProfilePictureUrl,
@@ -22,23 +24,30 @@ import {renderWithStore, ids} from '../../../tests/test_utils';
 jest.mock('client', () => ({
     ApiError: class ApiError extends Error {},
     createBookmark: jest.fn(),
+    createEvent: jest.fn(),
     createTask: jest.fn(),
     deleteBookmark: jest.fn(),
+    deleteEvent: jest.fn(),
     deleteTask: jest.fn(),
     fetchAssignees: jest.fn(),
+    fetchEvents: jest.fn(),
     fetchTasks: jest.fn(),
     getBookmark: jest.fn(),
+    getEvent: jest.fn(),
     getProfiles: jest.fn(),
     getProfilePictureUrl: jest.fn(),
     getSitePath: jest.fn(() => ''),
     getTask: jest.fn(),
     setSiteURL: jest.fn(),
     updateBookmark: jest.fn(),
+    updateEvent: jest.fn(),
     updateTask: jest.fn(),
 }));
 
 const createTaskMock = createTask as jest.MockedFunction<typeof createTask>;
+const createEventMock = createEvent as jest.MockedFunction<typeof createEvent>;
 const fetchTasksMock = fetchTasks as jest.MockedFunction<typeof fetchTasks>;
+const fetchEventsMock = fetchEvents as jest.MockedFunction<typeof fetchEvents>;
 const fetchAssigneesMock = fetchAssignees as jest.MockedFunction<typeof fetchAssignees>;
 const getProfilesMock = getProfiles as jest.MockedFunction<typeof getProfiles>;
 const getTaskMock = getTask as jest.MockedFunction<typeof getTask>;
@@ -67,6 +76,7 @@ describe('TasksSidebar', () => {
     beforeEach(() => {
         fetchTasksMock.mockResolvedValue(page([task(), task({id: 'task-2', title: 'Write docs', status: 'done', priority: 'normal', dueAt: undefined})]));
         fetchAssigneesMock.mockResolvedValue([]);
+        fetchEventsMock.mockResolvedValue({items: [], total: 0, page: 0, perPage: 100, hasMore: false});
         getProfilesMock.mockResolvedValue({});
         (getProfilePictureUrl as jest.Mock).mockReturnValue(undefined);
         updateTaskMock.mockResolvedValue({
@@ -78,6 +88,19 @@ describe('TasksSidebar', () => {
         createTaskMock.mockResolvedValue({
             ...task({title: 'New card'}),
             creatorId: ids.user,
+            version: 1,
+        });
+        createEventMock.mockResolvedValue({
+            id: 'event-1',
+            teamId: ids.team,
+            channelId: ids.channel,
+            visibility: 'channel',
+            creatorId: ids.user,
+            title: 'Sprint planning',
+            startAt: Date.now(),
+            endAt: Date.now() + 3600000,
+            createdAt: 1,
+            updatedAt: 1,
             version: 1,
         });
         getTaskMock.mockResolvedValue({
@@ -126,7 +149,7 @@ describe('TasksSidebar', () => {
             teamId: ids.team,
         }), expect.anything()));
         expect(screen.getByRole('tab', {name: 'Team'})).toHaveAttribute('aria-selected', 'true');
-        expect(screen.getByRole('tab', {name: 'My tasks'})).toBeVisible();
+        expect(screen.getByRole('tab', {name: 'Mine'})).toBeVisible();
         expect(screen.queryByRole('tab', {name: 'All'})).not.toBeInTheDocument();
     });
 
@@ -135,12 +158,12 @@ describe('TasksSidebar', () => {
         renderWithStore(<TasksSidebar/>);
         await screen.findByRole('button', {name: 'Pick up mail'});
 
-        await user.click(screen.getByRole('tab', {name: 'My tasks'}));
+        await user.click(screen.getByRole('tab', {name: 'Mine'}));
 
         await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
             scope: 'my',
         }), expect.anything()));
-        expect(screen.getByRole('tab', {name: 'My tasks'})).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('tab', {name: 'Mine'})).toHaveAttribute('aria-selected', 'true');
 
         await user.click(screen.getByRole('tab', {name: 'Team'}));
         await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -149,7 +172,7 @@ describe('TasksSidebar', () => {
         }), expect.anything()));
     });
 
-    it('falls back to My tasks without a team', async () => {
+    it('falls back to Mine without a team', async () => {
         renderWithStore(<TasksSidebar/>, (state) => {
             const teams = state.entities.teams as unknown as {
                 currentTeamId: string;
@@ -161,7 +184,7 @@ describe('TasksSidebar', () => {
             teams.myMembers = {};
         });
 
-        expect(await screen.findByRole('tab', {name: 'My tasks'})).toHaveAttribute('aria-selected', 'true');
+        expect(await screen.findByRole('tab', {name: 'Mine'})).toHaveAttribute('aria-selected', 'true');
         expect(screen.getByRole('tab', {name: 'Team'})).toHaveAttribute('aria-disabled', 'true');
         await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
             scope: 'my',
@@ -229,7 +252,7 @@ describe('TasksSidebar', () => {
         await screen.findByRole('button', {name: 'Pick up mail'});
         await user.click(screen.getByRole('button', {name: 'Calendar view'}));
 
-        const day = await screen.findByRole('button', {name: /, (no tasks|\d+ tasks)$/, pressed: true});
+        const day = await screen.findByRole('button', {name: /, (no events|\d+ events)$/, pressed: true});
         const now = new Date();
         await user.dblClick(day);
 
@@ -243,6 +266,25 @@ describe('TasksSidebar', () => {
             dueHasTime: false,
         })));
         expect(screen.queryByRole('button', {name: 'Back to tasks'})).not.toBeInTheDocument();
+        expect(screen.getByRole('tab', {name: 'Month'})).toBeVisible();
+    });
+
+    it('creates an event from the calendar agenda', async () => {
+        const user = userEvent.setup();
+        renderWithStore(<TasksSidebar/>);
+        await screen.findByRole('button', {name: 'Pick up mail'});
+        await user.click(screen.getByRole('button', {name: 'Calendar view'}));
+        await screen.findByRole('tab', {name: 'Month'});
+
+        await user.click(await screen.findByRole('button', {name: /Add event on/}));
+        await user.type(await screen.findByLabelText('Title'), 'Sprint planning');
+        await user.click(screen.getByRole('button', {name: 'Save'}));
+
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'Sprint planning',
+            visibility: 'channel',
+            channelId: ids.channel,
+        })));
         expect(screen.getByRole('tab', {name: 'Month'})).toBeVisible();
     });
 
@@ -322,7 +364,7 @@ describe('TasksSidebar', () => {
         expect(screen.getByRole('button', {name: 'Open task'})).toBeVisible();
     });
 
-    it('shows My tasks and creates private tasks in a DM', async () => {
+    it('shows Mine and creates private tasks in a DM', async () => {
         const user = userEvent.setup();
         renderWithStore(<TasksSidebar/>, (state) => {
             const channels = state.entities.channels as unknown as {
@@ -341,7 +383,7 @@ describe('TasksSidebar', () => {
         });
         await screen.findByRole('button', {name: 'Pick up mail'});
 
-        expect(screen.getByRole('tab', {name: 'My tasks'})).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('tab', {name: 'Mine'})).toHaveAttribute('aria-selected', 'true');
         await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
             scope: 'my',
         }), expect.anything()));
