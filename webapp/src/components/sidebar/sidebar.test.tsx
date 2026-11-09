@@ -246,6 +246,14 @@ describe('TasksSidebar', () => {
         fireEvent.drop(target, {dataTransfer, clientY: 0});
 
         await waitFor(() => expect(updateTaskMock).toHaveBeenCalledWith('task-2', {position: 0.5}));
+
+        const source2 = screen.getByRole('button', {name: 'Pick up mail'}).closest('li') as HTMLElement;
+        const target2 = screen.getByRole('button', {name: 'Write docs'}).closest('li') as HTMLElement;
+        fireEvent.dragStart(source2, {dataTransfer});
+        fireEvent.dragOver(target2, {dataTransfer, clientY: 100});
+        fireEvent.drop(target2, {dataTransfer, clientY: 100});
+
+        await waitFor(() => expect(updateTaskMock).toHaveBeenCalledTimes(2));
     });
 
     it('filters by status', async () => {

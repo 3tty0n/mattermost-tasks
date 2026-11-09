@@ -3,7 +3,7 @@
 
 import {createTask, updateTask} from 'client';
 import {useAssignees, useProfiles, useTasks} from 'hooks';
-import {type FormEvent, useEffect, useMemo, useState} from 'react';
+import {type FormEvent, useEffect, useMemo, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {
@@ -90,6 +90,7 @@ export default function TasksSidebar() {
     const [draggedTaskID, setDraggedTaskID] = useState<string>();
     const [dropIndicator, setDropIndicator] = useState<{taskID: string; after: boolean}>();
     const [dropColumn, setDropColumn] = useState<TaskStatus>();
+    const moveQueue = useRef<Promise<void>>(Promise.resolve());
 
     const isDM = currentChannel?.type === 'D';
     const canUseChannel = currentChannel && isTeamChannel(currentChannel);
@@ -248,12 +249,14 @@ export default function TasksSidebar() {
             ...(dragged.status === status ? {} : {status}),
         };
         setActionError(undefined);
-        try {
-            await updateTask(taskID, patch);
-            refreshTasks();
-        } catch (err) {
-            setActionError(err instanceof Error ? err.message : String(err));
-        }
+        moveQueue.current = moveQueue.current.then(async () => {
+            try {
+                await updateTask(taskID, patch);
+                refreshTasks();
+            } catch (err) {
+                setActionError(err instanceof Error ? err.message : String(err));
+            }
+        });
     };
 
     const setTaskStatus = async (taskID: string, status: Task['status']) => {
@@ -465,10 +468,11 @@ export default function TasksSidebar() {
                                 }}
                                 onDrop={(event) => {
                                     event.preventDefault();
-                                    if (draggedTaskID) {
-                                        moveTask(draggedTaskID, status);
-                                        setDraggedTaskID(undefined);
+                                    const taskID = event.dataTransfer.getData('text/plain');
+                                    if (taskID) {
+                                        moveTask(taskID, status);
                                     }
+                                    setDraggedTaskID(undefined);
                                     clearDropIndicator();
                                 }}
                             >
@@ -581,13 +585,14 @@ export default function TasksSidebar() {
                                             onDrop={(event) => {
                                                 event.preventDefault();
                                                 event.stopPropagation();
-                                                if (!draggedTaskID || draggedTaskID === task.id) {
+                                                const taskID = event.dataTransfer.getData('text/plain');
+                                                if (!taskID || taskID === task.id) {
                                                     clearDropIndicator();
                                                     return;
                                                 }
                                                 const rect = event.currentTarget.getBoundingClientRect();
                                                 const after = event.clientY > rect.top + (rect.height / 2);
-                                                moveTask(draggedTaskID, task.status, task.id, after);
+                                                moveTask(taskID, task.status, task.id, after);
                                                 setDraggedTaskID(undefined);
                                                 clearDropIndicator();
                                             }}
@@ -655,15 +660,16 @@ export default function TasksSidebar() {
                                 }}
                                 onDrop={(event) => {
                                     event.preventDefault();
-                                    if (!draggedTaskID || draggedTaskID === task.id) {
+                                    const taskID = event.dataTransfer.getData('text/plain');
+                                    if (!taskID || taskID === task.id) {
                                         clearDropIndicator();
                                         return;
                                     }
                                     const rect = event.currentTarget.getBoundingClientRect();
                                     const after = event.clientY > rect.top + (rect.height / 2);
-                                    const dragged = tasks.data?.items.find((item) => item.id === draggedTaskID);
+                                    const dragged = tasks.data?.items.find((item) => item.id === taskID);
                                     if (dragged) {
-                                        moveTask(draggedTaskID, dragged.status, task.id, after, false);
+                                        moveTask(taskID, dragged.status, task.id, after, false);
                                     }
                                     setDraggedTaskID(undefined);
                                     clearDropIndicator();

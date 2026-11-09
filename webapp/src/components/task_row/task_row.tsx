@@ -118,30 +118,30 @@ function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatu
                     {scopeLabel && (
                         <span className='Tasks-TaskRow__scope'>{scopeLabel}</span>
                     )}
+                    <div className='Tasks-TaskRow__assignees'>
+                        {visibleAssignees.map((userId) => {
+                            const profile = profiles[userId];
+                            const name = profileName(profile, userId);
+                            return (
+                                <UserAvatar
+                                    key={userId}
+                                    alt={name}
+                                    name={name}
+                                    src={getProfilePictureUrl(profile)}
+                                    size='20'
+                                />
+                            );
+                        })}
+                        {extraAssignees > 0 && (
+                            <span
+                                className='Tasks-TaskRow__extra'
+                                aria-label={intl.formatMessage({id: 'tasks.row.more_assignees', defaultMessage: '{count} more assignees'}, {count: extraAssignees})}
+                            >
+                                {`+${extraAssignees}`}
+                            </span>
+                        )}
+                    </div>
                 </div>
-            </div>
-            <div className='Tasks-TaskRow__assignees'>
-                {visibleAssignees.map((userId) => {
-                    const profile = profiles[userId];
-                    const name = profileName(profile, userId);
-                    return (
-                        <UserAvatar
-                            key={userId}
-                            alt={name}
-                            name={name}
-                            src={getProfilePictureUrl(profile)}
-                            size='20'
-                        />
-                    );
-                })}
-                {extraAssignees > 0 && (
-                    <span
-                        className='Tasks-TaskRow__extra'
-                        aria-label={intl.formatMessage({id: 'tasks.row.more_assignees', defaultMessage: '{count} more assignees'}, {count: extraAssignees})}
-                    >
-                        {`+${extraAssignees}`}
-                    </span>
-                )}
             </div>
             {draggable && (
                 <span
