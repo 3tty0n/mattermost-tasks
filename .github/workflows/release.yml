@@ -66,6 +66,8 @@ jobs:
           test -f "$bundle"
           tar -tzf "$bundle" > dist/bundle-contents.txt
           grep -qx "com.github.3tty0n.mattermost-tasks/plugin.json" dist/bundle-contents.txt
+          executable="$(jq -r '.server.executables["linux-amd64"]' plugin.json)"
+          test -f "dist/com.github.3tty0n.mattermost-tasks/${executable}"
           sha256sum "$bundle" > dist/SHA256SUMS
 
       - name: Publish GitHub release

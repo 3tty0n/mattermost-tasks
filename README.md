@@ -64,6 +64,9 @@ generator is in [`docs/images/generate_mockups.py`](docs/images/generate_mockups
 3. Upload the bundle and enable **Tasks**.
 4. Optional: disable assignment notifications in the plugin settings.
 
+Release bundles are built for **linux-amd64** only. This keeps the download small (about 8 MB);
+build from source for another server OS or architecture.
+
 The plugin has no external service or separate database. Task data lives in the Mattermost
 database's plugin KV store.
 
