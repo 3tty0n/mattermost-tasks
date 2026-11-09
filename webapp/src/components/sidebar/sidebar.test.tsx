@@ -147,6 +147,24 @@ describe('TasksSidebar', () => {
         expect(screen.queryByRole('combobox', {name: 'Status'})).not.toBeInTheDocument();
     });
 
+    it('opens the calendar view with due-date tasks', async () => {
+        const user = userEvent.setup();
+        renderWithStore(<TasksSidebar/>);
+        await screen.findByRole('button', {name: 'Pick up mail'});
+
+        await user.click(screen.getByRole('button', {name: 'Calendar view'}));
+
+        expect(await screen.findByRole('tab', {name: 'Month'})).toBeVisible();
+        expect(screen.getByRole('button', {name: 'Next period'})).toBeVisible();
+        await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
+            hasDue: true,
+            sortBy: 'due',
+            perPage: 100,
+        }), expect.anything()));
+        expect(screen.queryByRole('combobox', {name: 'Due'})).not.toBeInTheDocument();
+        expect(screen.queryByRole('combobox', {name: 'Sort'})).not.toBeInTheDocument();
+    });
+
     it('opens task details when a list card is clicked', async () => {
         const user = userEvent.setup();
         renderWithStore(<TasksSidebar/>);

@@ -3,7 +3,7 @@
 
 import {createTask, updateTask} from 'client';
 import {useAssignees, useProfiles, useTasks} from 'hooks';
-import {type FormEvent, useEffect, useMemo, useRef, useState} from 'react';
+import {type FormEvent, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
 import {
@@ -17,6 +17,7 @@ import {
 } from 'state';
 import {nextStatus, positionBetween, statusLabel} from 'utils';
 
+import CalendarOutlineIcon from '@mattermost/compass-icons/components/calendar-outline';
 import FormatListBulletedIcon from '@mattermost/compass-icons/components/format-list-bulleted';
 import KanbanIcon from '@mattermost/compass-icons/components/kanban';
 import PlusIcon from '@mattermost/compass-icons/components/plus';
@@ -29,6 +30,7 @@ import {Spinner} from '@mattermost/compass-ui/components/spinner';
 
 import {selectAllChannels, selectCurrentChannel, selectCurrentTeam, selectCurrentUserId, selectMyTeams, selectTeams} from 'selectors';
 
+import Calendar from 'components/calendar/calendar';
 import TaskCard from 'components/task_card/task_card';
 import TaskDescriptionDialog from 'components/task_description_dialog/task_description_dialog';
 import TaskDetail from 'components/task_detail/task_detail';
@@ -76,7 +78,7 @@ export default function TasksSidebar() {
     const openTaskId = useSelector(getOpenTaskId);
     const composer = useSelector(getComposer);
 
-    const [view, setView] = useState<'list' | 'board'>('list');
+    const [view, setView] = useState<'list' | 'board' | 'calendar'>('list');
     const [filters, setFilters] = useState<TaskFiltersState>(DEFAULT_TASK_FILTERS);
     const [page, setPage] = useState(0);
     const [reload, setReload] = useState(0);
@@ -132,7 +134,7 @@ export default function TasksSidebar() {
     }, [composer]);
 
     const taskQuery = useMemo<TaskQuery | null>(() => {
-        if (!isDM && !teamID) {
+        if (view === 'calendar' || (!isDM && !teamID)) {
             return null;
         }
 
@@ -210,6 +212,8 @@ export default function TasksSidebar() {
     };
 
     const refreshTasks = () => dispatch(remoteEvent());
+
+    const openCalendarTask = useCallback((taskID: string) => dispatch(openTask(taskID)), [dispatch]);
 
     const manualOrder = filters.sort === 'manual';
 
@@ -385,6 +389,13 @@ export default function TasksSidebar() {
                         onClick={() => setView('board')}
                     />
                     <IconButton
+                        size='small'
+                        toggled={view === 'calendar'}
+                        icon={<Icon glyph={<CalendarOutlineIcon/>}/>}
+                        aria-label={intl.formatMessage({id: 'tasks.view.calendar', defaultMessage: 'Calendar view'})}
+                        onClick={() => setView('calendar')}
+                    />
+                    <IconButton
                         icon={<Icon glyph={<PlusIcon/>}/>}
                         aria-label={intl.formatMessage({id: 'tasks.new', defaultMessage: 'New task'})}
                         onClick={openCreate}
@@ -415,6 +426,8 @@ export default function TasksSidebar() {
                 filters={filters}
                 assignees={filterAssignees.data}
                 showStatus={view === 'list'}
+                showDue={view !== 'calendar'}
+                showSort={view !== 'calendar'}
                 onChange={(next) => {
                     setFilters((previous) => ({...previous, ...next}));
                     setPage(0);
@@ -704,6 +717,17 @@ export default function TasksSidebar() {
                         </div>
                     )}
                 </>
+            )}
+
+            {view === 'calendar' && (isDM || teamID) && (
+                <Calendar
+                    scope={isDM ? 'my' : 'team'}
+                    teamId={isDM ? undefined : teamID}
+                    priority={filters.priority || undefined}
+                    assigneeId={filters.assigneeId || undefined}
+                    revision={tasksRevision}
+                    onOpenTask={openCalendarTask}
+                />
             )}
 
             {taskEditor && (

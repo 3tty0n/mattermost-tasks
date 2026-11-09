@@ -1,0 +1,287 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-Calendar {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    container-type: inline-size;
+}
+
+.Tasks-Calendar__toolbar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--spacing-xxs);
+    padding: var(--spacing-xs) var(--spacing-m);
+    border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+}
+
+.Tasks-Calendar__nav {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: var(--spacing-xxxs);
+    min-width: 0;
+}
+
+.Tasks-Calendar__period {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    color: var(--center-channel-color);
+    font-size: var(--font-size-100);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-100);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.Tasks-Calendar__today {
+    flex: none;
+}
+
+.Tasks-Calendar__todayCompact {
+    display: none;
+    flex: none;
+}
+
+.Tasks-Calendar__modes {
+    flex: none;
+}
+
+.Tasks-Calendar__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.Tasks-Calendar__notice {
+    padding: var(--spacing-s) var(--spacing-m) 0;
+}
+
+.Tasks-Calendar__periodEmpty {
+    margin: 0;
+    padding: var(--spacing-s) var(--spacing-m) 0;
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+    font-size: var(--font-size-50);
+    line-height: var(--line-height-50);
+}
+
+.Tasks-Calendar__month {
+    flex: none;
+    padding: var(--spacing-s) var(--spacing-m) 0;
+}
+
+.Tasks-Calendar__weekdays,
+.Tasks-Calendar__days {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 2px;
+}
+
+.Tasks-Calendar__weekday {
+    padding: 0 0 var(--spacing-xxs);
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-25);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-25);
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.Tasks-Calendar__day {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-height: 46px;
+    padding: 3px 4px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-s);
+    background: transparent;
+    color: var(--center-channel-color);
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+}
+
+.Tasks-Calendar__day:hover {
+    background: rgba(var(--center-channel-color-rgb), 0.06);
+}
+
+.Tasks-Calendar__day:focus-visible {
+    outline: 2px solid var(--button-bg);
+    outline-offset: 1px;
+}
+
+.Tasks-Calendar__day--outside {
+    color: rgba(var(--center-channel-color-rgb), 0.40);
+}
+
+.Tasks-Calendar__day--selected {
+    border-color: rgba(var(--button-bg-rgb), 0.48);
+    background: rgba(var(--button-bg-rgb), 0.08);
+}
+
+.Tasks-Calendar__dayNumber {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    font-size: var(--font-size-50);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-50);
+}
+
+.Tasks-Calendar__day--today .Tasks-Calendar__dayNumber {
+    border-radius: var(--radius-pill);
+    background: var(--button-bg);
+    color: var(--button-color);
+}
+
+.Tasks-Calendar__dayCount {
+    position: absolute;
+    top: 3px;
+    right: 4px;
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-25);
+    line-height: var(--line-height-25);
+}
+
+.Tasks-Calendar__dots {
+    display: flex;
+    gap: 2px;
+    margin-top: auto;
+    padding: 2px 0;
+}
+
+.Tasks-Calendar__dot {
+    width: 4px;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: rgba(var(--center-channel-color-rgb), 0.32);
+}
+
+.Tasks-Calendar__dot--normal {
+    background: rgba(var(--button-bg-rgb), 0.72);
+}
+
+.Tasks-Calendar__dot--high {
+    background: var(--away-indicator, var(--button-bg));
+}
+
+.Tasks-Calendar__dot--urgent {
+    background: var(--error-text);
+}
+
+.Tasks-Calendar__agenda {
+    flex: none;
+    margin-top: var(--spacing-s);
+    padding: var(--spacing-s) var(--spacing-m) var(--spacing-m);
+    border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+}
+
+.Tasks-Calendar__agendaHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-xs);
+}
+
+.Tasks-Calendar__agendaTitle {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    color: var(--center-channel-color);
+    font-size: var(--font-size-75);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-75);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.Tasks-Calendar__agendaCount {
+    flex: none;
+    margin-left: auto;
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-25);
+    line-height: var(--line-height-25);
+}
+
+.Tasks-Calendar__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--spacing-xs);
+}
+
+.Tasks-Calendar__empty {
+    margin: 0;
+    padding: var(--spacing-xs) 0;
+    color: rgba(var(--center-channel-color-rgb), 0.48);
+    font-size: var(--font-size-50);
+    line-height: var(--line-height-50);
+}
+
+.Tasks-Calendar__week {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-s);
+    padding: var(--spacing-s) var(--spacing-m) var(--spacing-m);
+}
+
+.Tasks-Calendar__weekDay {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xxs);
+}
+
+.Tasks-Calendar__weekDayHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding-bottom: 2px;
+    border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+}
+
+.Tasks-Calendar__weekDayTitle {
+    margin: 0;
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: var(--font-size-50);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-50);
+}
+
+.Tasks-Calendar__weekDay--today .Tasks-Calendar__weekDayTitle {
+    color: var(--button-bg);
+}
+
+@container (max-width: 370px) {
+    .Tasks-Calendar__toolbar {
+        gap: var(--spacing-xxxs);
+        padding-right: var(--spacing-s);
+        padding-left: var(--spacing-s);
+    }
+
+    .Tasks-Calendar__today {
+        display: none;
+    }
+
+    .Tasks-Calendar__todayCompact {
+        display: inline-flex;
+    }
+}
+
+.Tasks-Calendar__weekDayCount {
+    flex: none;
+    margin-left: auto;
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-25);
+    line-height: var(--line-height-25);
+}

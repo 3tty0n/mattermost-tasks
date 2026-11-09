@@ -17,7 +17,7 @@ system, no external service, no second database.
 | --- | --- |
 | Team view in channels, My tasks in DMs | Create from any public/private channel post |
 | Private, team-wide or channel-only visibility | Name-only quick add in each board column |
-| List and Kanban board views | Assignment autocomplete with avatars and usernames |
+| List, board and calendar views | Assignment autocomplete with avatars and usernames |
 | Drag-and-drop manual ordering | Position persisted across reloads |
 | Todo / In progress / Done with drag-and-drop | Assignment notifications from a plugin bot |
 | Filters, sorting and pagination | `/task` slash commands for keyboard and mobile |
@@ -87,8 +87,12 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   **Only me** explicitly in the editor to keep a task private; it is always assigned to you.
   Channel visibility is still available for channel-specific work. **Only me** tasks appear in the
   Team view, but only for you.
-- **Views:** switch between List and Board with the header icons. The board fetches up to 100
-  cards; narrow the filters to see more.
+- **Views:** switch between List, Board and Calendar with the header icons. The board and calendar
+  fetch up to 100 tasks; narrow the filters to see more.
+- **Calendar:** only tasks with a due date appear. Week view lists each day's cards; month view
+  uses compact per-day dots and counts, with the selected day's cards below the grid. Cards show
+  the task name, priority, time and assignees. Use the arrows or **Today** to move, and
+  **Week / Month** to switch the period; arrow keys move between days.
 - **Manual order:** the default sort is **Manual**. Drag a list row or board card to reorder it;
   drop on the upper/lower half to place before/after the target. Positions are saved on the server.
 - **Quick add:** the **+** at the top right of each board column creates a task in that column
@@ -105,6 +109,7 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   time; leave it off for a date-only task.
 - **Filters:** status (list view), priority, assignee and due date; sort manually, by due date,
   creation date or priority. Dragging switches to a persistent manual order only in Manual sort.
+  The calendar always orders by due date and keeps the priority and assignee filters.
 
 ### Tasks from posts
 

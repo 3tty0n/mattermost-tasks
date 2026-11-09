@@ -1,0 +1,78 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-CalendarCard {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    padding: var(--spacing-xs) var(--spacing-s);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+    border-radius: var(--radius-s);
+    background: var(--center-channel-bg);
+    cursor: pointer;
+}
+
+.Tasks-CalendarCard:hover {
+    border-color: rgba(var(--button-bg-rgb), 0.48);
+    background: rgba(var(--button-bg-rgb), 0.04);
+}
+
+.Tasks-CalendarCard:focus-within {
+    border-color: var(--button-bg);
+}
+
+.Tasks-CalendarCard__title {
+    display: -webkit-box;
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    background: none;
+    color: var(--center-channel-color);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--font-size-75);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-75);
+    overflow-wrap: anywhere;
+    text-align: left;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.Tasks-CalendarCard:hover .Tasks-CalendarCard__title {
+    color: var(--button-bg);
+}
+
+.Tasks-CalendarCard--done .Tasks-CalendarCard__title {
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    text-decoration: line-through;
+}
+
+.Tasks-CalendarCard__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-xxs);
+    min-width: 0;
+}
+
+.Tasks-CalendarCard__time {
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+    font-size: var(--font-size-25);
+    line-height: var(--line-height-25);
+    white-space: nowrap;
+}
+
+.Tasks-CalendarCard__assignees {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xxxxs);
+    margin-left: auto;
+}
+
+.Tasks-CalendarCard__extra {
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+    font-size: var(--font-size-50);
+}

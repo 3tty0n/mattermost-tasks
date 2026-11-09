@@ -34,9 +34,11 @@ type Props = {
     onChange: (next: Partial<TaskFiltersState>) => void;
     assignees?: Assignee[];
     showStatus?: boolean;
+    showDue?: boolean;
+    showSort?: boolean;
 };
 
-export default function TaskFilters({filters, onChange, assignees, showStatus = true}: Props) {
+export default function TaskFilters({filters, onChange, assignees, showStatus = true, showDue = true, showSort = true}: Props) {
     const intl = useIntl();
     const people = assignees ?? [];
 
@@ -91,20 +93,24 @@ export default function TaskFilters({filters, onChange, assignees, showStatus = 
                 value={filters.assigneeId}
                 onChange={(value) => onChange({assigneeId: value})}
             />
-            <Select
-                size='small'
-                label={intl.formatMessage({id: 'tasks.filters.due', defaultMessage: 'Due'})}
-                options={dueOptions}
-                value={filters.due}
-                onChange={(value) => onChange({due: value as TaskDueFilter})}
-            />
-            <Select
-                size='small'
-                label={intl.formatMessage({id: 'tasks.filters.sort', defaultMessage: 'Sort'})}
-                options={sortOptions}
-                value={filters.sort}
-                onChange={(value) => onChange({sort: value as TaskSortFilter})}
-            />
+            {showDue && (
+                <Select
+                    size='small'
+                    label={intl.formatMessage({id: 'tasks.filters.due', defaultMessage: 'Due'})}
+                    options={dueOptions}
+                    value={filters.due}
+                    onChange={(value) => onChange({due: value as TaskDueFilter})}
+                />
+            )}
+            {showSort && (
+                <Select
+                    size='small'
+                    label={intl.formatMessage({id: 'tasks.filters.sort', defaultMessage: 'Sort'})}
+                    options={sortOptions}
+                    value={filters.sort}
+                    onChange={(value) => onChange({sort: value as TaskSortFilter})}
+                />
+            )}
         </div>
     );
 }
