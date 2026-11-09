@@ -115,8 +115,9 @@ notifications but leaves tasks working.
 - No full KV scans: each list reads at most `4` shards per requested index.
 - The list response is bounded to 100 per page; the webapp loads 20 by default.
 - No outbound HTTP.
-- Release builds use `-trimpath -ldflags "-s -w -buildid="` and one linux-amd64 binary to keep
-  the downloadable bundle small.
+- Release builds use `-trimpath -ldflags "-s -w -buildid="`. The default bundle contains only a
+  linux-amd64 binary; darwin-amd64 and darwin-arm64 are added only when the release workflow is
+  explicitly dispatched with `macos=true`.
 - The webapp bundle uses Compass components already loaded by the host and avoids mattermost-redux.
 
 ## Limitations

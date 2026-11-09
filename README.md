@@ -69,8 +69,10 @@ generator is in [`docs/images/generate_mockups.py`](docs/images/generate_mockups
 3. Upload the bundle and enable **Tasks**.
 4. Optional: disable assignment notifications in the plugin settings.
 
-Release bundles are built for **linux-amd64** only. This keeps the download small (about 8 MB);
-build from source for another server OS or architecture.
+Release bundles are **linux-amd64** by default (about 8 MB). Maintainers can explicitly publish a
+bundle that also contains **darwin-amd64** and **darwin-arm64** macOS binaries by running the
+release workflow with `macos=true`; that bundle is larger. Build from source for any other
+platform.
 
 The plugin has no external service or separate database. Task data lives in the Mattermost
 database's plugin KV store.
@@ -172,6 +174,7 @@ Requirements: Go 1.26+, Node.js 22+, npm, Docker for integration tests.
 ```bash
 make apply                  # generate manifests from plugin.json
 make test                   # server + webapp tests and the bundle
+gh workflow run release.yml --ref main -f macos=true   # opt-in macOS release bundle
 SKIP_DOCKER_TESTS=1 go test ./server/...
 cd webapp && npx jest --runInBand
 ```

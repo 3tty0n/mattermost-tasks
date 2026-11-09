@@ -10,6 +10,7 @@ MM_UTILITIES_DIR ?= ../mattermost-utilities
 DLV_DEBUG_PORT := 2346
 DEFAULT_GOOS := $(shell go env GOOS)
 DEFAULT_GOARCH := $(shell go env GOARCH)
+EXTRA_SERVER_PLATFORMS ?=
 
 export GO111MODULE=on
 
@@ -224,6 +225,21 @@ else
 endif
 endif
 
+## Builds extra server platforms into server/dist after the default build.
+## Example: make dist EXTRA_SERVER_PLATFORMS="darwin-amd64 darwin-arm64"
+.PHONY: server-extra
+server-extra: server
+ifneq ($(HAS_SERVER),)
+ifneq ($(strip $(EXTRA_SERVER_PLATFORMS)),)
+	@for platform in $(EXTRA_SERVER_PLATFORMS); do \
+		goos="$${platform%%-*}"; \
+		goarch="$${platform#*-}"; \
+		echo "Building plugin for $$goos-$$goarch"; \
+		(cd server && env CGO_ENABLED=0 GOOS=$$goos GOARCH=$$goarch $(GO) build $(GO_BUILD_FLAGS) $(GO_BUILD_GCFLAGS) -trimpath -ldflags "$(GO_BUILD_LDFLAGS)" -o dist/plugin-$$goos-$$goarch) || exit 1; \
+	done
+endif
+endif
+
 ## Ensures NPM dependencies are installed without having to run this all the time.
 webapp/node_modules: $(wildcard webapp/package.json)
 ifneq ($(HAS_WEBAPP),)
@@ -272,7 +288,7 @@ endif
 
 ## Builds and bundles the plugin.
 .PHONY: dist
-dist: apply server webapp bundle
+dist: apply server-extra webapp bundle
 
 ## Builds and installs the plugin to a server.
 .PHONY: deploy

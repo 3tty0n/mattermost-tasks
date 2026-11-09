@@ -2,15 +2,17 @@
 
 ## Requirements
 
-- Mattermost 11.7.0 or newer on **linux-amd64** for the prebuilt release. Other server
-  OS/architectures must build from source.
+- Mattermost 11.7.0 or newer. Prebuilt releases target **linux-amd64** by default; a maintainer
+  can explicitly publish a bundle with **darwin-amd64**/**darwin-arm64** macOS binaries. Other
+  server OS/architectures must build from source.
 - No external database or service. The plugin uses the Mattermost plugin KV store.
 - No special outbound network access.
 
 ## Install
 
 1. Build or download the bundle: `dist/com.github.3tty0n.mattermost-tasks-<version>.tar.gz`.
-   Release bundles are stripped (`-s -w`) and contain one linux-amd64 server binary.
+   Release bundles are stripped (`-s -w`). The default release contains one linux-amd64 server
+   binary; macOS binaries are included only in a release explicitly built with `macos=true`.
 2. **System Console → Plugins → Plugin Management → Upload Plugin**.
 3. Enable **Tasks**.
 4. Optionally disable assignment notifications in the plugin settings.

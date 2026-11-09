@@ -2,6 +2,11 @@ name: release
 
 on:
   workflow_dispatch:
+    inputs:
+      macos:
+        description: Build and include macOS binaries (darwin-amd64 and darwin-arm64)
+        type: boolean
+        default: false
   push:
     tags:
       - "v*.*.*"
@@ -55,19 +60,56 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Build bundle
-        run: make dist
-
-      - name: Verify bundle
+      - name: Enable macOS executables
+        if: ${{ github.event.inputs.macos == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
-          bundle="dist/com.github.3tty0n.mattermost-tasks-${{ steps.version.outputs.version }}.tar.gz"
+          jq '.server.executables["darwin-amd64"] = "server/dist/plugin-darwin-amd64"
+              | .server.executables["darwin-arm64"] = "server/dist/plugin-darwin-arm64"' plugin.json > plugin.json.tmp
+          mv plugin.json.tmp plugin.json
+
+      - name: Build bundle
+        shell: bash
+        env:
+          INCLUDE_MACOS: ${{ github.event.inputs.macos }}
+        run: |
+          set -euo pipefail
+          if [[ "${INCLUDE_MACOS:-false}" == "true" ]]; then
+            make dist EXTRA_SERVER_PLATFORMS="darwin-amd64 darwin-arm64"
+          else
+            make dist
+          fi
+
+      - name: Verify bundle
+        shell: bash
+        env:
+          INCLUDE_MACOS: ${{ github.event.inputs.macos }}
+        run: |
+          set -euo pipefail
+          package="com.github.3tty0n.mattermost-tasks"
+          bundle="dist/${package}-${{ steps.version.outputs.version }}.tar.gz"
           test -f "$bundle"
           tar -tzf "$bundle" > dist/bundle-contents.txt
-          grep -qx "com.github.3tty0n.mattermost-tasks/plugin.json" dist/bundle-contents.txt
-          executable="$(jq -r '.server.executables["linux-amd64"]' plugin.json)"
-          test -f "dist/com.github.3tty0n.mattermost-tasks/${executable}"
+          grep -qx "${package}/plugin.json" dist/bundle-contents.txt
+
+          while IFS= read -r executable; do
+            test -n "$executable"
+            test -f "dist/${package}/${executable}"
+            grep -qx "${package}/${executable}" dist/bundle-contents.txt
+          done < <(jq -r '.server.executables[]' plugin.json)
+
+          if [[ "${INCLUDE_MACOS:-false}" == "true" ]]; then
+            for arch in amd64 arm64; do
+              file "dist/${package}/server/dist/plugin-darwin-${arch}" | grep -q "Mach-O 64-bit"
+            done
+          else
+            if tar -tzf "$bundle" | grep -q "plugin-darwin-"; then
+              echo "macOS binaries must not be included unless macos=true is set" >&2
+              exit 1
+            fi
+          fi
+
           sha256sum "$bundle" > dist/SHA256SUMS
 
       - name: Publish GitHub release
