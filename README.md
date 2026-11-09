@@ -15,7 +15,7 @@ system, no external service, no second database.
 
 | Plan and see work | Capture it quickly |
 | --- | --- |
-| One team-global task view | Create from any public/private channel post |
+| Team view in channels, My tasks in DMs | Create from any public/private channel post |
 | Private, team-wide or channel-only visibility | Name-only quick add in each board column |
 | List and Kanban board views | Assignment autocomplete with avatars and usernames |
 | Todo / In progress / Done with drag-and-drop | Assignment notifications from a plugin bot |
@@ -25,12 +25,12 @@ system, no external service, no second database.
 **Due dates the way you expect:** a date is date-only by default. Open the calendar, choose a day,
 and press **OK**. Enable **Set time** only when you need a time.
 
-**One view, team-global:** the sidebar always shows the current team's tasks plus your own
-**Only me** tasks. There are no My tasks / Team / Channel / All tabs to switch between. New tasks
-default to **Team** visibility; choose **Only me** in the editor, or use **Create task** on one of
-your own DM messages, to make a private task. Private-channel tasks are filtered from lists and
-return 404 to non-members. Every route re-checks this on the server, and the plugin never fetches
-URLs or stores data outside the plugin KV store.
+**One contextual view:** in a team channel the sidebar is **Team** and shows the current team's
+tasks plus your own **Only me** tasks. In a DM it is **My tasks** and shows tasks assigned to you.
+There are no My tasks / Team / Channel / All tabs to switch between. New tasks default to **Team**
+in channels and **Only me** in DMs; you can also choose **Only me** explicitly in the editor.
+Private-channel tasks are filtered from lists and return 404 to non-members. Every route re-checks
+this on the server, and the plugin never fetches URLs or stores data outside the plugin KV store.
 
 ## UI previews
 
@@ -76,15 +76,17 @@ webapps; use the `/task` slash command there.
 
 Click the check-circle icon in the channel header to open the Tasks sidebar.
 
-- **One view:** the sidebar shows all tasks in the current team that you can read, plus your own
-  **Only me** tasks. There are no My tasks / Team / Channel / All tabs.
-- **Visibility:** new tasks default to **Team**. Choose **Only me** in the editor to keep a task
-  private; it is always assigned to you. Channel visibility is still available for
-  channel-specific work. **Only me** tasks appear in the same team view, but only for you.
+- **Contextual view, no tabs:** in a team channel the heading is **Team** and the view shows the
+  current team's readable tasks plus your own **Only me** tasks. In a DM the heading is
+  **My tasks** and the view shows tasks assigned to you.
+- **Visibility:** new tasks default to **Team** in channels and **Only me** in DMs. Choose
+  **Only me** explicitly in the editor to keep a task private; it is always assigned to you.
+  Channel visibility is still available for channel-specific work. **Only me** tasks appear in the
+  Team view, but only for you.
 - **Views:** switch between List and Board with the header icons. The board fetches up to 100
   cards; narrow the filters to see more.
-- **Quick add:** the **+** at the top right of each board column creates a team-visible task in
-  that column using only its name.
+- **Quick add:** the **+** at the top right of each board column creates a task in that column
+  using only its name. It follows the context: team-visible in channels, Only me in DMs.
 - **Assignees:** focusing the assignee box immediately lists eligible users. Results show the
   user's avatar, display name and `@username`; search matches username, first name, last name and
   nickname before you add them.
@@ -103,7 +105,8 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
 Every post in a public or private channel has **Create task** in its **⋯** menu. The editor is
 prefilled with the post's first line and body; a channel post creates a channel-visible task with
 a source backlink. On **your own DM message**, the same action creates an **Only me** task using
-the message text. The server re-checks the post's channel and the user's read permission.
+the message text; the DM view shows it under **My tasks**. The server re-checks the post's channel
+and the user's read permission.
 
 ### Creating an Only-me task
 
@@ -112,7 +115,7 @@ There are two ways:
 1. In the task editor, open **More fields → Who can see this task?** and choose **Only me**.
 2. In a DM, use **Create task** on one of your own messages.
 
-Normal creation from the Tasks sidebar and Name-only quick add create team-visible tasks.
+In a team channel, normal creation and Name-only quick add create team-visible tasks.
 
 ### Slash commands
 

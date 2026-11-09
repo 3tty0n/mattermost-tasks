@@ -125,6 +125,7 @@ describe('TasksSidebar', () => {
             scope: 'team',
             teamId: ids.team,
         }), expect.anything()));
+        expect(screen.getByText('Team')).toBeVisible();
         expect(screen.queryByRole('tab', {name: 'My tasks'})).not.toBeInTheDocument();
         expect(screen.queryByRole('tab', {name: 'All'})).not.toBeInTheDocument();
     });
@@ -190,6 +191,42 @@ describe('TasksSidebar', () => {
 
         expect(await screen.findByText('**Board description**')).toBeVisible();
         expect(screen.getByRole('button', {name: 'Open task'})).toBeVisible();
+    });
+
+    it('shows My tasks and creates private tasks in a DM', async () => {
+        const user = userEvent.setup();
+        renderWithStore(<TasksSidebar/>, (state) => {
+            const channels = state.entities.channels as unknown as {
+                currentChannelId: string;
+                channels: Record<string, unknown>;
+            };
+            channels.currentChannelId = 'dm-channel';
+            channels.channels['dm-channel'] = {
+                id: 'dm-channel',
+                team_id: '',
+                name: 'dm',
+                display_name: 'DM',
+                type: 'D',
+                delete_at: 0,
+            };
+        });
+        await screen.findByRole('button', {name: 'Pick up mail'});
+
+        expect(screen.getByText('My tasks')).toBeVisible();
+        await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
+            scope: 'my',
+        }), expect.anything()));
+
+        await user.click(screen.getByRole('button', {name: 'Board view'}));
+        await user.click(screen.getByRole('button', {name: 'Add task to To do'}));
+        await user.type(screen.getByLabelText('Task name'), 'Private card');
+        await user.click(screen.getByRole('button', {name: 'Add'}));
+
+        await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'Private card',
+            visibility: 'private',
+            assigneeIds: [ids.user],
+        })));
     });
 
     it('filters by status', async () => {

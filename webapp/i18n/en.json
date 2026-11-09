@@ -116,5 +116,6 @@
   "tasks.inline.edit_description": "Edit description",
   "tasks.inline.hint": "Click a field to edit. Click outside to save; Esc to cancel.",
   "tasks.inline.name": "Task name",
-  "tasks.view.team_heading": "Team tasks"
+  "tasks.view.team_heading": "Team",
+  "tasks.view.my_heading": "My tasks"
 }

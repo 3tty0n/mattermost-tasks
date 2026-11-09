@@ -27,7 +27,7 @@ import {IconButton} from '@mattermost/compass-ui/components/icon-button';
 import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
 import {Spinner} from '@mattermost/compass-ui/components/spinner';
 
-import {selectAllChannels, selectCurrentChannel, selectCurrentTeam, selectCurrentUserId} from 'selectors';
+import {selectAllChannels, selectCurrentChannel, selectCurrentTeam, selectCurrentUserId, selectMyTeams, selectTeams} from 'selectors';
 
 import TaskCard from 'components/task_card/task_card';
 import TaskDescriptionDialog from 'components/task_description_dialog/task_description_dialog';
@@ -66,6 +66,8 @@ export default function TasksSidebar() {
     const dispatch = useDispatch();
     const currentTeam = useSelector(selectCurrentTeam);
     const currentChannel = useSelector(selectCurrentChannel);
+    const teams = useSelector(selectTeams);
+    const myTeams = useSelector(selectMyTeams);
     const channels = useSelector(selectAllChannels);
     const currentUserId = useSelector(selectCurrentUserId);
     const tasksRevision = useSelector(getTasksRevision);
@@ -84,13 +86,14 @@ export default function TasksSidebar() {
     const [quickAddSaving, setQuickAddSaving] = useState(false);
     const [quickAddError, setQuickAddError] = useState<string>();
 
+    const isDM = currentChannel?.type === 'D';
     const canUseChannel = currentChannel && isTeamChannel(currentChannel);
     const teamID = currentTeam?.id;
     const channelID = canUseChannel ? currentChannel?.id : undefined;
 
     useEffect(() => {
         setPage(0);
-    }, [teamID, channelID, view]);
+    }, [teamID, channelID, view, isDM]);
 
     useEffect(() => {
         setQuickAddStatus(undefined);
@@ -120,7 +123,7 @@ export default function TasksSidebar() {
     }, [composer]);
 
     const taskQuery = useMemo<TaskQuery | null>(() => {
-        if (!teamID) {
+        if (!isDM && !teamID) {
             return null;
         }
 
@@ -141,8 +144,8 @@ export default function TasksSidebar() {
 
         const {sortBy, direction} = sortFor(filters.sort);
         return {
-            scope: 'team',
-            teamId: teamID,
+            scope: isDM ? 'my' : 'team',
+            teamId: isDM ? undefined : teamID,
             statuses: view === 'list' && filters.status ? [filters.status] : undefined,
             priority: filters.priority || undefined,
             assigneeId: filters.assigneeId || undefined,
@@ -157,7 +160,7 @@ export default function TasksSidebar() {
 
         // filters is replaced by setFilters, so its identity changes only on a real filter change.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [view, teamID, filters, page]);
+    }, [view, teamID, isDM, filters, page]);
 
     const tasks = useTasks(taskQuery, tasksRevision + reload);
 
@@ -194,7 +197,7 @@ export default function TasksSidebar() {
         if (task.channelId) {
             return channels[task.channelId]?.display_name ?? task.channelId;
         }
-        return undefined;
+        return isDM ? (teams[task.teamId]?.display_name ?? task.teamId) : undefined;
     };
 
     const refreshTasks = () => dispatch(remoteEvent());
@@ -212,8 +215,8 @@ export default function TasksSidebar() {
     const openCreate = () => {
         setTaskEditor({
             defaults: {
-                teamId: teamID,
-                visibility: 'team',
+                teamId: teamID ?? myTeams[0]?.id,
+                visibility: isDM ? 'private' : 'team',
                 assigneeIds: currentUserId ? [currentUserId] : [],
             },
         });
@@ -239,8 +242,8 @@ export default function TasksSidebar() {
         setQuickAddError(undefined);
         try {
             await createTask({
-                teamId: teamID,
-                visibility: 'team',
+                teamId: teamID ?? myTeams[0]?.id,
+                visibility: isDM ? 'private' : 'team',
                 title,
                 status: quickAddStatus,
                 priority: 'normal',
@@ -297,10 +300,17 @@ export default function TasksSidebar() {
         <div className='Tasks-Sidebar'>
             <div className='Tasks-Sidebar__header Tasks-Sidebar__header--simple'>
                 <span className='Tasks-Sidebar__heading'>
-                    <FormattedMessage
-                        id='tasks.view.team_heading'
-                        defaultMessage='Team tasks'
-                    />
+                    {isDM ? (
+                        <FormattedMessage
+                            id='tasks.view.my_heading'
+                            defaultMessage='My tasks'
+                        />
+                    ) : (
+                        <FormattedMessage
+                            id='tasks.view.team_heading'
+                            defaultMessage='Team'
+                        />
+                    )}
                 </span>
                 <div className='Tasks-Sidebar__actions'>
                     <IconButton
@@ -335,7 +345,7 @@ export default function TasksSidebar() {
                 </div>
             )}
 
-            {!teamID && (
+            {!isDM && !teamID && (
                 <div className='Tasks-Sidebar__notice'>
                     <SectionNotice
                         type='info'
