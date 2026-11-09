@@ -407,6 +407,7 @@ func taskRefFieldsEqual(a, b *taskmodel.TaskRef) bool {
 		a.Priority == b.Priority &&
 		a.DueAt == b.DueAt &&
 		a.DueHasTime == b.DueHasTime &&
+		a.Position == b.Position &&
 		a.CreatedAt == b.CreatedAt &&
 		slices.Equal(a.AssigneeIDs, b.AssigneeIDs)
 }

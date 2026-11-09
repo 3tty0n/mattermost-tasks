@@ -20,6 +20,7 @@ type createTaskRequest struct {
 	Priority     string   `json:"priority"`
 	DueAt        int64    `json:"dueAt"`
 	DueHasTime   bool     `json:"dueHasTime"`
+	Position     float64  `json:"position"`
 	SourcePostID string   `json:"sourcePostId"`
 	ParentTaskID string   `json:"parentTaskId"`
 }
@@ -36,6 +37,7 @@ func (req createTaskRequest) input() taskmodel.CreateTaskInput {
 		Priority:     req.Priority,
 		DueAt:        req.DueAt,
 		DueHasTime:   req.DueHasTime,
+		Position:     req.Position,
 		SourcePostID: req.SourcePostID,
 		ParentTaskID: req.ParentTaskID,
 	}
@@ -52,6 +54,7 @@ type updateTaskRequest struct {
 	Priority     *string   `json:"priority"`
 	DueAt        *int64    `json:"dueAt"`
 	DueHasTime   *bool     `json:"dueHasTime"`
+	Position     *float64  `json:"position"`
 	SourcePostID *string   `json:"sourcePostId"`
 	ParentTaskID *string   `json:"parentTaskId"`
 }
@@ -68,6 +71,7 @@ func (req updateTaskRequest) patch() taskmodel.TaskPatch {
 		Priority:     req.Priority,
 		DueAt:        req.DueAt,
 		DueHasTime:   req.DueHasTime,
+		Position:     req.Position,
 		SourcePostID: req.SourcePostID,
 		ParentTaskID: req.ParentTaskID,
 	}

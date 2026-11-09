@@ -81,7 +81,8 @@ administrator. Assignment never grants access to a private channel.
   query returns readable team/channel tasks plus the actor's own private tasks. DM creation
   defaults to a private task assigned to the actor.
 - The list and board share one query; the board fetches up to 100 cards and asks the user to narrow
-  filters beyond that.
+  filters beyond that. Manual order is a float `position`; drops use the midpoint between the
+  neighboring tasks, and old tasks without a position fall back to creation time.
 - The due calendar commits only on **OK**. Time is off by default and only a date is stored unless
   the user enables **Set time**.
 - The webapp uses the host's Redux store and local selectors rather than bundling Mattermost

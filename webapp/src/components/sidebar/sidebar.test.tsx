@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {screen, waitFor} from '@testing-library/react';
+import {fireEvent, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
     createTask,
@@ -227,6 +227,24 @@ describe('TasksSidebar', () => {
             visibility: 'private',
             assigneeIds: [ids.user],
         })));
+    });
+
+    it('reorders a task in manual order', async () => {
+        renderWithStore(<TasksSidebar/>);
+        const source = (await screen.findByRole('button', {name: 'Write docs'})).closest('li') as HTMLElement;
+        const target = screen.getByRole('button', {name: 'Pick up mail'}).closest('li') as HTMLElement;
+        const values = new Map<string, string>();
+        const dataTransfer = {
+            effectAllowed: '',
+            setData: (key: string, value: string) => values.set(key, value),
+            getData: (key: string) => values.get(key) ?? '',
+        } as unknown as DataTransfer;
+
+        fireEvent.dragStart(source, {dataTransfer});
+        fireEvent.dragOver(target, {dataTransfer});
+        fireEvent.drop(target, {dataTransfer, clientY: 0});
+
+        await waitFor(() => expect(updateTaskMock).toHaveBeenCalledWith('task-2', {position: 0.5}));
     });
 
     it('filters by status', async () => {

@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {getProfilePictureUrl, type Profile} from 'client';
-import {useRef} from 'react';
+import {type DragEvent, useRef} from 'react';
 import {useIntl} from 'react-intl';
 import {PRIORITY_TAG_TYPE, formatDue, isOverdue, priorityLabel, profileName} from 'utils';
 
@@ -17,15 +17,20 @@ import './task_card.css';
 type Props = {
     task: TaskSummary;
     profiles: Record<string, Profile>;
+    dragging?: boolean;
     onOpen: () => void;
     onToggleDone: () => void;
+    onDragStart?: (event: DragEvent<HTMLElement>) => void;
+    onDragEnd?: () => void;
+    onDragOver?: (event: DragEvent<HTMLElement>) => void;
+    onDrop?: (event: DragEvent<HTMLElement>) => void;
 };
 
 // TaskCard is the compact, horizontal card used by the board. The checkbox is fixed at the left
 // edge so the title always starts immediately beside it and can use the remaining width.
-export default function TaskCard({task, profiles, onOpen, onToggleDone}: Props) {
+export default function TaskCard({task, profiles, dragging, onOpen, onToggleDone, onDragStart, onDragEnd, onDragOver, onDrop}: Props) {
     const intl = useIntl();
-    const dragging = useRef(false);
+    const dragActive = useRef(false);
     const done = task.status === 'done';
     const overdue = !done && isOverdue(task.dueAt, task.dueHasTime);
     const visibleAssignees = task.assigneeIds.slice(0, 3);
@@ -33,21 +38,25 @@ export default function TaskCard({task, profiles, onOpen, onToggleDone}: Props) 
 
     return (
         <article
-            className='Tasks-TaskCard'
+            className={`Tasks-TaskCard${dragging ? ' Tasks-TaskCard--dragging' : ''}`}
             draggable={true}
             onClick={() => {
-                if (!dragging.current) {
+                if (!dragActive.current) {
                     onOpen();
                 }
             }}
             onDragStart={(event) => {
-                dragging.current = true;
+                dragActive.current = true;
                 event.dataTransfer.setData('text/plain', task.id);
                 event.dataTransfer.effectAllowed = 'move';
+                onDragStart?.(event);
             }}
             onDragEnd={() => {
-                dragging.current = false;
+                dragActive.current = false;
+                onDragEnd?.();
             }}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
         >
             <div
                 className='Tasks-TaskCard__check'

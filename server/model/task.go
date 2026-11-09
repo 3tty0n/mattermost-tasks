@@ -134,6 +134,7 @@ type Task struct {
 	Priority     string   `json:"priority"`
 	DueAt        int64    `json:"dueAt,omitempty"`
 	DueHasTime   bool     `json:"dueHasTime,omitempty"`
+	Position     float64  `json:"position,omitempty"`
 	SourcePostID string   `json:"sourcePostId,omitempty"`
 	ParentTaskID string   `json:"parentTaskId,omitempty"`
 	CreatedAt    int64    `json:"createdAt"`
@@ -170,6 +171,7 @@ type TaskRef struct {
 	AssigneeIDs []string `json:"a,omitempty"`
 	DueAt       int64    `json:"d,omitempty"`
 	DueHasTime  bool     `json:"h,omitempty"`
+	Position    float64  `json:"q,omitempty"`
 	CreatedAt   int64    `json:"k"`
 	UpdatedAt   int64    `json:"u"`
 	Version     int64    `json:"v"`
@@ -190,6 +192,7 @@ func (t *Task) Ref() TaskRef {
 		AssigneeIDs: slices.Clone(t.AssigneeIDs),
 		DueAt:       t.DueAt,
 		DueHasTime:  t.DueHasTime,
+		Position:    t.Position,
 		CreatedAt:   t.CreatedAt,
 		UpdatedAt:   t.UpdatedAt,
 		Version:     t.Version,
@@ -209,6 +212,7 @@ type TaskSummary struct {
 	AssigneeIDs []string `json:"assigneeIds"`
 	DueAt       int64    `json:"dueAt,omitempty"`
 	DueHasTime  bool     `json:"dueHasTime,omitempty"`
+	Position    float64  `json:"position,omitempty"`
 	CreatedAt   int64    `json:"createdAt"`
 	UpdatedAt   int64    `json:"updatedAt"`
 }
@@ -231,6 +235,7 @@ func (r TaskRef) Summary() TaskSummary {
 		AssigneeIDs: assignees,
 		DueAt:       r.DueAt,
 		DueHasTime:  r.DueHasTime,
+		Position:    r.Position,
 		CreatedAt:   r.CreatedAt,
 		UpdatedAt:   r.UpdatedAt,
 	}
@@ -248,6 +253,7 @@ type CreateTaskInput struct {
 	Priority     string
 	DueAt        int64
 	DueHasTime   bool
+	Position     float64
 	SourcePostID string
 	ParentTaskID string
 }
@@ -265,6 +271,7 @@ type TaskPatch struct {
 	Priority     *string
 	DueAt        *int64
 	DueHasTime   *bool
+	Position     *float64
 	SourcePostID *string
 	ParentTaskID *string
 }
@@ -273,13 +280,30 @@ type TaskPatch struct {
 func (p TaskPatch) IsZero() bool {
 	return p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil && p.Description == nil &&
 		p.AssigneeIDs == nil && p.Status == nil && p.Priority == nil && p.DueAt == nil &&
-		p.DueHasTime == nil && p.SourcePostID == nil && p.ParentTaskID == nil
+		p.DueHasTime == nil && p.Position == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }
 
 // OnlyStatus reports whether the patch only changes the status. Assignees may change status
 // without being allowed to edit task metadata.
 func (p TaskPatch) OnlyStatus() bool {
 	return p.Status != nil && p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
+		p.Description == nil && p.AssigneeIDs == nil && p.Priority == nil && p.DueAt == nil &&
+		p.DueHasTime == nil && p.Position == nil && p.SourcePostID == nil && p.ParentTaskID == nil
+}
+
+// OnlyPosition reports a pure manual-order change.
+func (p TaskPatch) OnlyPosition() bool {
+	return p.Position != nil && p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
+		p.Description == nil && p.AssigneeIDs == nil && p.Status == nil && p.Priority == nil && p.DueAt == nil &&
+		p.DueHasTime == nil && p.SourcePostID == nil && p.ParentTaskID == nil
+}
+
+// OnlyStatusOrPosition allows a board drag that changes a column and its manual position.
+func (p TaskPatch) OnlyStatusOrPosition() bool {
+	if p.Position == nil && p.Status == nil {
+		return false
+	}
+	return p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
 		p.Description == nil && p.AssigneeIDs == nil && p.Priority == nil && p.DueAt == nil &&
 		p.DueHasTime == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }

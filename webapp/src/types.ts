@@ -19,6 +19,7 @@ export type TaskSummary = {
     assigneeIds: string[];
     dueAt?: number;
     dueHasTime?: boolean;
+    position?: number;
     createdAt: number;
     updatedAt: number;
 };
@@ -41,7 +42,7 @@ export type ListResult<T> = {
 };
 
 export type TaskScope = 'my' | 'team' | 'channel' | 'all';
-export type TaskSort = 'due' | 'created' | 'priority';
+export type TaskSort = 'due' | 'created' | 'priority' | 'manual';
 export type SortDirection = 'asc' | 'desc';
 
 export type TaskQuery = {
@@ -80,6 +81,7 @@ export type CreateTaskInput = {
     priority: TaskPriority;
     dueAt?: number;
     dueHasTime?: boolean;
+    position?: number;
     sourcePostId?: string;
 };
 
@@ -94,6 +96,7 @@ export type UpdateTaskInput = {
     priority?: TaskPriority;
     dueAt?: number;
     dueHasTime?: boolean;
+    position?: number;
     sourcePostId?: string;
 };
 

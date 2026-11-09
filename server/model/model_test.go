@@ -12,7 +12,7 @@ func TestTaskQueryNormalize(t *testing.T) {
 		q := TaskQuery{}
 		require.NoError(t, q.Normalize())
 		assert.Equal(t, TaskScopeMy, q.Scope)
-		assert.Equal(t, TaskSortDue, q.SortBy)
+		assert.Equal(t, TaskSortManual, q.SortBy)
 		assert.Equal(t, SortAsc, q.Direction)
 		assert.Equal(t, DefaultPageSize, q.PerPage)
 	})

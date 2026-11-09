@@ -96,3 +96,7 @@
     color: rgba(var(--center-channel-color-rgb), 0.64);
     font-size: var(--font-size-50);
 }
+
+.Tasks-TaskCard--dragging {
+    opacity: 0.45;
+}

@@ -7,6 +7,7 @@
       tasks are created explicitly with Only me, or from the user's own DM message.
 - [x] List/board RHS with filters, sorting, pagination and status quick-toggle.
 - [x] Kanban columns with drag-and-drop, per-column Name-only quick add and description popups.
+- [x] Manual ordering in list and board views with persisted positions.
 - [x] Due calendar with OK/Clear and optional time (`dueHasTime`).
 - [x] Post dropdown **Create task** with source backlink.
 - [x] Assignment notifications from the plugin bot.

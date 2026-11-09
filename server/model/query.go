@@ -23,6 +23,7 @@ const (
 	TaskSortDue      = "due"
 	TaskSortCreated  = "created"
 	TaskSortPriority = "priority"
+	TaskSortManual   = "manual"
 )
 
 // Sort directions.
@@ -103,8 +104,8 @@ func (q *TaskQuery) Normalize() error {
 
 	switch q.SortBy {
 	case "":
-		q.SortBy = TaskSortDue
-	case TaskSortDue, TaskSortCreated, TaskSortPriority:
+		q.SortBy = TaskSortManual
+	case TaskSortDue, TaskSortCreated, TaskSortPriority, TaskSortManual:
 	default:
 		return fmt.Errorf("%w: unknown sort field", ErrInvalid)
 	}
@@ -173,6 +174,13 @@ func (q *TaskQuery) Match(ref TaskRef) bool {
 func (q *TaskQuery) Sort(refs []TaskRef) {
 	less := func(a, b TaskRef) bool {
 		switch q.SortBy {
+		case TaskSortManual:
+			if a.Position != b.Position {
+				return ordered(a.Position < b.Position, q.Direction)
+			}
+			if a.CreatedAt != b.CreatedAt {
+				return ordered(a.CreatedAt < b.CreatedAt, q.Direction)
+			}
 		case TaskSortCreated:
 			if a.CreatedAt != b.CreatedAt {
 				return ordered(a.CreatedAt < b.CreatedAt, q.Direction)

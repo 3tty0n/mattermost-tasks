@@ -330,3 +330,38 @@ func TestTaskAPIVisibility(t *testing.T) {
 	otherList := decodeResponse[tasks.ListResult](t, w)
 	assert.Equal(t, 1, otherList.Total, "another member sees only the team-visible task")
 }
+
+func TestTaskAPIManualOrder(t *testing.T) {
+	env := newAPITestEnv(t)
+	teamID := model.NewId()
+	actorID := model.NewId()
+	env.api.On("GetTeam", teamID).Return(&model.Team{Id: teamID}, nil).Maybe()
+	env.api.On("HasPermissionToTeam", actorID, teamID, model.PermissionViewTeam).Return(true).Maybe()
+	denyAdmin(env.api, actorID)
+
+	create := func(title string) taskmodel.Task {
+		body := `{"teamId":"` + teamID + `","visibility":"team","title":"` + title + `"}`
+		w := env.serve(http.MethodPost, "/api/v1/tasks", body, actorID)
+		require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+		return decodeResponse[taskmodel.Task](t, w)
+	}
+	first := create("First")
+	second := create("Second")
+
+	w := env.serve(http.MethodPost, "/api/v1/tasks/"+first.ID, `{"position":500}`, actorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	w = env.serve(http.MethodGet, "/api/v1/tasks?scope=team&team_id="+teamID+"&sort=manual", "", actorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	list := decodeResponse[tasks.ListResult](t, w)
+	require.Len(t, list.Items, 2)
+	assert.Equal(t, first.ID, list.Items[0].ID)
+	assert.Equal(t, second.ID, list.Items[1].ID)
+
+	// A position-only patch is allowed for any viewer, not just the creator or assignee.
+	otherID := model.NewId()
+	env.api.On("HasPermissionToTeam", otherID, teamID, model.PermissionViewTeam).Return(true).Maybe()
+	denyAdmin(env.api, otherID)
+	w = env.serve(http.MethodPost, "/api/v1/tasks/"+first.ID, `{"position":2000}`, otherID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+}

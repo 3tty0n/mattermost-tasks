@@ -219,7 +219,7 @@ func TestListMyTasksFiltersInaccessibleScopes(t *testing.T) {
 	env.api.On("HasPermissionToChannel", actorID, privateChannel, model.PermissionReadChannel).Return(false).Maybe()
 	env.api.On("HasPermissionToTeam", actorID, teamID, model.PermissionViewTeam).Return(true).Maybe()
 
-	result, err := env.service.List(actorID, taskmodel.TaskQuery{Scope: taskmodel.TaskScopeMy})
+	result, err := env.service.List(actorID, taskmodel.TaskQuery{Scope: taskmodel.TaskScopeMy, SortBy: taskmodel.TaskSortDue})
 	require.NoError(t, err)
 	assert.Equal(t, 2, result.Total)
 	require.Len(t, result.Items, 2)

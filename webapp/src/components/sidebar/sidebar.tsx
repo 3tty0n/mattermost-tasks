@@ -15,7 +15,7 @@ import {
     openTask,
     remoteEvent,
 } from 'state';
-import {nextStatus, statusLabel} from 'utils';
+import {nextStatus, positionBetween, statusLabel} from 'utils';
 
 import FormatListBulletedIcon from '@mattermost/compass-icons/components/format-list-bulleted';
 import KanbanIcon from '@mattermost/compass-icons/components/kanban';
@@ -50,6 +50,8 @@ function isTeamChannel(channel: {type?: string; team_id?: string} | undefined) {
 
 function sortFor(filter: TaskFiltersState['sort']): {sortBy: TaskSort; direction: 'asc' | 'desc'} {
     switch (filter) {
+    case 'manual':
+        return {sortBy: 'manual', direction: 'asc'};
     case 'newest':
         return {sortBy: 'created', direction: 'desc'};
     case 'oldest':
@@ -85,6 +87,7 @@ export default function TasksSidebar() {
     const [quickAddTitle, setQuickAddTitle] = useState('');
     const [quickAddSaving, setQuickAddSaving] = useState(false);
     const [quickAddError, setQuickAddError] = useState<string>();
+    const [draggedTaskID, setDraggedTaskID] = useState<string>();
 
     const isDM = currentChannel?.type === 'D';
     const canUseChannel = currentChannel && isTeamChannel(currentChannel);
@@ -98,6 +101,7 @@ export default function TasksSidebar() {
     useEffect(() => {
         setQuickAddStatus(undefined);
         setQuickAddError(undefined);
+        setDraggedTaskID(undefined);
     }, [view]);
 
     useEffect(() => {
@@ -201,6 +205,35 @@ export default function TasksSidebar() {
     };
 
     const refreshTasks = () => dispatch(remoteEvent());
+
+    const manualOrder = filters.sort === 'manual';
+
+    const moveTask = async (taskID: string, status: TaskStatus, targetID?: string, after = false, withinStatus = true) => {
+        const items = tasks.data?.items ?? [];
+        const dragged = items.find((item) => item.id === taskID);
+        if (!dragged || taskID === targetID) {
+            return;
+        }
+        const column = items.filter((item) => (withinStatus ? item.status === status : true) && item.id !== taskID);
+        let index = column.length;
+        if (targetID) {
+            const targetIndex = column.findIndex((item) => item.id === targetID);
+            if (targetIndex >= 0) {
+                index = targetIndex + (after ? 1 : 0);
+            }
+        }
+        const patch = {
+            position: positionBetween(column[index - 1], column[index]),
+            ...(dragged.status === status ? {} : {status}),
+        };
+        setActionError(undefined);
+        try {
+            await updateTask(taskID, patch);
+            refreshTasks();
+        } catch (err) {
+            setActionError(err instanceof Error ? err.message : String(err));
+        }
+    };
 
     const setTaskStatus = async (taskID: string, status: Task['status']) => {
         setActionError(undefined);
@@ -496,8 +529,26 @@ export default function TasksSidebar() {
                                             key={task.id}
                                             task={task}
                                             profiles={profiles}
+                                            dragging={draggedTaskID === task.id}
                                             onOpen={() => setPreviewTaskID(task.id)}
                                             onToggleDone={() => setTaskStatus(task.id, task.status === 'done' ? 'todo' : 'done')}
+                                            onDragStart={() => setDraggedTaskID(task.id)}
+                                            onDragEnd={() => setDraggedTaskID(undefined)}
+                                            onDragOver={(event) => {
+                                                event.preventDefault();
+                                                event.stopPropagation();
+                                            }}
+                                            onDrop={(event) => {
+                                                event.preventDefault();
+                                                event.stopPropagation();
+                                                if (!draggedTaskID || draggedTaskID === task.id) {
+                                                    return;
+                                                }
+                                                const rect = event.currentTarget.getBoundingClientRect();
+                                                const after = event.clientY > rect.top + (rect.height / 2);
+                                                moveTask(draggedTaskID, task.status, task.id, after);
+                                                setDraggedTaskID(undefined);
+                                            }}
                                         />
                                     ))}
                                     {board[status].length === 0 && quickAddStatus !== status && (
@@ -535,9 +586,31 @@ export default function TasksSidebar() {
                                 task={task}
                                 profiles={profiles}
                                 scopeLabel={scopeLabel(task)}
+                                draggable={manualOrder}
+                                dragging={draggedTaskID === task.id}
                                 onOpen={() => dispatch(openTask(task.id))}
                                 onToggleDone={() => setTaskStatus(task.id, task.status === 'done' ? 'todo' : 'done')}
                                 onCycleStatus={() => setTaskStatus(task.id, nextStatus(task.status))}
+                                onDragStart={(event) => {
+                                    event.dataTransfer.setData('text/plain', task.id);
+                                    event.dataTransfer.effectAllowed = 'move';
+                                    setDraggedTaskID(task.id);
+                                }}
+                                onDragEnd={() => setDraggedTaskID(undefined)}
+                                onDragOver={(event) => event.preventDefault()}
+                                onDrop={(event) => {
+                                    event.preventDefault();
+                                    if (!draggedTaskID || draggedTaskID === task.id) {
+                                        return;
+                                    }
+                                    const rect = event.currentTarget.getBoundingClientRect();
+                                    const after = event.clientY > rect.top + (rect.height / 2);
+                                    const dragged = tasks.data?.items.find((item) => item.id === draggedTaskID);
+                                    if (dragged) {
+                                        moveTask(draggedTaskID, dragged.status, task.id, after, false);
+                                    }
+                                    setDraggedTaskID(undefined);
+                                }}
                             />
                         ))}
                     </ul>

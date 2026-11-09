@@ -11,7 +11,7 @@ import type {Assignee, TaskPriority, TaskStatus} from 'types';
 import './task_filters.css';
 
 export type TaskDueFilter = 'any' | 'overdue' | 'none' | 'week';
-export type TaskSortFilter = 'due' | 'newest' | 'oldest' | 'priority';
+export type TaskSortFilter = 'manual' | 'due' | 'newest' | 'oldest' | 'priority';
 
 export type TaskFiltersState = {
     status: '' | TaskStatus;
@@ -26,7 +26,7 @@ export const DEFAULT_TASK_FILTERS: TaskFiltersState = {
     priority: '',
     assigneeId: '',
     due: 'any',
-    sort: 'due',
+    sort: 'manual',
 };
 
 type Props = {
@@ -55,6 +55,7 @@ export default function TaskFilters({filters, onChange, assignees, showStatus = 
         {value: 'none', label: intl.formatMessage({id: 'tasks.filters.no_due', defaultMessage: 'No due date'})},
     ];
     const sortOptions = [
+        {value: 'manual', label: intl.formatMessage({id: 'tasks.filters.sort_manual', defaultMessage: 'Manual'})},
         {value: 'due', label: intl.formatMessage({id: 'tasks.filters.sort_due', defaultMessage: 'Due date'})},
         {value: 'newest', label: intl.formatMessage({id: 'tasks.filters.sort_newest', defaultMessage: 'Newest first'})},
         {value: 'oldest', label: intl.formatMessage({id: 'tasks.filters.sort_oldest', defaultMessage: 'Oldest first'})},

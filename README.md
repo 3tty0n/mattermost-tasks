@@ -18,6 +18,7 @@ system, no external service, no second database.
 | Team view in channels, My tasks in DMs | Create from any public/private channel post |
 | Private, team-wide or channel-only visibility | Name-only quick add in each board column |
 | List and Kanban board views | Assignment autocomplete with avatars and usernames |
+| Drag-and-drop manual ordering | Position persisted across reloads |
 | Todo / In progress / Done with drag-and-drop | Assignment notifications from a plugin bot |
 | Filters, sorting and pagination | `/task` slash commands for keyboard and mobile |
 | Markdown descriptions and source backlinks | Click-to-edit name and description |
@@ -88,6 +89,8 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   Team view, but only for you.
 - **Views:** switch between List and Board with the header icons. The board fetches up to 100
   cards; narrow the filters to see more.
+- **Manual order:** the default sort is **Manual**. Drag a list row or board card to reorder it;
+  drop on the upper/lower half to place before/after the target. Positions are saved on the server.
 - **Quick add:** the **+** at the top right of each board column creates a task in that column
   using only its name. It follows the context: team-visible in channels, Only me in DMs.
 - **Assignees:** focusing the assignee box immediately lists eligible users. Results show the
@@ -100,8 +103,8 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   due date.
 - **Due date:** click the due property, pick a day, then **OK**. Turn on **Set time** to include a
   time; leave it off for a date-only task.
-- **Filters:** status (list view), priority, assignee and due date; sort by due date, creation date
-  or priority.
+- **Filters:** status (list view), priority, assignee and due date; sort manually, by due date,
+  creation date or priority. Dragging switches to a persistent manual order only in Manual sort.
 
 ### Tasks from posts
 

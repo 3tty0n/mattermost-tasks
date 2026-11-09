@@ -24,7 +24,9 @@ responses set `Cache-Control: no-store` because task titles and descriptions are
 - `scope=channel` requires `channel_id`.
 - `scope=all` returns every task in teams the user can access.
 - `status` is a comma-separated list of `todo`, `in_progress`, `done`.
-- `sort` defaults to `due`; `direction` defaults to `asc`.
+- `sort` is `manual`, `due`, `created` or `priority`; defaults to `manual`. `direction` defaults
+  to `asc`. Manual order uses the persisted `position`, falling back to creation time for older
+  tasks.
 - `per_page` defaults to 30 and is capped at 100.
 
 Response:
@@ -44,6 +46,7 @@ Response:
       "assigneeIds": ["userid"],
       "dueAt": 1767225600000,
       "dueHasTime": false,
+      "position": 1700000000000,
       "createdAt": 1700000000000,
       "updatedAt": 1700000000000
     }
@@ -118,6 +121,7 @@ The POST alias exists because some reverse proxies reject PATCH. The body accept
   "priority": "urgent",
   "dueAt": 1767225600000,
   "dueHasTime": true,
+  "position": 1700000000000,
   "sourcePostId": "postid"
 }
 ```
@@ -128,9 +132,11 @@ the creator as assignee, team tasks have no channel, channel tasks require a cha
 with a source post must remain channel-visible.
 
 Metadata edits require the creator or a system administrator with current scope access. Status
-changes are allowed for the creator, an assignee or a system administrator. Private tasks are
-editable only by their creator. A status-only body skips the metadata checks but still checks
-scope access.
+changes are allowed for the creator, an assignee or a system administrator. A `position`-only
+change is allowed for any user who can view the task, because manual order is shared within the
+scope. Private tasks are editable only by their creator. A status/position-only body skips the
+metadata checks but still checks scope access. Positions are non-negative numbers; clients
+normally use the midpoint between neighboring task positions.
 
 Returns 200 with the updated full task.
 

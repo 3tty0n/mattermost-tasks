@@ -140,3 +140,7 @@
     border: 0;
     white-space: nowrap;
 }
+
+.Tasks-TaskRow--dragging {
+    opacity: 0.45;
+}

@@ -155,3 +155,27 @@ export function profileName(profile: ProfileLike | undefined, fallback: string):
     const full = [first, last].filter(Boolean).join(' ').trim();
     return full || profile.nickname || profile.username || fallback;
 }
+
+type PositionedTask = {position?: number; createdAt: number};
+
+// positionOf falls back to createdAt for tasks stored before manual ordering existed.
+export function positionOf(task: PositionedTask): number {
+    return task.position && task.position > 0 ? task.position : task.createdAt;
+}
+
+// positionBetween computes a stable manual position between two neighbors. Tasks without a
+// recorded position use their creation timestamp, so old data can be reordered without migration.
+export function positionBetween(previous: PositionedTask | undefined, next: PositionedTask | undefined, fallback = Date.now()): number {
+    const lower = previous ? positionOf(previous) : 0;
+    const upper = next ? positionOf(next) : 0;
+    if (lower > 0 && upper > lower) {
+        return (lower + upper) / 2;
+    }
+    if (lower > 0) {
+        return lower + 1000;
+    }
+    if (upper > 0) {
+        return upper / 2;
+    }
+    return fallback;
+}

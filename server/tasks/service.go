@@ -6,6 +6,7 @@ package tasks
 import (
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"time"
 
@@ -171,6 +172,13 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 	}
 
 	now := s.now()
+	position := input.Position
+	if math.IsNaN(position) || math.IsInf(position, 0) || position < 0 {
+		return nil, fmt.Errorf("%w: invalid position", model.ErrInvalid)
+	}
+	if position == 0 {
+		position = float64(now)
+	}
 	task := &model.Task{
 		ID:           mmodel.NewId(),
 		TeamID:       scope.TeamID,
@@ -184,6 +192,7 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 		Priority:     priority,
 		DueAt:        input.DueAt,
 		DueHasTime:   input.DueHasTime && input.DueAt != 0,
+		Position:     position,
 		SourcePostID: input.SourcePostID,
 		ParentTaskID: input.ParentTaskID,
 		CreatedAt:    now,
@@ -379,12 +388,17 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 		isAdmin := s.access.IsAdmin(actorID)
 		isCreator := current.CreatorID == actorID
 		isAssignee := current.HasAssignee(actorID)
-		if patch.OnlyStatus() {
+		switch {
+		case patch.OnlyPosition():
+			// Manual ordering is a view operation; a viewer may reorder a shared task.
+		case patch.OnlyStatusOrPosition():
 			if !isAdmin && !isCreator && !isAssignee {
 				return nil, model.ErrForbidden
 			}
-		} else if !isAdmin && !isCreator {
-			return nil, model.ErrForbidden
+		default:
+			if !isAdmin && !isCreator {
+				return nil, model.ErrForbidden
+			}
 		}
 
 		oldVisibility := current.EffectiveVisibility()
@@ -484,6 +498,9 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 		if current.DueAt == 0 {
 			current.DueHasTime = false
 		}
+		if normalized.position != nil {
+			current.Position = *normalized.position
+		}
 		if normalized.assignees != nil {
 			current.AssigneeIDs = *normalized.assignees
 		}
@@ -576,6 +593,7 @@ type normalizedPatch struct {
 	priority     *string
 	dueAt        *int64
 	dueHasTime   *bool
+	position     *float64
 	visibility   *string
 	assignees    *[]string
 	sourcePostID *string
@@ -622,6 +640,13 @@ func normalizePatch(patch model.TaskPatch) (*normalizedPatch, error) {
 	if patch.DueHasTime != nil {
 		value := *patch.DueHasTime
 		out.dueHasTime = &value
+	}
+	if patch.Position != nil {
+		if math.IsNaN(*patch.Position) || math.IsInf(*patch.Position, 0) || *patch.Position < 0 {
+			return nil, fmt.Errorf("%w: invalid position", model.ErrInvalid)
+		}
+		value := *patch.Position
+		out.position = &value
 	}
 	if patch.Visibility != nil {
 		if !model.IsValidTaskVisibility(*patch.Visibility) {

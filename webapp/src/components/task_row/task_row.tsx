@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {getProfilePictureUrl, type Profile} from 'client';
-import {memo} from 'react';
+import {type DragEvent, memo} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {PRIORITY_TAG_TYPE, formatDue, isOverdue, priorityLabel, profileName, statusLabel} from 'utils';
 
@@ -18,6 +18,12 @@ import './task_row.css';
 
 type Props = {
     task: TaskSummary;
+    draggable?: boolean;
+    dragging?: boolean;
+    onDragStart?: (event: DragEvent<HTMLLIElement>) => void;
+    onDragEnd?: () => void;
+    onDragOver?: (event: DragEvent<HTMLLIElement>) => void;
+    onDrop?: (event: DragEvent<HTMLLIElement>) => void;
     profiles: Record<string, Profile>;
     scopeLabel?: string;
     onOpen: () => void;
@@ -25,7 +31,7 @@ type Props = {
     onCycleStatus: () => void;
 };
 
-function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatus}: Props) {
+function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatus, draggable, dragging, onDragStart, onDragEnd, onDragOver, onDrop}: Props) {
     const intl = useIntl();
     const done = task.status === 'done';
     const overdue = !done && isOverdue(task.dueAt, task.dueHasTime);
@@ -34,8 +40,13 @@ function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatu
 
     return (
         <li
-            className={`Tasks-TaskRow${done ? ' Tasks-TaskRow--done' : ''}`}
+            className={`Tasks-TaskRow${done ? ' Tasks-TaskRow--done' : ''}${dragging ? ' Tasks-TaskRow--dragging' : ''}`}
+            draggable={draggable}
             onClick={onOpen}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
         >
             <div
                 className='Tasks-TaskRow__check'
