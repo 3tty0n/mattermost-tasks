@@ -95,6 +95,22 @@ describe('TaskEditor', () => {
         await waitFor(() => expect(onSaved).toHaveBeenCalledWith(savedTask));
     });
 
+    it('lists users as soon as the assignee field is focused', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <TaskEditor
+                defaults={{teamId: ids.team, channelId: ids.channel}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.click(screen.getByLabelText('Add assignee'));
+
+        expect(await screen.findByRole('checkbox', {name: /Alice/})).toBeVisible();
+        expect(fetchAssigneesMock).toHaveBeenCalledWith(ids.team, ids.channel, '', expect.anything());
+    });
+
     it('keeps the dialog open and shows an error when saving fails', async () => {
         const user = userEvent.setup();
         createTaskMock.mockRejectedValueOnce(new Error('You don’t have permission to do that'));

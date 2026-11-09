@@ -52,13 +52,7 @@ func (h *Handler) handleListAssignees(w http.ResponseWriter, r *http.Request) {
 			users, err = h.client.User.ListInTeam(teamID, 0, maxAssigneeResults)
 		}
 	} else {
-		users, err = h.client.User.Search(&model.UserSearch{
-			Term:          search,
-			TeamId:        teamID,
-			InChannelId:   channelID,
-			AllowInactive: false,
-			Limit:         maxAssigneeResults,
-		})
+		users, err = h.searchAssignees(teamID, channelID, search)
 	}
 	if err != nil {
 		writeServiceError(w, r, err, "Failed to list assignees")
@@ -80,4 +74,58 @@ func (h *Handler) handleListAssignees(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	writeJSON(w, r, http.StatusOK, result)
+}
+
+// searchAssignees uses Mattermost's user search, which matches username, first name, last name
+// and nickname. If a custom server search returns nothing, fall back to the first page of scope
+// members and match every token against those fields, so first/last name searches keep working.
+func (h *Handler) searchAssignees(teamID, channelID, search string) ([]*model.User, error) {
+	users, err := h.client.User.Search(&model.UserSearch{
+		Term:          search,
+		TeamId:        teamID,
+		InChannelId:   channelID,
+		AllowInactive: false,
+		Limit:         maxAssigneeResults,
+	})
+	if err != nil || len(users) > 0 {
+		return users, err
+	}
+
+	var members []*model.User
+	if channelID != "" {
+		members, err = h.client.User.ListInChannel(channelID, "", 0, maxAssigneeResults)
+	} else {
+		members, err = h.client.User.ListInTeam(teamID, 0, maxAssigneeResults)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	tokens := strings.Fields(strings.ToLower(search))
+	result := make([]*model.User, 0, len(members))
+	for _, user := range members {
+		if user == nil || user.DeleteAt > 0 || user.IsBot {
+			continue
+		}
+		haystack := strings.ToLower(strings.Join([]string{
+			user.Username,
+			user.FirstName,
+			user.LastName,
+			user.Nickname,
+		}, " "))
+		matches := true
+		for _, token := range tokens {
+			if !strings.Contains(haystack, token) {
+				matches = false
+				break
+			}
+		}
+		if matches {
+			result = append(result, user)
+			if len(result) >= maxAssigneeResults {
+				break
+			}
+		}
+	}
+	return result, nil
 }

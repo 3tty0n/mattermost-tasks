@@ -83,8 +83,9 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   cards; narrow the filters to see more.
 - **Quick add:** the **+** at the top right of each board column creates a task in that column and
   in the current scope's visibility using only its name.
-- **Assignees:** type a name in the assignee search; results show the user's avatar, display name
-  and `@username` before you add them.
+- **Assignees:** focusing the assignee box immediately lists eligible users. Results show the
+  user's avatar, display name and `@username`; search matches username, first name, last name and
+  nickname before you add them.
 - **Open and edit:** click a card. List cards open the interactive task view in the sidebar;
   board cards open the same view in a popup. Name and description start as previews (description
   is rendered Markdown). Click either field to edit; click outside to save, or press **Esc** to

@@ -144,8 +144,11 @@ removed.
 
 `GET /assignees?team_id=...&channel_id=...&q=...`
 
-Returns users who can be assigned in the scope, filtered by the search term. Names and avatars are
-loaded separately through the Mattermost users API.
+Returns users who can be assigned in the scope. With no query, it lists the first 50 members of the
+channel/team. With `q`, Mattermost user search matches username, first name, last name and
+nickname; if that search returns no hits, the handler falls back to the first page of scope
+members and matches every token against those fields. Avatars are loaded separately through the
+Mattermost users API.
 
 ## WebSocket
 

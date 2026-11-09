@@ -230,6 +230,20 @@ func TestAssigneesAPI(t *testing.T) {
 	require.Len(t, result, 1)
 	assert.Equal(t, "bob", result[0].Username)
 
+	// First-name search falls back to the member directory if user search returns no hits.
+	env.api.On("SearchUsers", &model.UserSearch{
+		Term:          "alice",
+		TeamId:        teamID,
+		InChannelId:   channelID,
+		AllowInactive: false,
+		Limit:         maxAssigneeResults,
+	}).Return([]*model.User{}, nil).Maybe()
+	w = env.serve(http.MethodGet, "/api/v1/assignees?team_id="+teamID+"&channel_id="+channelID+"&q=alice", "", actorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	result = decodeResponse[[]assigneeResponse](t, w)
+	require.Len(t, result, 1)
+	assert.Equal(t, "alice", result[0].Username)
+
 	w = env.serve(http.MethodGet, "/api/v1/assignees", "", actorID)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

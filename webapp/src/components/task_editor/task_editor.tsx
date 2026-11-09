@@ -93,6 +93,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     }
     const [assigneeIds, setAssigneeIds] = useState<string[]>(initialAssigneeIds);
     const [assigneeTerm, setAssigneeTerm] = useState('');
+    const [assigneeFocused, setAssigneeFocused] = useState(false);
     const [preview, setPreview] = useState(false);
     const [openProperty, setOpenProperty] = useState<'due' | 'priority' | 'status' | 'scope'>();
     const [saving, setSaving] = useState(false);
@@ -100,7 +101,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
 
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
     const debouncedTerm = useDebouncedValue(assigneeTerm, 200);
-    const assigneeResults = useAssignees(teamID, channelID || undefined, debouncedTerm, Boolean(teamID) && debouncedTerm.trim() !== '');
+    const assigneeResults = useAssignees(teamID, channelID || undefined, debouncedTerm, Boolean(teamID) && assigneeFocused);
     const selectedProfiles = useProfiles(assigneeIds);
 
     const teamOptions = myTeams.map((team) => ({value: team.id, label: team.display_name}));
@@ -690,6 +691,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                             label={intl.formatMessage({id: 'tasks.editor.add_assignee', defaultMessage: 'Add assignee'})}
                             value={assigneeTerm}
                             onChange={(event) => setAssigneeTerm(event.target.value)}
+                            onFocus={() => setAssigneeFocused(true)}
                             onClear={() => setAssigneeTerm('')}
                             clearLabel={intl.formatMessage({id: 'tasks.search.clear', defaultMessage: 'Clear search'})}
                         />
@@ -707,7 +709,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                             {assigneeResults.error}
                         </span>
                     )}
-                    {visibility !== 'private' && assigneeTerm.trim() !== '' && assigneeResults.data && assigneeResults.data.length > 0 && (
+                    {visibility !== 'private' && assigneeFocused && assigneeResults.data && assigneeResults.data.length > 0 && (
                         <ul className='Tasks-TaskEditor__results'>
                             {assigneeResults.data.
                                 filter((assignee) => !assigneeIds.includes(assignee.id)).
