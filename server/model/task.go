@@ -87,6 +87,23 @@ func DefaultTaskVisibility(channelID string) string {
 	return TaskVisibilityTeam
 }
 
+// EffectiveVisibility resolves records written before the visibility field existed. Old channel
+// tasks are channel-visible; old team tasks are team-visible.
+func (t *Task) EffectiveVisibility() string {
+	if t.Visibility != "" {
+		return t.Visibility
+	}
+	return DefaultTaskVisibility(t.ChannelID)
+}
+
+// EffectiveVisibility resolves a compact ref written before the visibility field existed.
+func (r TaskRef) EffectiveVisibility() string {
+	if r.Visibility != "" {
+		return r.Visibility
+	}
+	return DefaultTaskVisibility(r.ChannelID)
+}
+
 // PriorityRank turns a priority into a comparable number. Unknown values sort as none.
 func PriorityRank(priority string) int {
 	switch priority {
@@ -165,7 +182,7 @@ func (t *Task) Ref() TaskRef {
 		ID:          t.ID,
 		TeamID:      t.TeamID,
 		ChannelID:   t.ChannelID,
-		Visibility:  t.Visibility,
+		Visibility:  t.EffectiveVisibility(),
 		CreatorID:   t.CreatorID,
 		Title:       truncateRunes(t.Title, MaxTitleRunes),
 		Status:      t.Status,
@@ -206,7 +223,7 @@ func (r TaskRef) Summary() TaskSummary {
 		ID:          r.ID,
 		TeamID:      r.TeamID,
 		ChannelID:   r.ChannelID,
-		Visibility:  r.Visibility,
+		Visibility:  r.EffectiveVisibility(),
 		CreatorID:   r.CreatorID,
 		Title:       r.Title,
 		Status:      r.Status,

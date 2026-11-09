@@ -221,6 +221,7 @@ func (s *Service) Get(actorID, taskID string) (*model.Task, error) {
 		// Do not reveal that a task exists in a channel the user can not read.
 		return nil, model.ErrNotFound
 	}
+	task.Visibility = task.EffectiveVisibility()
 	return task, nil
 }
 
@@ -243,7 +244,7 @@ func (s *Service) List(actorID string, query model.TaskQuery) (*ListResult, erro
 			return nil, err
 		}
 		refs = filterRefs(loaded, func(ref model.TaskRef) bool {
-			if ref.Visibility == model.TaskVisibilityPrivate {
+			if ref.EffectiveVisibility() == model.TaskVisibilityPrivate {
 				return ref.CreatorID == actorID
 			}
 			return slices.Contains(ref.AssigneeIDs, actorID) && cache.CanView(actorID, ref.TeamID, ref.ChannelID)
@@ -258,7 +259,7 @@ func (s *Service) List(actorID string, query model.TaskQuery) (*ListResult, erro
 			return nil, err
 		}
 		refs = filterRefs(loaded, func(ref model.TaskRef) bool {
-			if ref.TeamID != query.TeamID || ref.Visibility == model.TaskVisibilityPrivate {
+			if ref.TeamID != query.TeamID || ref.EffectiveVisibility() == model.TaskVisibilityPrivate {
 				return false
 			}
 			return cache.CanView(actorID, ref.TeamID, ref.ChannelID)
@@ -277,7 +278,7 @@ func (s *Service) List(actorID string, query model.TaskQuery) (*ListResult, erro
 		refs = filterRefs(loaded, func(ref model.TaskRef) bool {
 			return ref.ChannelID == query.ChannelID &&
 				ref.TeamID == scope.TeamID &&
-				ref.Visibility == model.TaskVisibilityChannel
+				ref.EffectiveVisibility() == model.TaskVisibilityChannel
 		})
 
 	case model.TaskScopeAll:
@@ -294,7 +295,7 @@ func (s *Service) List(actorID string, query model.TaskQuery) (*ListResult, erro
 			}
 			refs = append(refs, filterRefs(loaded, func(ref model.TaskRef) bool {
 				return ref.TeamID == team.Id &&
-					ref.Visibility != model.TaskVisibilityPrivate &&
+					ref.EffectiveVisibility() != model.TaskVisibilityPrivate &&
 					cache.CanView(actorID, ref.TeamID, ref.ChannelID)
 			})...)
 		}
@@ -303,7 +304,7 @@ func (s *Service) List(actorID string, query model.TaskQuery) (*ListResult, erro
 			return nil, err
 		}
 		refs = append(refs, filterRefs(privateRefs, func(ref model.TaskRef) bool {
-			return ref.Visibility == model.TaskVisibilityPrivate && ref.CreatorID == actorID
+			return ref.EffectiveVisibility() == model.TaskVisibilityPrivate && ref.CreatorID == actorID
 		})...)
 	}
 
@@ -375,7 +376,8 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 			return nil, model.ErrForbidden
 		}
 
-		oldVisibility := current.Visibility
+		oldVisibility := current.EffectiveVisibility()
+		current.Visibility = oldVisibility
 		newVisibility := oldVisibility
 		if normalized.visibility != nil {
 			newVisibility = *normalized.visibility
@@ -751,7 +753,7 @@ func (s *Service) Now() int64 {
 }
 
 func (s *Service) canViewTask(actorID string, task *model.Task) bool {
-	if task.Visibility == model.TaskVisibilityPrivate {
+	if task.EffectiveVisibility() == model.TaskVisibilityPrivate {
 		return task.CreatorID == actorID
 	}
 	return s.access.CanView(actorID, task.TeamID, task.ChannelID)

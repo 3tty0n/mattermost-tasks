@@ -330,11 +330,11 @@ func (s *KVStore) syncTaskRefs(oldTask, nextTask *taskmodel.Task) error {
 }
 
 func indexedInTeam(task *taskmodel.Task) bool {
-	return task != nil && task.TeamID != "" && task.Visibility != taskmodel.TaskVisibilityPrivate
+	return task != nil && task.TeamID != "" && task.EffectiveVisibility() != taskmodel.TaskVisibilityPrivate
 }
 
 func indexedInChannel(task *taskmodel.Task) bool {
-	return task != nil && task.ChannelID != "" && task.Visibility == taskmodel.TaskVisibilityChannel
+	return task != nil && task.ChannelID != "" && task.EffectiveVisibility() == taskmodel.TaskVisibilityChannel
 }
 
 func (s *KVStore) upsertTaskRef(prefix, scopeID string, ref taskmodel.TaskRef) error {
