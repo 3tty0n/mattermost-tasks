@@ -18,6 +18,7 @@ import {
 } from 'utils';
 
 import ArrowLeftIcon from '@mattermost/compass-icons/components/arrow-left';
+import CalendarOutlineIcon from '@mattermost/compass-icons/components/calendar-outline';
 import PencilOutlineIcon from '@mattermost/compass-icons/components/pencil-outline';
 import RefreshIcon from '@mattermost/compass-icons/components/refresh';
 import TrashCanOutlineIcon from '@mattermost/compass-icons/components/trash-can-outline';
@@ -36,6 +37,7 @@ import type {GlobalState} from '@mattermost/types/store';
 
 import {selectChannel, selectCurrentChannel, selectCurrentUserId, selectIsSystemAdmin, selectMyChannels, selectMyTeams, selectTeam} from 'selectors';
 
+import DueDatePicker from 'components/due_date_picker/due_date_picker';
 import TaskInlineEditor from 'components/task_inline_editor/task_inline_editor';
 
 import type {Task, TaskStatus, TaskVisibility, UpdateTaskInput} from 'types';
@@ -56,7 +58,7 @@ type Props = {
     onDeleted: () => void;
 };
 
-type EditableField = 'visibility' | 'team' | 'channel' | 'assignees';
+type EditableField = 'visibility' | 'team' | 'channel' | 'assignees' | 'due';
 
 export default function TaskDetail({taskId, revision, onClose, onChanged, onDeleted}: Props) {
     const intl = useIntl();
@@ -483,11 +485,25 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
                     type={PRIORITY_TAG_TYPE[task.priority]}
                     size='small'
                 />
-                {task.dueAt && (
+                {canModify ? (
+                    <button
+                        type='button'
+                        className={`Tasks-TaskDetail__dueProperty${task.dueAt && isOverdue(task.dueAt, task.dueHasTime) && task.status !== 'done' ? ' Tasks-TaskDetail__dueProperty--overdue' : ''}`}
+                        aria-expanded={editingField === 'due'}
+                        aria-controls='tasks-detail-due-editor'
+                        onClick={() => toggleField('due')}
+                    >
+                        <Icon
+                            size='16'
+                            glyph={<CalendarOutlineIcon/>}
+                        />
+                        <span>{task.dueAt ? formatDue(intl, task.dueAt, task.dueHasTime) : intl.formatMessage({id: 'tasks.editor.due', defaultMessage: 'Due date'})}</span>
+                    </button>
+                ) : (task.dueAt && (
                     <span className={`Tasks-TaskDetail__due${isOverdue(task.dueAt, task.dueHasTime) && task.status !== 'done' ? ' Tasks-TaskDetail__due--overdue' : ''}`}>
                         {formatDue(intl, task.dueAt, task.dueHasTime)}
                     </span>
-                )}
+                ))}
                 {task.recurrence && (
                     <span className='Tasks-TaskDetail__repeat'>
                         <Icon
@@ -498,6 +514,21 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
                     </span>
                 )}
             </div>
+
+            {editingField === 'due' && canModify && (
+                <div
+                    id='tasks-detail-due-editor'
+                    className='Tasks-TaskDetail__propertyPanel'
+                >
+                    <DueDatePicker
+                        value={task.dueAt}
+                        hasTime={task.dueHasTime}
+                        onChange={(value, hasTime) => {
+                            saveField('due', {dueAt: value ?? 0, dueHasTime: hasTime});
+                        }}
+                    />
+                </div>
+            )}
 
             <dl className='Tasks-TaskDetail__facts'>
                 <dt className='Tasks-TaskDetail__term'>

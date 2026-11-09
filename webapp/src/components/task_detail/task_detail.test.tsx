@@ -130,6 +130,21 @@ describe('TaskDetail inline editing', () => {
         })));
     });
 
+    it('edits the due date with the New task picker', async () => {
+        const user = userEvent.setup();
+        renderDetail();
+        await screen.findByRole('button', {name: /Pick up mail/});
+
+        await user.click(screen.getByRole('button', {name: /Jan 5/}));
+        await user.click(await screen.findByRole('button', {name: 'Tuesday, January 6, 2026'}));
+        await user.click(screen.getByRole('button', {name: 'OK'}));
+
+        await waitFor(() => expect(updateTaskMock).toHaveBeenCalledWith(baseTask.id, {
+            dueAt: Date.UTC(2026, 0, 6),
+            dueHasTime: false,
+        }));
+    });
+
     it('adds an assignee from the detail view', async () => {
         const user = userEvent.setup();
         renderDetail();

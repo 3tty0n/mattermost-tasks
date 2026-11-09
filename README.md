@@ -115,9 +115,11 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   board cards open the same view in a popup. Name and description start as previews (description
   is rendered Markdown). Click either field to edit; click outside to save, or press **Esc** to
   cancel. In the task facts, **Visible to**, **Team**, **Channel** and **Assignees** are inline
-  editable by clicking the value. Status is a dropdown in the detail header.
-- **Due date:** click the due property, pick a day, then **OK**. Turn on **Set time** to include a
-  time; leave it off for a date-only task.
+  editable by clicking the value, and the due-date pill opens the same calendar picker as
+  **New task**. Status is a dropdown in the detail header.
+- **Due date:** click the due-date pill in the task detail (or the due property while creating),
+  pick a day, then **OK**. Turn on **Set time** to include a time; leave it off for a date-only
+  task. In Calendar view, **New task** starts with today as the due date.
 - **Repeat:** with a due date set, open the **Repeat** property. Pick **Daily**, **Weekly**,
   **Monthly**, **Yearly** or **Custom**; custom uses an interval and unit such as every 2 weeks.
   **Ends** can stay **Never** for an endless series or use an end date. Completing a repeating task
