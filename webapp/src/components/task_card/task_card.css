@@ -100,3 +100,20 @@
 .Tasks-TaskCard--dragging {
     opacity: 0.45;
 }
+
+.Tasks-TaskCard {
+    position: relative;
+}
+
+.Tasks-TaskCard__dragHandle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    color: rgba(var(--center-channel-color-rgb), 0.40);
+    pointer-events: none;
+}
+
+.Tasks-TaskCard__content {
+    padding-right: var(--spacing-s);
+}

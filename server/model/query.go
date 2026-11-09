@@ -175,8 +175,17 @@ func (q *TaskQuery) Sort(refs []TaskRef) {
 	less := func(a, b TaskRef) bool {
 		switch q.SortBy {
 		case TaskSortManual:
-			if a.Position != b.Position {
-				return ordered(a.Position < b.Position, q.Direction)
+			// Tasks created before manual ordering have position 0; use their creation time so
+			// a midpoint calculated by the client and the server sort agree.
+			aPosition, bPosition := a.Position, b.Position
+			if aPosition == 0 {
+				aPosition = float64(a.CreatedAt)
+			}
+			if bPosition == 0 {
+				bPosition = float64(b.CreatedAt)
+			}
+			if aPosition != bPosition {
+				return ordered(aPosition < bPosition, q.Direction)
 			}
 			if a.CreatedAt != b.CreatedAt {
 				return ordered(a.CreatedAt < b.CreatedAt, q.Direction)

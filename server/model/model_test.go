@@ -198,3 +198,13 @@ func TestTruncateRunes(t *testing.T) {
 	assert.Equal(t, "abc", truncateRunes("abc", 3))
 	assert.Equal(t, "あい", truncateRunes("あいう", 2))
 }
+
+func TestManualSortUsesCreatedAtFallback(t *testing.T) {
+	query := TaskQuery{SortBy: TaskSortManual, Direction: SortAsc}
+	refs := []TaskRef{
+		{ID: "new", Position: 1000, CreatedAt: 10},
+		{ID: "old", CreatedAt: 2000},
+	}
+	query.Sort(refs)
+	assert.Equal(t, []string{"new", "old"}, []string{refs[0].ID, refs[1].ID})
+}

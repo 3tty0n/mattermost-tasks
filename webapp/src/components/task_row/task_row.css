@@ -144,3 +144,18 @@
 .Tasks-TaskRow--dragging {
     opacity: 0.45;
 }
+
+.Tasks-TaskRow[data-draggable='true'] {
+    cursor: grab;
+}
+
+.Tasks-TaskRow--dragging {
+    cursor: grabbing;
+}
+
+.Tasks-TaskRow__dragHandle {
+    display: flex;
+    flex: none;
+    align-self: center;
+    color: rgba(var(--center-channel-color-rgb), 0.40);
+}

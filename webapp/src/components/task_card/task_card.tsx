@@ -6,7 +6,9 @@ import {type DragEvent, useRef} from 'react';
 import {useIntl} from 'react-intl';
 import {PRIORITY_TAG_TYPE, formatDue, isOverdue, priorityLabel, profileName} from 'utils';
 
+import DragVerticalIcon from '@mattermost/compass-icons/components/drag-vertical';
 import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
+import {Icon} from '@mattermost/compass-ui/components/icon';
 import {Tag} from '@mattermost/compass-ui/components/tag';
 import {UserAvatar} from '@mattermost/compass-ui/components/user-avatar';
 
@@ -52,7 +54,9 @@ export default function TaskCard({task, profiles, dragging, onOpen, onToggleDone
                 onDragStart?.(event);
             }}
             onDragEnd={() => {
-                dragActive.current = false;
+                window.setTimeout(() => {
+                    dragActive.current = false;
+                }, 0);
                 onDragEnd?.();
             }}
             onDragOver={onDragOver}
@@ -71,6 +75,15 @@ export default function TaskCard({task, profiles, dragging, onOpen, onToggleDone
                     )}
                 />
             </div>
+            <span
+                className='Tasks-TaskCard__dragHandle'
+                aria-hidden='true'
+            >
+                <Icon
+                    size='16'
+                    glyph={<DragVerticalIcon/>}
+                />
+            </span>
             <div className='Tasks-TaskCard__content'>
                 <button
                     type='button'

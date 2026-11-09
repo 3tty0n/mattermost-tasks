@@ -2,11 +2,12 @@
 // See LICENSE.txt for license information.
 
 import {getProfilePictureUrl, type Profile} from 'client';
-import {type DragEvent, memo} from 'react';
+import {type DragEvent, memo, useRef} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {PRIORITY_TAG_TYPE, formatDue, isOverdue, priorityLabel, profileName, statusLabel} from 'utils';
 
 import ChevronRightIcon from '@mattermost/compass-icons/components/chevron-right';
+import DragVerticalIcon from '@mattermost/compass-icons/components/drag-vertical';
 import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 import {Tag} from '@mattermost/compass-ui/components/tag';
@@ -33,6 +34,7 @@ type Props = {
 
 function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatus, draggable, dragging, onDragStart, onDragEnd, onDragOver, onDrop}: Props) {
     const intl = useIntl();
+    const dragActive = useRef(false);
     const done = task.status === 'done';
     const overdue = !done && isOverdue(task.dueAt, task.dueHasTime);
     const visibleAssignees = task.assigneeIds.slice(0, 3);
@@ -42,9 +44,22 @@ function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatu
         <li
             className={`Tasks-TaskRow${done ? ' Tasks-TaskRow--done' : ''}${dragging ? ' Tasks-TaskRow--dragging' : ''}`}
             draggable={draggable}
-            onClick={onOpen}
-            onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
+            data-draggable={draggable ? 'true' : 'false'}
+            onClick={() => {
+                if (!dragActive.current) {
+                    onOpen();
+                }
+            }}
+            onDragStart={(event) => {
+                dragActive.current = true;
+                onDragStart?.(event);
+            }}
+            onDragEnd={() => {
+                window.setTimeout(() => {
+                    dragActive.current = false;
+                }, 0);
+                onDragEnd?.();
+            }}
             onDragOver={onDragOver}
             onDrop={onDrop}
         >
@@ -127,6 +142,17 @@ function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatu
                     </span>
                 )}
             </div>
+            {draggable && (
+                <span
+                    className='Tasks-TaskRow__dragHandle'
+                    aria-hidden='true'
+                >
+                    <Icon
+                        size='16'
+                        glyph={<DragVerticalIcon/>}
+                    />
+                </span>
+            )}
             <span className='Tasks-TaskRow__chevron'>
                 <Icon
                     size='16'

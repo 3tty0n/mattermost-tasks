@@ -438,9 +438,9 @@ export default function TasksSidebar() {
                                 onDragOver={(event) => event.preventDefault()}
                                 onDrop={(event) => {
                                     event.preventDefault();
-                                    const taskID = event.dataTransfer.getData('text/plain');
-                                    if (taskID) {
-                                        setTaskStatus(taskID, status);
+                                    if (draggedTaskID) {
+                                        moveTask(draggedTaskID, status);
+                                        setDraggedTaskID(undefined);
                                     }
                                 }}
                             >
