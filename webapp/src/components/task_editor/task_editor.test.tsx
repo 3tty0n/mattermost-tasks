@@ -152,6 +152,30 @@ describe('TaskEditor', () => {
         jest.useRealTimers();
     });
 
+    it('selects priority and status with quick-select buttons', async () => {
+        const user = userEvent.setup();
+        createTaskMock.mockResolvedValueOnce({...savedTask, priority: 'urgent', status: 'in_progress'});
+        renderWithStore(
+            <TaskEditor
+                defaults={{teamId: ids.team, channelId: ids.channel}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Quick select');
+        await user.click(screen.getByRole('button', {name: 'Normal'}));
+        await user.click(screen.getByRole('button', {name: 'Urgent'}));
+        await user.click(screen.getByRole('button', {name: 'To do'}));
+        await user.click(screen.getByRole('button', {name: 'In progress'}));
+        await user.click(screen.getByRole('button', {name: 'Add task'}));
+
+        await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
+            priority: 'urgent',
+            status: 'in_progress',
+        })));
+    });
+
     it('inserts Markdown formatting and shows a preview', async () => {
         const user = userEvent.setup();
         renderWithStore(

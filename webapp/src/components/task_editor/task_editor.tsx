@@ -464,26 +464,80 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                             </div>
                         )}
                         {openProperty === 'priority' && (
-                            <Select
-                                label={intl.formatMessage({id: 'tasks.editor.priority', defaultMessage: 'Priority'})}
-                                options={priorityOptions}
-                                value={priority}
-                                onChange={(value) => {
-                                    setPriority(value as TaskPriority);
-                                    setOpenProperty(undefined);
-                                }}
-                            />
+                            <div className='Tasks-TaskEditor__propertyBody'>
+                                <span className='Tasks-TaskEditor__propertyLabel'>
+                                    <FormattedMessage
+                                        id='tasks.editor.priority'
+                                        defaultMessage='Priority'
+                                    />
+                                </span>
+                                <div
+                                    className='Tasks-TaskEditor__quickOptions'
+                                    role='group'
+                                    aria-label={intl.formatMessage({id: 'tasks.editor.priority', defaultMessage: 'Priority'})}
+                                >
+                                    {priorityOptions.map((option) => {
+                                        const value = option.value as TaskPriority;
+                                        const selected = priority === value;
+                                        return (
+                                            <button
+                                                key={value}
+                                                type='button'
+                                                className={`Tasks-TaskEditor__quickOption Tasks-TaskEditor__quickOption--priority-${value}${selected ? ' Tasks-TaskEditor__quickOption--selected' : ''}`}
+                                                aria-pressed={selected}
+                                                onClick={() => {
+                                                    setPriority(value);
+                                                    setOpenProperty(undefined);
+                                                }}
+                                            >
+                                                <Icon
+                                                    size='12'
+                                                    glyph={<FlagOutlineIcon/>}
+                                                />
+                                                <span>{option.label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         )}
                         {openProperty === 'status' && (
-                            <Select
-                                label={intl.formatMessage({id: 'tasks.editor.status', defaultMessage: 'Status'})}
-                                options={statusOptions}
-                                value={status}
-                                onChange={(value) => {
-                                    setStatus(value as TaskStatus);
-                                    setOpenProperty(undefined);
-                                }}
-                            />
+                            <div className='Tasks-TaskEditor__propertyBody'>
+                                <span className='Tasks-TaskEditor__propertyLabel'>
+                                    <FormattedMessage
+                                        id='tasks.editor.status'
+                                        defaultMessage='Status'
+                                    />
+                                </span>
+                                <div
+                                    className='Tasks-TaskEditor__quickOptions'
+                                    role='group'
+                                    aria-label={intl.formatMessage({id: 'tasks.editor.status', defaultMessage: 'Status'})}
+                                >
+                                    {statusOptions.map((option) => {
+                                        const value = option.value as TaskStatus;
+                                        const selected = status === value;
+                                        return (
+                                            <button
+                                                key={value}
+                                                type='button'
+                                                className={`Tasks-TaskEditor__quickOption${selected ? ' Tasks-TaskEditor__quickOption--selected' : ''}`}
+                                                aria-pressed={selected}
+                                                onClick={() => {
+                                                    setStatus(value);
+                                                    setOpenProperty(undefined);
+                                                }}
+                                            >
+                                                <span
+                                                    className={`Tasks-TaskEditor__quickOptionDot Tasks-TaskEditor__quickOptionDot--${value}`}
+                                                    aria-hidden='true'
+                                                />
+                                                <span>{option.label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         )}
                         {openProperty === 'scope' && (
                             <div className='Tasks-TaskEditor__propertyBody'>

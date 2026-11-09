@@ -237,3 +237,64 @@
 .Tasks-TaskEditor__hint--error {
     color: var(--error-text);
 }
+
+.Tasks-TaskEditor__quickOptions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.Tasks-TaskEditor__quickOption {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xxs);
+    padding: var(--spacing-xxxs) var(--spacing-s);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-pill);
+    background: var(--center-channel-bg);
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--font-size-75);
+    line-height: var(--line-height-75);
+}
+
+.Tasks-TaskEditor__quickOption:hover {
+    border-color: rgba(var(--button-bg-rgb), 0.56);
+    color: var(--button-bg);
+}
+
+.Tasks-TaskEditor__quickOption--selected {
+    border-color: var(--button-bg);
+    background: rgba(var(--button-bg-rgb), 0.08);
+    color: var(--button-bg);
+}
+
+.Tasks-TaskEditor__quickOption--priority-high {
+    color: var(--away-indicator);
+}
+
+.Tasks-TaskEditor__quickOption--priority-urgent {
+    color: var(--error-text);
+}
+
+.Tasks-TaskEditor__quickOption--priority-urgent.Tasks-TaskEditor__quickOption--selected {
+    border-color: var(--error-text);
+    background: rgba(var(--error-text-color-rgb, 210, 75, 78), 0.08);
+}
+
+.Tasks-TaskEditor__quickOptionDot {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: 50%;
+    background: rgba(var(--center-channel-color-rgb), 0.40);
+}
+
+.Tasks-TaskEditor__quickOptionDot--in_progress {
+    background: var(--button-bg);
+}
+
+.Tasks-TaskEditor__quickOptionDot--done {
+    background: var(--online-indicator, #3db887);
+}
