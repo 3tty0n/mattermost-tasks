@@ -358,6 +358,16 @@ func TestTaskAPIManualOrder(t *testing.T) {
 	assert.Equal(t, first.ID, list.Items[0].ID)
 	assert.Equal(t, second.ID, list.Items[1].ID)
 
+	// Moving the same task twice in a row must update the index each time.
+	w = env.serve(http.MethodPost, "/api/v1/tasks/"+first.ID, `{"position":2000}`, actorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	w = env.serve(http.MethodGet, "/api/v1/tasks?scope=team&team_id="+teamID+"&sort=manual", "", actorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	list = decodeResponse[tasks.ListResult](t, w)
+	require.Len(t, list.Items, 2)
+	assert.Equal(t, second.ID, list.Items[0].ID)
+	assert.Equal(t, first.ID, list.Items[1].ID)
+
 	// A position-only patch is allowed for any viewer, not just the creator or assignee.
 	otherID := model.NewId()
 	env.api.On("HasPermissionToTeam", otherID, teamID, model.PermissionViewTeam).Return(true).Maybe()
