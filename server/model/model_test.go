@@ -208,3 +208,19 @@ func TestManualSortUsesCreatedAtFallback(t *testing.T) {
 	query.Sort(refs)
 	assert.Equal(t, []string{"new", "old"}, []string{refs[0].ID, refs[1].ID})
 }
+
+func TestTaskQueryMatchIncludeRecurring(t *testing.T) {
+	dueAfter := int64(100)
+	dueBefore := int64(1000)
+	query := TaskQuery{DueAfter: &dueAfter, DueBefore: &dueBefore, IncludeRecurring: true}
+	recurring := TaskRef{DueAt: 500, Recurrence: &Recurrence{Frequency: RecurrenceDaily}}
+
+	assert.True(t, query.Match(recurring))
+	assert.True(t, query.Match(TaskRef{DueAt: 50, Recurrence: &Recurrence{Frequency: RecurrenceDaily}}))
+	assert.False(t, query.Match(TaskRef{DueAt: 2000, Recurrence: &Recurrence{Frequency: RecurrenceDaily}}))
+	assert.False(t, query.Match(TaskRef{DueAt: 50, Recurrence: &Recurrence{Frequency: RecurrenceDaily, Until: 60}}))
+
+	query.IncludeRecurring = false
+	assert.True(t, query.Match(recurring))
+	assert.False(t, query.Match(TaskRef{DueAt: 50, Recurrence: &Recurrence{Frequency: RecurrenceDaily}}))
+}

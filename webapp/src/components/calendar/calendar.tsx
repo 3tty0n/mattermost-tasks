@@ -1,10 +1,11 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {addLocalDays, calendarQueryBounds, calendarRange, compareCalendarTasks, dueDateKey, localDateKey, startOfLocalDay, startOfWeek, weekStartsOn, type CalendarMode} from 'calendar_utils';
+import {addLocalDays, calendarQueryBounds, calendarRange, localDateKey, startOfLocalDay, startOfWeek, weekStartsOn, type CalendarMode} from 'calendar_utils';
 import {useProfiles, useTasks} from 'hooks';
 import {type KeyboardEvent, useMemo, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
+import {compareOccurrences, occurrencesForTask, type CalendarOccurrence} from 'recurrence_utils';
 
 import CalendarCheckOutlineIcon from '@mattermost/compass-icons/components/calendar-check-outline';
 import ChevronLeftIcon from '@mattermost/compass-icons/components/chevron-left';
@@ -19,7 +20,7 @@ import {Tag} from '@mattermost/compass-ui/components/tag';
 
 import TaskCalendarCard from 'components/task_calendar_card/task_calendar_card';
 
-import type {TaskPriority, TaskQuery, TaskSummary} from 'types';
+import type {TaskPriority, TaskQuery} from 'types';
 
 import './calendar.css';
 
@@ -34,6 +35,7 @@ type Props = {
     assigneeId?: string;
     revision: number;
     onOpenTask: (taskID: string) => void;
+    onCreateTask: (day: Date) => void;
 };
 
 function defaultSelectedKey(mode: CalendarMode, cursor: Date, weekStart: number): string {
@@ -48,7 +50,7 @@ function defaultSelectedKey(mode: CalendarMode, cursor: Date, weekStart: number)
     return range.startKey;
 }
 
-export default function Calendar({scope, teamId, priority, assigneeId, revision, onOpenTask}: Props) {
+export default function Calendar({scope, teamId, priority, assigneeId, revision, onOpenTask, onCreateTask}: Props) {
     const intl = useIntl();
     const [mode, setMode] = useState<CalendarMode>('month');
     const [cursor, setCursor] = useState(() => startOfLocalDay(new Date()));
@@ -71,6 +73,7 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
             priority: priority || undefined,
             assigneeId: assigneeId || undefined,
             hasDue: true,
+            includeRecurring: true,
             dueAfter: bounds.dueAfter,
             dueBefore: bounds.dueBefore,
             sortBy: 'due',
@@ -94,33 +97,32 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
     const profiles = useProfiles(assigneeIds);
 
     const tasksByDay = useMemo(() => {
-        const days = new Map<string, TaskSummary[]>();
+        const days = new Map<string, CalendarOccurrence[]>();
         for (const task of tasks.data?.items ?? []) {
-            const key = dueDateKey(task);
-            if (!key || key < range.startKey || key > range.endKey) {
-                continue;
-            }
-            const bucket = days.get(key);
-            if (bucket) {
-                bucket.push(task);
-            } else {
-                days.set(key, [task]);
+            for (const occurrence of occurrencesForTask(task, range.days)) {
+                if (occurrence.dateKey < range.startKey || occurrence.dateKey > range.endKey) {
+                    continue;
+                }
+                const bucket = days.get(occurrence.dateKey);
+                if (bucket) {
+                    bucket.push(occurrence);
+                } else {
+                    days.set(occurrence.dateKey, [occurrence]);
+                }
             }
         }
         for (const bucket of days.values()) {
-            bucket.sort(compareCalendarTasks);
+            bucket.sort(compareOccurrences);
         }
         return days;
-    }, [tasks.data, range.startKey, range.endKey]);
+    }, [tasks.data, range.days, range.startKey, range.endKey]);
 
     const selectedDate = range.days.find((day) => localDateKey(day) === selectedKey) ?? range.days[0];
     const selectedTasks = tasksByDay.get(localDateKey(selectedDate)) ?? [];
-    const periodEmpty = Boolean(tasks.data && tasks.data.items.length === 0);
+    const periodEmpty = Boolean(tasks.data && tasksByDay.size === 0);
 
     const showWeekYear = range.start.getFullYear() !== new Date().getFullYear();
-    const periodLabel = mode === 'month' ?
-        intl.formatDate(cursor, {month: 'short', year: 'numeric'}) :
-        intl.formatDateTimeRange(range.start, range.end, {month: 'short', day: 'numeric', ...(showWeekYear ? {year: 'numeric'} : {})});
+    const periodLabel = mode === 'month' ? intl.formatDate(cursor, {month: 'short', year: 'numeric'}) : intl.formatDateTimeRange(range.start, range.end, {month: 'short', day: 'numeric', ...(showWeekYear ? {year: 'numeric'} : {})});
 
     const countLabel = (count: number) => intl.formatMessage(
         {id: 'tasks.calendar.count', defaultMessage: '{count, plural, =0 {No tasks} one {# task} other {# tasks}}'},
@@ -200,12 +202,12 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
         focusDay(target);
     };
 
-    const renderCards = (items: TaskSummary[]) => (
+    const renderCards = (items: CalendarOccurrence[]) => (
         <div className='Tasks-Calendar__cards'>
-            {items.map((task) => (
+            {items.map((occurrence) => (
                 <TaskCalendarCard
-                    key={task.id}
-                    task={task}
+                    key={`${occurrence.task.id}:${occurrence.dueAt}`}
+                    task={{...occurrence.task, dueAt: occurrence.dueAt}}
                     profiles={profiles}
                     onOpen={onOpenTask}
                 />
@@ -369,7 +371,9 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                             aria-pressed={key === selectedKey}
                                             aria-current={key === todayKey ? 'date' : undefined}
                                             aria-label={dayLabel(day, dayTasks.length)}
+                                            title={intl.formatMessage({id: 'tasks.calendar.add_hint', defaultMessage: 'Double-click to add a task'})}
                                             onClick={() => selectDay(day)}
+                                            onDoubleClick={() => onCreateTask(day)}
                                             onKeyDown={(event) => moveDayFocus(event, day)}
                                         >
                                             <span className='Tasks-Calendar__dayNumber'>{day.getDate()}</span>
@@ -386,10 +390,10 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                                     className='Tasks-Calendar__dots'
                                                     aria-hidden='true'
                                                 >
-                                                    {dayTasks.slice(0, 3).map((task) => (
+                                                    {dayTasks.slice(0, 3).map((occurrence) => (
                                                         <span
-                                                            key={task.id}
-                                                            className={`Tasks-Calendar__dot Tasks-Calendar__dot--${task.priority}`}
+                                                            key={`${occurrence.task.id}:${occurrence.dueAt}`}
+                                                            className={`Tasks-Calendar__dot Tasks-Calendar__dot--${occurrence.task.priority}`}
                                                         />
                                                     ))}
                                                 </span>
@@ -452,7 +456,11 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                     className={`Tasks-Calendar__weekDay${key === todayKey ? ' Tasks-Calendar__weekDay--today' : ''}`}
                                     aria-labelledby={`tasks-calendar-day-${key}`}
                                 >
-                                    <header className='Tasks-Calendar__weekDayHeader'>
+                                    <header
+                                        className='Tasks-Calendar__weekDayHeader'
+                                        title={intl.formatMessage({id: 'tasks.calendar.add_hint', defaultMessage: 'Double-click to add a task'})}
+                                        onDoubleClick={() => onCreateTask(day)}
+                                    >
                                         <h4
                                             id={`tasks-calendar-day-${key}`}
                                             className='Tasks-Calendar__weekDayTitle'

@@ -189,6 +189,37 @@
     outline-offset: 1px;
 }
 
+.Tasks-TaskEditor__dateInput--repeat {
+    flex: 1 1 160px;
+    width: auto;
+}
+
+.Tasks-TaskEditor__numberInput {
+    box-sizing: border-box;
+    width: 72px;
+    height: 32px;
+    padding: 0 var(--spacing-s);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-s);
+    background: var(--center-channel-bg);
+    color: var(--center-channel-color);
+    font-family: inherit;
+    font-size: var(--font-size-100);
+}
+
+.Tasks-TaskEditor__numberInput:focus-visible {
+    border-color: var(--button-bg);
+    outline: 2px solid rgba(var(--button-bg-rgb), 0.24);
+    outline-offset: 1px;
+}
+
+.Tasks-TaskEditor__repeatRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
 .Tasks-TaskEditor__assignees {
     display: flex;
     flex-direction: column;

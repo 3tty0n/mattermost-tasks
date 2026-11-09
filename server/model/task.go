@@ -122,24 +122,25 @@ func PriorityRank(priority string) int {
 
 // Task is the full record. It is never written to a WebSocket payload or a list response.
 type Task struct {
-	ID           string   `json:"id"`
-	TeamID       string   `json:"teamId"`
-	ChannelID    string   `json:"channelId,omitempty"`
-	Visibility   string   `json:"visibility"`
-	Title        string   `json:"title"`
-	Description  string   `json:"description,omitempty"`
-	CreatorID    string   `json:"creatorId"`
-	AssigneeIDs  []string `json:"assigneeIds"`
-	Status       string   `json:"status"`
-	Priority     string   `json:"priority"`
-	DueAt        int64    `json:"dueAt,omitempty"`
-	DueHasTime   bool     `json:"dueHasTime,omitempty"`
-	Position     float64  `json:"position,omitempty"`
-	SourcePostID string   `json:"sourcePostId,omitempty"`
-	ParentTaskID string   `json:"parentTaskId,omitempty"`
-	CreatedAt    int64    `json:"createdAt"`
-	UpdatedAt    int64    `json:"updatedAt"`
-	CompletedAt  int64    `json:"completedAt,omitempty"`
+	ID           string      `json:"id"`
+	TeamID       string      `json:"teamId"`
+	ChannelID    string      `json:"channelId,omitempty"`
+	Visibility   string      `json:"visibility"`
+	Title        string      `json:"title"`
+	Description  string      `json:"description,omitempty"`
+	CreatorID    string      `json:"creatorId"`
+	AssigneeIDs  []string    `json:"assigneeIds"`
+	Status       string      `json:"status"`
+	Priority     string      `json:"priority"`
+	DueAt        int64       `json:"dueAt,omitempty"`
+	DueHasTime   bool        `json:"dueHasTime,omitempty"`
+	Recurrence   *Recurrence `json:"recurrence,omitempty"`
+	Position     float64     `json:"position,omitempty"`
+	SourcePostID string      `json:"sourcePostId,omitempty"`
+	ParentTaskID string      `json:"parentTaskId,omitempty"`
+	CreatedAt    int64       `json:"createdAt"`
+	UpdatedAt    int64       `json:"updatedAt"`
+	CompletedAt  int64       `json:"completedAt,omitempty"`
 
 	// Version increments on every write and lets index updates discard stale refs.
 	Version int64 `json:"version"`
@@ -149,6 +150,15 @@ type Task struct {
 func (t *Task) Clone() *Task {
 	clone := *t
 	clone.AssigneeIDs = slices.Clone(t.AssigneeIDs)
+	clone.Recurrence = cloneRecurrence(t.Recurrence)
+	return &clone
+}
+
+func cloneRecurrence(recurrence *Recurrence) *Recurrence {
+	if recurrence == nil {
+		return nil
+	}
+	clone := *recurrence
 	return &clone
 }
 
@@ -160,21 +170,22 @@ func (t *Task) HasAssignee(userID string) bool {
 // TaskRef is the compact record kept in each index shard. One-character JSON keys keep the hot
 // index records small; they are internal and never sent to clients as-is.
 type TaskRef struct {
-	ID          string   `json:"i"`
-	TeamID      string   `json:"t"`
-	ChannelID   string   `json:"c,omitempty"`
-	Visibility  string   `json:"z"`
-	CreatorID   string   `json:"o"`
-	Title       string   `json:"n"`
-	Status      string   `json:"s"`
-	Priority    string   `json:"p"`
-	AssigneeIDs []string `json:"a,omitempty"`
-	DueAt       int64    `json:"d,omitempty"`
-	DueHasTime  bool     `json:"h,omitempty"`
-	Position    float64  `json:"q,omitempty"`
-	CreatedAt   int64    `json:"k"`
-	UpdatedAt   int64    `json:"u"`
-	Version     int64    `json:"v"`
+	ID          string      `json:"i"`
+	TeamID      string      `json:"t"`
+	ChannelID   string      `json:"c,omitempty"`
+	Visibility  string      `json:"z"`
+	CreatorID   string      `json:"o"`
+	Title       string      `json:"n"`
+	Status      string      `json:"s"`
+	Priority    string      `json:"p"`
+	AssigneeIDs []string    `json:"a,omitempty"`
+	DueAt       int64       `json:"d,omitempty"`
+	DueHasTime  bool        `json:"h,omitempty"`
+	Recurrence  *Recurrence `json:"r,omitempty"`
+	Position    float64     `json:"q,omitempty"`
+	CreatedAt   int64       `json:"k"`
+	UpdatedAt   int64       `json:"u"`
+	Version     int64       `json:"v"`
 }
 
 // Ref builds the index reference for a task. The title is capped because index records are
@@ -192,6 +203,7 @@ func (t *Task) Ref() TaskRef {
 		AssigneeIDs: slices.Clone(t.AssigneeIDs),
 		DueAt:       t.DueAt,
 		DueHasTime:  t.DueHasTime,
+		Recurrence:  cloneRecurrence(t.Recurrence),
 		Position:    t.Position,
 		CreatedAt:   t.CreatedAt,
 		UpdatedAt:   t.UpdatedAt,
@@ -201,20 +213,21 @@ func (t *Task) Ref() TaskRef {
 
 // TaskSummary is the list representation sent to the webapp.
 type TaskSummary struct {
-	ID          string   `json:"id"`
-	TeamID      string   `json:"teamId"`
-	ChannelID   string   `json:"channelId,omitempty"`
-	Visibility  string   `json:"visibility"`
-	CreatorID   string   `json:"creatorId"`
-	Title       string   `json:"title"`
-	Status      string   `json:"status"`
-	Priority    string   `json:"priority"`
-	AssigneeIDs []string `json:"assigneeIds"`
-	DueAt       int64    `json:"dueAt,omitempty"`
-	DueHasTime  bool     `json:"dueHasTime,omitempty"`
-	Position    float64  `json:"position,omitempty"`
-	CreatedAt   int64    `json:"createdAt"`
-	UpdatedAt   int64    `json:"updatedAt"`
+	ID          string      `json:"id"`
+	TeamID      string      `json:"teamId"`
+	ChannelID   string      `json:"channelId,omitempty"`
+	Visibility  string      `json:"visibility"`
+	CreatorID   string      `json:"creatorId"`
+	Title       string      `json:"title"`
+	Status      string      `json:"status"`
+	Priority    string      `json:"priority"`
+	AssigneeIDs []string    `json:"assigneeIds"`
+	DueAt       int64       `json:"dueAt,omitempty"`
+	DueHasTime  bool        `json:"dueHasTime,omitempty"`
+	Recurrence  *Recurrence `json:"recurrence,omitempty"`
+	Position    float64     `json:"position,omitempty"`
+	CreatedAt   int64       `json:"createdAt"`
+	UpdatedAt   int64       `json:"updatedAt"`
 }
 
 // Summary converts an index reference to its API representation.
@@ -235,6 +248,7 @@ func (r TaskRef) Summary() TaskSummary {
 		AssigneeIDs: assignees,
 		DueAt:       r.DueAt,
 		DueHasTime:  r.DueHasTime,
+		Recurrence:  cloneRecurrence(r.Recurrence),
 		Position:    r.Position,
 		CreatedAt:   r.CreatedAt,
 		UpdatedAt:   r.UpdatedAt,
@@ -253,6 +267,7 @@ type CreateTaskInput struct {
 	Priority     string
 	DueAt        int64
 	DueHasTime   bool
+	Recurrence   *Recurrence
 	Position     float64
 	SourcePostID string
 	ParentTaskID string
@@ -271,6 +286,7 @@ type TaskPatch struct {
 	Priority     *string
 	DueAt        *int64
 	DueHasTime   *bool
+	Recurrence   *Recurrence
 	Position     *float64
 	SourcePostID *string
 	ParentTaskID *string
@@ -280,7 +296,7 @@ type TaskPatch struct {
 func (p TaskPatch) IsZero() bool {
 	return p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil && p.Description == nil &&
 		p.AssigneeIDs == nil && p.Status == nil && p.Priority == nil && p.DueAt == nil &&
-		p.DueHasTime == nil && p.Position == nil && p.SourcePostID == nil && p.ParentTaskID == nil
+		p.DueHasTime == nil && p.Recurrence == nil && p.Position == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }
 
 // OnlyStatus reports whether the patch only changes the status. Assignees may change status
@@ -288,14 +304,14 @@ func (p TaskPatch) IsZero() bool {
 func (p TaskPatch) OnlyStatus() bool {
 	return p.Status != nil && p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
 		p.Description == nil && p.AssigneeIDs == nil && p.Priority == nil && p.DueAt == nil &&
-		p.DueHasTime == nil && p.Position == nil && p.SourcePostID == nil && p.ParentTaskID == nil
+		p.DueHasTime == nil && p.Recurrence == nil && p.Position == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }
 
 // OnlyPosition reports a pure manual-order change.
 func (p TaskPatch) OnlyPosition() bool {
 	return p.Position != nil && p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
 		p.Description == nil && p.AssigneeIDs == nil && p.Status == nil && p.Priority == nil && p.DueAt == nil &&
-		p.DueHasTime == nil && p.SourcePostID == nil && p.ParentTaskID == nil
+		p.DueHasTime == nil && p.Recurrence == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }
 
 // OnlyStatusOrPosition allows a board drag that changes a column and its manual position.
@@ -305,7 +321,7 @@ func (p TaskPatch) OnlyStatusOrPosition() bool {
 	}
 	return p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
 		p.Description == nil && p.AssigneeIDs == nil && p.Priority == nil && p.DueAt == nil &&
-		p.DueHasTime == nil && p.SourcePostID == nil && p.ParentTaskID == nil
+		p.DueHasTime == nil && p.Recurrence == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }
 
 const (

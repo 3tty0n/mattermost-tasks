@@ -22,9 +22,12 @@ system, no external service, no second database.
 | Todo / In progress / Done with drag-and-drop | Assignment notifications from a plugin bot |
 | Filters, sorting and pagination | `/task` slash commands for keyboard and mobile |
 | Markdown descriptions and source backlinks | Click-to-edit name and description |
+| Repeating tasks: daily, weekly, monthly, yearly or custom | Optional end date or endless series |
 
 **Due dates the way you expect:** a date is date-only by default. Open the calendar, choose a day,
-and press **OK**. Enable **Set time** only when you need a time.
+and press **OK**. Enable **Set time** only when you need a time. Set **Repeat** to daily, weekly,
+monthly, yearly or a custom interval; choose when the series ends, or leave it endless. Completing
+a repeating task moves it to its next occurrence.
 
 **Team and My tasks in one sidebar:** switch between them at the top. The sidebar opens on
 **Team** in a channel and **My tasks** in a DM. **Team** shows the current team's tasks plus your own
@@ -94,7 +97,9 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
 - **Calendar:** only tasks with a due date appear. Week view lists each day's cards; month view
   uses compact per-day dots and counts, with the selected day's cards below the grid. Cards show
   the task name, priority, time and assignees. Use the arrows or **Today** to move, and
-  **Week / Month** to switch the period; arrow keys move between days.
+  **Week / Month** to switch the period; arrow keys move between days. Double-click a day in the
+  month grid (or a week day header) to open **New task** with that date prefilled. Repeating tasks
+  appear on every occurrence, not just their next due date.
 - **Manual order:** the default sort is **Manual**. Drag a list row or board card to reorder it;
   drop on the upper/lower half to place before/after the target. Positions are saved on the server.
 - **Quick add:** the **+** at the top right of each board column creates a task in that column
@@ -109,6 +114,10 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   due date.
 - **Due date:** click the due property, pick a day, then **OK**. Turn on **Set time** to include a
   time; leave it off for a date-only task.
+- **Repeat:** with a due date set, open the **Repeat** property. Pick **Daily**, **Weekly**,
+  **Monthly**, **Yearly** or **Custom**; custom uses an interval and unit such as every 2 weeks.
+  **Ends** can stay **Never** for an endless series or use an end date. Completing a repeating task
+  advances it to its next due date; once the end date is passed it completes normally.
 - **Filters:** status (list view), priority, assignee and due date; sort manually, by due date,
   creation date or priority. Dragging switches to a persistent manual order only in Manual sort.
   The calendar always orders by due date and keeps the priority and assignee filters.

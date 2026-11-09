@@ -3,6 +3,7 @@
 
 import {screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import {localDateKey} from 'calendar_utils';
 import {fetchTasks, getProfilePictureUrl, getProfiles} from 'client';
 
 import type {ListResult, TaskSummary} from 'types';
@@ -48,13 +49,14 @@ function page(items: TaskSummary[]): ListResult<TaskSummary> {
     return {items, total: items.length, page: 0, perPage: 100, hasMore: false};
 }
 
-function renderCalendar() {
+function renderCalendar(onCreateTask: (day: Date) => void = jest.fn()) {
     return renderWithStore(
         <Calendar
             scope='team'
             teamId={ids.team}
             revision={0}
             onOpenTask={jest.fn()}
+            onCreateTask={onCreateTask}
         />,
     );
 }
@@ -80,11 +82,24 @@ describe('Calendar', () => {
                 scope: 'team',
                 teamId: ids.team,
                 hasDue: true,
+                includeRecurring: true,
                 sortBy: 'due',
                 perPage: 100,
             }),
             expect.anything(),
         );
+    });
+
+    it('opens task creation when a day is double-clicked', async () => {
+        const user = userEvent.setup();
+        const onCreateTask = jest.fn();
+        renderCalendar(onCreateTask);
+        await screen.findByRole('button', {name: 'Pick up mail'});
+
+        await user.dblClick(screen.getByRole('button', {pressed: true}));
+
+        expect(onCreateTask).toHaveBeenCalledTimes(1);
+        expect(localDateKey(onCreateTask.mock.calls[0][0])).toBe(localDateKey(new Date()));
     });
 
     it('shows every day’s cards in the week view', async () => {
@@ -97,6 +112,30 @@ describe('Calendar', () => {
         expect(await screen.findByRole('button', {name: 'Write docs'})).toBeVisible();
         expect(screen.getByRole('button', {name: 'Pick up mail'})).toBeVisible();
         expect(screen.getByRole('tab', {name: 'Week'})).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('requests recurring tasks and marks their cards', async () => {
+        fetchTasksMock.mockResolvedValue(page([
+            task({
+                id: 'task-recurring',
+                title: 'Daily standup',
+                dueAt: todayAt(9),
+                recurrence: {
+                    frequency: 'daily',
+                    interval: 1,
+                    startDate: localDateKey(new Date()),
+                    timezone: 'UTC',
+                },
+            }),
+        ]));
+        renderCalendar();
+
+        expect(await screen.findByRole('button', {name: 'Daily standup'})).toBeVisible();
+        expect(screen.getByRole('img', {name: 'Repeats: Daily'})).toBeVisible();
+        expect(fetchTasksMock).toHaveBeenCalledWith(
+            expect.objectContaining({includeRecurring: true}),
+            expect.anything(),
+        );
     });
 
     it('moves to the next period', async () => {

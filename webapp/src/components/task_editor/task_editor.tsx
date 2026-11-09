@@ -6,6 +6,7 @@ import {useAssignees, useDebouncedValue, useProfiles} from 'hooks';
 import {useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
+import {fromDateInput, recurrencePillLabel, toDateInput} from 'recurrence_utils';
 import {
     PRIORITY_MESSAGES,
     STATUS_MESSAGES,
@@ -27,6 +28,7 @@ import FormatBoldIcon from '@mattermost/compass-icons/components/format-bold';
 import FormatItalicIcon from '@mattermost/compass-icons/components/format-italic';
 import FormatListBulletedIcon from '@mattermost/compass-icons/components/format-list-bulleted';
 import LinkVariantIcon from '@mattermost/compass-icons/components/link-variant';
+import RefreshIcon from '@mattermost/compass-icons/components/refresh';
 import {Button} from '@mattermost/compass-ui/components/button';
 import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
 import {Chip} from '@mattermost/compass-ui/components/chip';
@@ -43,7 +45,7 @@ import Dialog from 'components/dialog/dialog';
 import DueDatePicker from 'components/due_date_picker/due_date_picker';
 import MarkdownText from 'components/markdown_text/markdown_text';
 
-import type {Task, TaskPriority, TaskStatus, TaskVisibility} from 'types';
+import type {Recurrence, RecurrenceFrequency, Task, TaskPriority, TaskStatus, TaskVisibility} from 'types';
 
 import './task_editor.css';
 
@@ -54,6 +56,8 @@ export type TaskEditorDefaults = {
     title?: string;
     description?: string;
     assigneeIds?: string[];
+    dueAt?: number;
+    dueHasTime?: boolean;
     sourcePostId?: string;
 };
 
@@ -63,6 +67,19 @@ type Props = {
     onClose: () => void;
     onSaved: (task: Task) => void;
 };
+
+type RepeatMode = 'never' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
+type RepeatUnit = Exclude<RecurrenceFrequency, 'none'>;
+
+function initialRepeatMode(recurrence: Recurrence | undefined): RepeatMode {
+    if (!recurrence || recurrence.frequency === 'none') {
+        return 'never';
+    }
+    if ((recurrence.interval ?? 1) > 1) {
+        return 'custom';
+    }
+    return recurrence.frequency;
+}
 
 export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     const intl = useIntl();
@@ -82,8 +99,19 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     const [description, setDescription] = useState(task?.description ?? defaults?.description ?? '');
     const [status, setStatus] = useState<TaskStatus>(task?.status ?? 'todo');
     const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? 'normal');
-    const [due, setDue] = useState(toDateTimeInput(task?.dueAt, task?.dueHasTime ?? false));
-    const [dueHasTime, setDueHasTime] = useState(task?.dueHasTime ?? false);
+    const initialDueAt = task?.dueAt ?? defaults?.dueAt;
+    const initialDueHasTime = task?.dueHasTime ?? defaults?.dueHasTime ?? false;
+    const [due, setDue] = useState(toDateTimeInput(initialDueAt, initialDueHasTime));
+    const [dueHasTime, setDueHasTime] = useState(initialDueHasTime);
+    const initialRecurrence = task?.recurrence;
+    const [repeat, setRepeat] = useState<RepeatMode>(initialRepeatMode(initialRecurrence));
+    const [repeatUnit, setRepeatUnit] = useState<RepeatUnit>(
+        initialRecurrence && initialRecurrence.frequency !== 'none' ? initialRecurrence.frequency : 'weekly',
+    );
+    const [repeatInterval, setRepeatInterval] = useState(initialRecurrence?.interval ?? 1);
+    const [repeatEnd, setRepeatEnd] = useState<'never' | 'on'>(initialRecurrence?.until ? 'on' : 'never');
+    const [repeatUntil, setRepeatUntil] = useState(initialRecurrence?.until ? toDateInput(initialRecurrence.until) : '');
+    const [recurrenceStartDate, setRecurrenceStartDate] = useState(initialRecurrence?.startDate);
     let initialAssigneeIds = task?.assigneeIds ?? defaults?.assigneeIds;
     if (initialVisibility === 'private') {
         initialAssigneeIds = undefined;
@@ -95,7 +123,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     const [assigneeTerm, setAssigneeTerm] = useState('');
     const [assigneeFocused, setAssigneeFocused] = useState(false);
     const [preview, setPreview] = useState(false);
-    const [openProperty, setOpenProperty] = useState<'due' | 'priority' | 'status' | 'scope'>();
+    const [openProperty, setOpenProperty] = useState<'due' | 'priority' | 'status' | 'scope' | 'repeat'>();
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string>();
 
@@ -135,7 +163,60 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
         scopeLabel = selectedTeam.display_name;
     }
     const dueValue = fromDateTimeInput(due, dueHasTime);
+    const dueDateInput = toDateInput(dueValue, dueHasTime);
     const scopeLocked = Boolean(task?.sourcePostId || defaults?.sourcePostId);
+
+    const buildRecurrence = (): Recurrence => {
+        if (repeat === 'never' || !dueValue) {
+            return {frequency: 'none'};
+        }
+        const frequency: RepeatUnit = repeat === 'custom' ? repeatUnit : repeat;
+        const until = repeatEnd === 'on' && repeatUntil ? fromDateInput(repeatUntil) : undefined;
+        return {
+            frequency,
+            interval: repeat === 'custom' ? Math.min(99, Math.max(1, repeatInterval)) : 1,
+            timezone: new Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+            ...(recurrenceStartDate ? {startDate: recurrenceStartDate} : {}),
+            ...(until ? {until} : {}),
+        };
+    };
+    const recurrence = buildRecurrence();
+
+    const changeRepeat = (next: RepeatMode) => {
+        setRepeat(next);
+        setRecurrenceStartDate(undefined);
+        if (next === 'never') {
+            setRepeatEnd('never');
+            setRepeatUntil('');
+            return;
+        }
+        if (next !== 'custom') {
+            setRepeatUnit(next);
+            setRepeatInterval(1);
+        }
+        if (repeatEnd === 'on' && dueDateInput && (!repeatUntil || repeatUntil < dueDateInput)) {
+            setRepeatUntil(dueDateInput);
+        }
+    };
+
+    const repeatOptions = [
+        {value: 'never', label: intl.formatMessage({id: 'tasks.editor.repeat_never', defaultMessage: 'Never'})},
+        {value: 'daily', label: intl.formatMessage({id: 'tasks.editor.repeat_daily', defaultMessage: 'Daily'})},
+        {value: 'weekly', label: intl.formatMessage({id: 'tasks.editor.repeat_weekly', defaultMessage: 'Weekly'})},
+        {value: 'monthly', label: intl.formatMessage({id: 'tasks.editor.repeat_monthly', defaultMessage: 'Monthly'})},
+        {value: 'yearly', label: intl.formatMessage({id: 'tasks.editor.repeat_yearly', defaultMessage: 'Yearly'})},
+        {value: 'custom', label: intl.formatMessage({id: 'tasks.editor.repeat_custom', defaultMessage: 'Custom'})},
+    ];
+    const repeatUnitOptions = [
+        {value: 'daily', label: intl.formatMessage({id: 'tasks.editor.repeat_unit_days', defaultMessage: 'Days'})},
+        {value: 'weekly', label: intl.formatMessage({id: 'tasks.editor.repeat_unit_weeks', defaultMessage: 'Weeks'})},
+        {value: 'monthly', label: intl.formatMessage({id: 'tasks.editor.repeat_unit_months', defaultMessage: 'Months'})},
+        {value: 'yearly', label: intl.formatMessage({id: 'tasks.editor.repeat_unit_years', defaultMessage: 'Years'})},
+    ];
+    const repeatEndOptions = [
+        {value: 'never', label: intl.formatMessage({id: 'tasks.editor.repeat_end_never', defaultMessage: 'Never'})},
+        {value: 'on', label: intl.formatMessage({id: 'tasks.editor.repeat_end_on', defaultMessage: 'On date'})},
+    ];
 
     const toggleAssignee = (userID: string) => {
         setAssigneeIds((previous) => (previous.includes(userID) ? previous.filter((id) => id !== userID) : [...previous, userID]));
@@ -214,6 +295,16 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
             setError(intl.formatMessage({id: 'tasks.editor.title_required', defaultMessage: 'Enter a task title.'}));
             return;
         }
+        if (repeat !== 'never' && repeatEnd === 'on') {
+            if (!repeatUntil) {
+                setError(intl.formatMessage({id: 'tasks.editor.repeat_end_required', defaultMessage: 'Choose an end date, or set Ends to Never.'}));
+                return;
+            }
+            if (dueDateInput && repeatUntil < dueDateInput) {
+                setError(intl.formatMessage({id: 'tasks.editor.repeat_end_before_due', defaultMessage: 'The end date can’t be before the due date.'}));
+                return;
+            }
+        }
         setSaving(true);
         setError(undefined);
         try {
@@ -229,6 +320,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                     priority,
                     dueAt: fromDateTimeInput(due, dueHasTime) ?? 0,
                     dueHasTime,
+                    recurrence,
                 });
                 onSaved(updated);
             } else {
@@ -243,6 +335,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                     priority,
                     dueAt: fromDateTimeInput(due, dueHasTime),
                     dueHasTime,
+                    recurrence,
                     sourcePostId: defaults?.sourcePostId,
                 });
                 onSaved(created);
@@ -450,6 +543,18 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                     </button>
                     <button
                         type='button'
+                        className='Tasks-TaskEditor__propertySummary'
+                        aria-expanded={openProperty === 'repeat'}
+                        onClick={() => setOpenProperty(openProperty === 'repeat' ? undefined : 'repeat')}
+                    >
+                        <Icon
+                            size='16'
+                            glyph={<RefreshIcon/>}
+                        />
+                        <span>{recurrencePillLabel(intl, recurrence)}</span>
+                    </button>
+                    <button
+                        type='button'
                         className={`Tasks-TaskEditor__propertySummary Tasks-TaskEditor__propertySummary--priority-${priority}`}
                         aria-expanded={openProperty === 'priority'}
                         onClick={() => setOpenProperty(openProperty === 'priority' ? undefined : 'priority')}
@@ -502,9 +607,115 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                                     onChange={(value, hasTime) => {
                                         setDue(toDateTimeInput(value, hasTime));
                                         setDueHasTime(hasTime);
+                                        setRecurrenceStartDate(undefined);
+                                        if (!value) {
+                                            setRepeat('never');
+                                            setRepeatEnd('never');
+                                            setRepeatUntil('');
+                                        } else if (repeatEnd === 'on') {
+                                            const nextDate = toDateInput(value, hasTime);
+                                            if (!repeatUntil || repeatUntil < nextDate) {
+                                                setRepeatUntil(nextDate);
+                                            }
+                                        }
                                         setOpenProperty(undefined);
                                     }}
                                 />
+                            </div>
+                        )}
+                        {openProperty === 'repeat' && (
+                            <div className='Tasks-TaskEditor__propertyBody'>
+                                <span className='Tasks-TaskEditor__propertyLabel'>
+                                    <FormattedMessage
+                                        id='tasks.editor.repeat'
+                                        defaultMessage='Repeat'
+                                    />
+                                </span>
+                                {dueValue ? (
+                                    <>
+                                        <Select
+                                            size='small'
+                                            label={intl.formatMessage({id: 'tasks.editor.repeat', defaultMessage: 'Repeat'})}
+                                            options={repeatOptions}
+                                            value={repeat}
+                                            onChange={(value) => changeRepeat(value as RepeatMode)}
+                                        />
+                                        {repeat === 'custom' && (
+                                            <div className='Tasks-TaskEditor__repeatRow'>
+                                                <span className='Tasks-TaskEditor__propertyLabel'>
+                                                    <FormattedMessage
+                                                        id='tasks.editor.repeat_every'
+                                                        defaultMessage='Every'
+                                                    />
+                                                </span>
+                                                <input
+                                                    type='number'
+                                                    className='Tasks-TaskEditor__numberInput'
+                                                    min={1}
+                                                    max={99}
+                                                    value={repeatInterval}
+                                                    aria-label={intl.formatMessage({id: 'tasks.editor.repeat_interval', defaultMessage: 'Repeat interval'})}
+                                                    onChange={(event) => {
+                                                        const value = Number(event.target.value);
+                                                        setRepeatInterval(Number.isFinite(value) ? Math.min(99, Math.max(1, Math.trunc(value))) : 1);
+                                                    }}
+                                                />
+                                                <Select
+                                                    size='small'
+                                                    label={intl.formatMessage({id: 'tasks.editor.repeat_unit', defaultMessage: 'Unit'})}
+                                                    options={repeatUnitOptions}
+                                                    value={repeatUnit}
+                                                    onChange={(value) => {
+                                                        setRepeatUnit(value as RepeatUnit);
+                                                        setRecurrenceStartDate(undefined);
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                        {repeat !== 'never' && (
+                                            <>
+                                                <div className='Tasks-TaskEditor__repeatRow'>
+                                                    <Select
+                                                        size='small'
+                                                        label={intl.formatMessage({id: 'tasks.editor.repeat_ends', defaultMessage: 'Ends'})}
+                                                        options={repeatEndOptions}
+                                                        value={repeatEnd}
+                                                        onChange={(value) => {
+                                                            const next = value as 'never' | 'on';
+                                                            setRepeatEnd(next);
+                                                            if (next === 'on' && !repeatUntil && dueDateInput) {
+                                                                setRepeatUntil(dueDateInput);
+                                                            }
+                                                        }}
+                                                    />
+                                                    {repeatEnd === 'on' && (
+                                                        <input
+                                                            type='date'
+                                                            className='Tasks-TaskEditor__dateInput Tasks-TaskEditor__dateInput--repeat'
+                                                            min={dueDateInput}
+                                                            value={repeatUntil}
+                                                            aria-label={intl.formatMessage({id: 'tasks.editor.repeat_end_date', defaultMessage: 'Repeat end date'})}
+                                                            onChange={(event) => setRepeatUntil(event.target.value)}
+                                                        />
+                                                    )}
+                                                </div>
+                                                <p className='Tasks-TaskEditor__hint'>
+                                                    <FormattedMessage
+                                                        id='tasks.editor.repeat_completion_hint'
+                                                        defaultMessage='Completing it moves the due date to the next occurrence.'
+                                                    />
+                                                </p>
+                                            </>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p className='Tasks-TaskEditor__hint'>
+                                        <FormattedMessage
+                                            id='tasks.editor.repeat_due_required'
+                                            defaultMessage='Set a due date to repeat this task.'
+                                        />
+                                    </p>
+                                )}
                             </div>
                         )}
                         {openProperty === 'priority' && (

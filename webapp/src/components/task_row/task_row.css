@@ -94,6 +94,11 @@
     border-color: rgba(var(--online-indicator-rgb, 61, 184, 120), 0.48);
 }
 
+.Tasks-TaskRow__repeat {
+    display: inline-flex;
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+}
+
 .Tasks-TaskRow__due--overdue {
     color: var(--error-text);
     font-weight: var(--font-weight-semibold);

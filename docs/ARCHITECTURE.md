@@ -85,7 +85,12 @@ administrator. Assignment never grants access to a private channel.
   that. Manual order is a float `position`; drops use the midpoint between the neighboring tasks,
   and old tasks without a position fall back to creation time.
 - The due calendar commits only on **OK**. Time is off by default and only a date is stored unless
-  the user enables **Set time**.
+  the user enables **Set time**. Recurrence stores a frequency, interval, stable start date,
+  optional end date and IANA timezone in both the task and its compact ref. The calendar asks for
+  recurrence-overlapping tasks and expands them into occurrences for the visible days.
+- Completing a recurring task advances `dueAt` on the server to the next occurrence; the series
+  keeps its original start date for month-end and leap-day clamping. The calendar shows the
+  current and future occurrences only, so completed dates do not reappear.
 - The webapp uses the host's Redux store and local selectors rather than bundling Mattermost
   redux. CSRF uses the `MMCSRF` cookie and `X-CSRF-Token` header; requests include credentials.
 - WebSocket `custom_<plugin-id>_changed` and reconnect events bump a revision counter that

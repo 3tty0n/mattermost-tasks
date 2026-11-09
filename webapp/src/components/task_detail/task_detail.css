@@ -60,6 +60,14 @@
     font-size: var(--font-size-100);
 }
 
+.Tasks-TaskDetail__repeat {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xxxs);
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+    font-size: var(--font-size-75);
+}
+
 .Tasks-TaskDetail__due--overdue {
     color: var(--error-text);
     font-weight: var(--font-weight-semibold);

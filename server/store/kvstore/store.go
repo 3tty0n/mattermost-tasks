@@ -397,6 +397,13 @@ func decodeTaskRefs(raw []byte) ([]taskmodel.TaskRef, error) {
 	return refs, nil
 }
 
+func recurrenceEqual(a, b *taskmodel.Recurrence) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
 func taskRefFieldsEqual(a, b *taskmodel.TaskRef) bool {
 	return a.TeamID == b.TeamID &&
 		a.ChannelID == b.ChannelID &&
@@ -407,6 +414,7 @@ func taskRefFieldsEqual(a, b *taskmodel.TaskRef) bool {
 		a.Priority == b.Priority &&
 		a.DueAt == b.DueAt &&
 		a.DueHasTime == b.DueHasTime &&
+		recurrenceEqual(a.Recurrence, b.Recurrence) &&
 		a.Position == b.Position &&
 		a.CreatedAt == b.CreatedAt &&
 		slices.Equal(a.AssigneeIDs, b.AssigneeIDs)

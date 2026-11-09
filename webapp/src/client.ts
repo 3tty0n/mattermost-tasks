@@ -138,6 +138,7 @@ export async function fetchTasks(query: TaskQuery, signal?: AbortSignal): Promis
         due_before: query.dueBefore,
         due_after: query.dueAfter,
         has_due: query.hasDue,
+        include_recurring: query.includeRecurring,
         sort: query.sortBy,
         direction: query.direction,
         page: query.page,

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -374,4 +375,46 @@ func TestTaskAPIManualOrder(t *testing.T) {
 	denyAdmin(env.api, otherID)
 	w = env.serve(http.MethodPost, "/api/v1/tasks/"+first.ID, `{"position":2000}`, otherID)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+}
+
+func TestTaskAPIRecurrence(t *testing.T) {
+	env := newAPITestEnv(t)
+	teamID, channelID := model.NewId(), model.NewId()
+	actorID := model.NewId()
+	allowChannel(env.api, actorID, channelID, teamID)
+	denyAdmin(env.api, actorID)
+
+	due := int64(1767225600000)   // 2026-01-01
+	until := int64(1770249600000) // 2026-02-05
+	body := `{"channelId":"` + channelID + `","title":"Daily standup","dueAt":` +
+		strconv.FormatInt(due, 10) + `,"recurrence":{"frequency":"daily","interval":1,"timezone":"UTC","until":` +
+		strconv.FormatInt(until, 10) + `}}`
+	w := env.serve(http.MethodPost, "/api/v1/tasks", body, actorID)
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	created := decodeResponse[taskmodel.Task](t, w)
+	require.NotNil(t, created.Recurrence)
+	assert.Equal(t, taskmodel.RecurrenceDaily, created.Recurrence.Frequency)
+	assert.Equal(t, "2026-01-01", created.Recurrence.StartDate)
+
+	after := int64(1767916800000)  // 2026-01-09
+	before := int64(1768089600000) // 2026-01-11
+	base := "/api/v1/tasks?scope=channel&channel_id=" + channelID +
+		"&due_after=" + strconv.FormatInt(after, 10) +
+		"&due_before=" + strconv.FormatInt(before, 10)
+	w = env.serve(http.MethodGet, base, "", actorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Zero(t, decodeResponse[tasks.ListResult](t, w).Total)
+
+	w = env.serve(http.MethodGet, base+"&include_recurring=true", "", actorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	result := decodeResponse[tasks.ListResult](t, w)
+	require.Len(t, result.Items, 1)
+	require.NotNil(t, result.Items[0].Recurrence)
+
+	w = env.serve(http.MethodPost, "/api/v1/tasks/"+created.ID, `{"recurrence":{"frequency":"none"}}`, actorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Nil(t, decodeResponse[taskmodel.Task](t, w).Recurrence)
+
+	w = env.serve(http.MethodPost, "/api/v1/tasks", `{"channelId":"`+channelID+`","title":"Bad repeat","recurrence":{"frequency":"daily"}}`, actorID)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

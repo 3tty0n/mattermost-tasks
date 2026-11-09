@@ -4,9 +4,11 @@
 import {getProfilePictureUrl, type Profile} from 'client';
 import {type DragEvent, useRef} from 'react';
 import {useIntl} from 'react-intl';
+import {recurrenceLabel} from 'recurrence_utils';
 import {PRIORITY_TAG_TYPE, formatDue, isOverdue, priorityLabel, profileName} from 'utils';
 
 import DragVerticalIcon from '@mattermost/compass-icons/components/drag-vertical';
+import RefreshIcon from '@mattermost/compass-icons/components/refresh';
 import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 import {Tag} from '@mattermost/compass-ui/components/tag';
@@ -108,6 +110,19 @@ export default function TaskCard({task, profiles, dragging, dropPosition, onOpen
                         {task.dueAt && task.dueAt > 0 && (
                             <span className={`Tasks-TaskCard__due${overdue ? ' Tasks-TaskCard__due--overdue' : ''}`}>
                                 {formatDue(intl, task.dueAt, task.dueHasTime)}
+                            </span>
+                        )}
+                        {task.recurrence && (
+                            <span
+                                className='Tasks-TaskCard__repeat'
+                                role='img'
+                                title={intl.formatMessage({id: 'tasks.recurrence.aria', defaultMessage: 'Repeats: {label}'}, {label: recurrenceLabel(intl, task.recurrence)})}
+                                aria-label={intl.formatMessage({id: 'tasks.recurrence.aria', defaultMessage: 'Repeats: {label}'}, {label: recurrenceLabel(intl, task.recurrence)})}
+                            >
+                                <Icon
+                                    size='12'
+                                    glyph={<RefreshIcon/>}
+                                />
                             </span>
                         )}
                     </div>

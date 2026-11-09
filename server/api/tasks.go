@@ -10,19 +10,20 @@ import (
 )
 
 type createTaskRequest struct {
-	TeamID       string   `json:"teamId"`
-	ChannelID    string   `json:"channelId"`
-	Visibility   string   `json:"visibility"`
-	Title        string   `json:"title"`
-	Description  string   `json:"description"`
-	AssigneeIDs  []string `json:"assigneeIds"`
-	Status       string   `json:"status"`
-	Priority     string   `json:"priority"`
-	DueAt        int64    `json:"dueAt"`
-	DueHasTime   bool     `json:"dueHasTime"`
-	Position     float64  `json:"position"`
-	SourcePostID string   `json:"sourcePostId"`
-	ParentTaskID string   `json:"parentTaskId"`
+	TeamID       string                `json:"teamId"`
+	ChannelID    string                `json:"channelId"`
+	Visibility   string                `json:"visibility"`
+	Title        string                `json:"title"`
+	Description  string                `json:"description"`
+	AssigneeIDs  []string              `json:"assigneeIds"`
+	Status       string                `json:"status"`
+	Priority     string                `json:"priority"`
+	DueAt        int64                 `json:"dueAt"`
+	DueHasTime   bool                  `json:"dueHasTime"`
+	Recurrence   *taskmodel.Recurrence `json:"recurrence"`
+	Position     float64               `json:"position"`
+	SourcePostID string                `json:"sourcePostId"`
+	ParentTaskID string                `json:"parentTaskId"`
 }
 
 func (req createTaskRequest) input() taskmodel.CreateTaskInput {
@@ -37,6 +38,7 @@ func (req createTaskRequest) input() taskmodel.CreateTaskInput {
 		Priority:     req.Priority,
 		DueAt:        req.DueAt,
 		DueHasTime:   req.DueHasTime,
+		Recurrence:   req.Recurrence,
 		Position:     req.Position,
 		SourcePostID: req.SourcePostID,
 		ParentTaskID: req.ParentTaskID,
@@ -44,19 +46,20 @@ func (req createTaskRequest) input() taskmodel.CreateTaskInput {
 }
 
 type updateTaskRequest struct {
-	TeamID       *string   `json:"teamId"`
-	ChannelID    *string   `json:"channelId"`
-	Visibility   *string   `json:"visibility"`
-	Title        *string   `json:"title"`
-	Description  *string   `json:"description"`
-	AssigneeIDs  *[]string `json:"assigneeIds"`
-	Status       *string   `json:"status"`
-	Priority     *string   `json:"priority"`
-	DueAt        *int64    `json:"dueAt"`
-	DueHasTime   *bool     `json:"dueHasTime"`
-	Position     *float64  `json:"position"`
-	SourcePostID *string   `json:"sourcePostId"`
-	ParentTaskID *string   `json:"parentTaskId"`
+	TeamID       *string               `json:"teamId"`
+	ChannelID    *string               `json:"channelId"`
+	Visibility   *string               `json:"visibility"`
+	Title        *string               `json:"title"`
+	Description  *string               `json:"description"`
+	AssigneeIDs  *[]string             `json:"assigneeIds"`
+	Status       *string               `json:"status"`
+	Priority     *string               `json:"priority"`
+	DueAt        *int64                `json:"dueAt"`
+	DueHasTime   *bool                 `json:"dueHasTime"`
+	Recurrence   *taskmodel.Recurrence `json:"recurrence"`
+	Position     *float64              `json:"position"`
+	SourcePostID *string               `json:"sourcePostId"`
+	ParentTaskID *string               `json:"parentTaskId"`
 }
 
 func (req updateTaskRequest) patch() taskmodel.TaskPatch {
@@ -71,6 +74,7 @@ func (req updateTaskRequest) patch() taskmodel.TaskPatch {
 		Priority:     req.Priority,
 		DueAt:        req.DueAt,
 		DueHasTime:   req.DueHasTime,
+		Recurrence:   req.Recurrence,
 		Position:     req.Position,
 		SourcePostID: req.SourcePostID,
 		ParentTaskID: req.ParentTaskID,
@@ -170,21 +174,30 @@ func taskQueryFromRequest(r *http.Request) (taskmodel.TaskQuery, error) {
 		}
 		hasDue = &parsed
 	}
+	includeRecurring := false
+	if value := firstValue(query, "include_recurring"); value != "" {
+		parsed, err := strconv.ParseBool(value)
+		if err != nil {
+			return taskmodel.TaskQuery{}, fmt.Errorf("%w: invalid include-recurring", taskmodel.ErrInvalid)
+		}
+		includeRecurring = parsed
+	}
 
 	return taskmodel.TaskQuery{
-		Scope:      taskmodel.TaskScope(firstValue(query, "scope")),
-		TeamID:     firstValue(query, "team_id"),
-		ChannelID:  firstValue(query, "channel_id"),
-		Statuses:   csvValues(query, "status"),
-		AssigneeID: firstValue(query, "assignee_id"),
-		Priority:   firstValue(query, "priority"),
-		DueBefore:  dueBefore,
-		DueAfter:   dueAfter,
-		HasDue:     hasDue,
-		SortBy:     firstValue(query, "sort"),
-		Direction:  firstValue(query, "direction"),
-		Page:       page,
-		PerPage:    perPage,
+		Scope:            taskmodel.TaskScope(firstValue(query, "scope")),
+		TeamID:           firstValue(query, "team_id"),
+		ChannelID:        firstValue(query, "channel_id"),
+		Statuses:         csvValues(query, "status"),
+		AssigneeID:       firstValue(query, "assignee_id"),
+		Priority:         firstValue(query, "priority"),
+		DueBefore:        dueBefore,
+		DueAfter:         dueAfter,
+		HasDue:           hasDue,
+		IncludeRecurring: includeRecurring,
+		SortBy:           firstValue(query, "sort"),
+		Direction:        firstValue(query, "direction"),
+		Page:             page,
+		PerPage:          perPage,
 	}, nil
 }
 

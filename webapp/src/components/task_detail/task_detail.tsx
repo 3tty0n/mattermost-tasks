@@ -6,6 +6,7 @@ import {useProfiles} from 'hooks';
 import {useEffect, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
+import {recurrenceLabel} from 'recurrence_utils';
 import {
     PRIORITY_TAG_TYPE,
     STATUS_MESSAGES,
@@ -18,6 +19,7 @@ import {
 
 import ArrowLeftIcon from '@mattermost/compass-icons/components/arrow-left';
 import PencilOutlineIcon from '@mattermost/compass-icons/components/pencil-outline';
+import RefreshIcon from '@mattermost/compass-icons/components/refresh';
 import TrashCanOutlineIcon from '@mattermost/compass-icons/components/trash-can-outline';
 import {Button} from '@mattermost/compass-ui/components/button';
 import {Icon} from '@mattermost/compass-ui/components/icon';
@@ -262,6 +264,15 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
                 {task.dueAt && (
                     <span className={`Tasks-TaskDetail__due${isOverdue(task.dueAt, task.dueHasTime) && task.status !== 'done' ? ' Tasks-TaskDetail__due--overdue' : ''}`}>
                         {formatDue(intl, task.dueAt, task.dueHasTime)}
+                    </span>
+                )}
+                {task.recurrence && (
+                    <span className='Tasks-TaskDetail__repeat'>
+                        <Icon
+                            size='16'
+                            glyph={<RefreshIcon/>}
+                        />
+                        {recurrenceLabel(intl, task.recurrence)}
                     </span>
                 )}
             </div>

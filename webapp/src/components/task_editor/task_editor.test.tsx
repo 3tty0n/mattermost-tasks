@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {screen, waitFor} from '@testing-library/react';
+import {fireEvent, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {createTask, fetchAssignees, getProfiles, getProfilePictureUrl, updateTask} from 'client';
 
@@ -93,6 +93,41 @@ describe('TaskEditor', () => {
             priority: 'normal',
         })));
         await waitFor(() => expect(onSaved).toHaveBeenCalledWith(savedTask));
+    });
+
+    it('creates a recurring task with an end date', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <TaskEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, dueAt: Date.UTC(2026, 0, 5)}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Daily review');
+        await user.click(screen.getByRole('button', {name: 'Repeat'}));
+        await user.click(screen.getByRole('combobox', {name: 'Repeat'}));
+        await user.click(await screen.findByRole('option', {name: 'Daily'}));
+
+        await user.click(screen.getByRole('combobox', {name: 'Ends'}));
+        await user.click(await screen.findByRole('option', {name: 'On date'}));
+        const endDate = screen.getByLabelText('Repeat end date');
+        expect(endDate).toHaveValue('2026-01-05');
+        fireEvent.change(endDate, {target: {value: '2026-01-10'}});
+
+        await user.click(screen.getByRole('button', {name: 'Add task'}));
+
+        await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'Daily review',
+            dueAt: Date.UTC(2026, 0, 5),
+            dueHasTime: false,
+            recurrence: expect.objectContaining({
+                frequency: 'daily',
+                interval: 1,
+                until: Date.UTC(2026, 0, 10),
+            }),
+        })));
     });
 
     it('lists users as soon as the assignee field is focused', async () => {

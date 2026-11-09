@@ -306,6 +306,18 @@ export default function TasksSidebar() {
         });
     };
 
+    const openCreateForDay = useCallback((day: Date) => {
+        setTaskEditor({
+            defaults: {
+                teamId: teamID ?? myTeams[0]?.id,
+                visibility: isDM ? 'private' : 'team',
+                assigneeIds: currentUserId ? [currentUserId] : [],
+                dueAt: Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()),
+                dueHasTime: false,
+            },
+        });
+    }, [teamID, myTeams, isDM, currentUserId]);
+
     const startQuickAdd = (status: TaskStatus) => {
         setQuickAddStatus((current) => (current === status ? undefined : status));
         setQuickAddTitle('');
@@ -777,6 +789,7 @@ export default function TasksSidebar() {
                         assigneeId={filters.assigneeId || undefined}
                         revision={tasksRevision}
                         onOpenTask={openCalendarTask}
+                        onCreateTask={openCreateForDay}
                     />
                 )}
             </div>

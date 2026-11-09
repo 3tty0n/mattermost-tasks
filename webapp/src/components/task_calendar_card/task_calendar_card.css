@@ -58,6 +58,11 @@
     min-width: 0;
 }
 
+.Tasks-CalendarCard__repeat {
+    display: inline-flex;
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+}
+
 .Tasks-CalendarCard__time {
     color: rgba(var(--center-channel-color-rgb), 0.64);
     font-size: var(--font-size-25);

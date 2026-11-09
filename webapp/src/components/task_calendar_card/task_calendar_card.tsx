@@ -4,8 +4,11 @@
 import {getProfilePictureUrl, type Profile} from 'client';
 import {memo} from 'react';
 import {useIntl} from 'react-intl';
+import {recurrenceLabel} from 'recurrence_utils';
 import {PRIORITY_TAG_TYPE, priorityLabel, profileName} from 'utils';
 
+import RefreshIcon from '@mattermost/compass-icons/components/refresh';
+import {Icon} from '@mattermost/compass-ui/components/icon';
 import {Tag} from '@mattermost/compass-ui/components/tag';
 import {UserAvatar} from '@mattermost/compass-ui/components/user-avatar';
 
@@ -27,7 +30,7 @@ function TaskCalendarCard({task, profiles, onOpen}: Props) {
     const done = task.status === 'done';
     const visibleAssignees = task.assigneeIds.slice(0, 3);
     const extraAssignees = task.assigneeIds.length - visibleAssignees.length;
-    const hasMeta = task.priority !== 'none' || Boolean(task.dueHasTime) || task.assigneeIds.length > 0;
+    const hasMeta = task.priority !== 'none' || Boolean(task.dueHasTime) || task.assigneeIds.length > 0 || Boolean(task.recurrence);
 
     return (
         <article
@@ -56,6 +59,19 @@ function TaskCalendarCard({task, profiles, onOpen}: Props) {
                     {task.dueHasTime && task.dueAt && (
                         <span className='Tasks-CalendarCard__time'>
                             {intl.formatTime(new Date(task.dueAt), {hour: 'numeric', minute: '2-digit'})}
+                        </span>
+                    )}
+                    {task.recurrence && (
+                        <span
+                            className='Tasks-CalendarCard__repeat'
+                            role='img'
+                            title={intl.formatMessage({id: 'tasks.recurrence.aria', defaultMessage: 'Repeats: {label}'}, {label: recurrenceLabel(intl, task.recurrence)})}
+                            aria-label={intl.formatMessage({id: 'tasks.recurrence.aria', defaultMessage: 'Repeats: {label}'}, {label: recurrenceLabel(intl, task.recurrence)})}
+                        >
+                            <Icon
+                                size='12'
+                                glyph={<RefreshIcon/>}
+                            />
                         </span>
                     )}
                     <div className='Tasks-CalendarCard__assignees'>

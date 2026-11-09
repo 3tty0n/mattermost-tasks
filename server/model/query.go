@@ -39,19 +39,20 @@ const (
 
 // TaskQuery is a fully validated list query. The API layer converts strings to this struct.
 type TaskQuery struct {
-	Scope      TaskScope
-	TeamID     string
-	ChannelID  string
-	Statuses   []string
-	AssigneeID string
-	Priority   string
-	DueBefore  *int64
-	DueAfter   *int64
-	HasDue     *bool
-	SortBy     string
-	Direction  string
-	Page       int
-	PerPage    int
+	Scope            TaskScope
+	TeamID           string
+	ChannelID        string
+	Statuses         []string
+	AssigneeID       string
+	Priority         string
+	DueBefore        *int64
+	DueAfter         *int64
+	HasDue           *bool
+	IncludeRecurring bool
+	SortBy           string
+	Direction        string
+	Page             int
+	PerPage          int
 }
 
 // Normalize applies defaults and validates the query.
@@ -158,6 +159,17 @@ func (q *TaskQuery) Match(ref TaskRef) bool {
 		if !*q.HasDue && ref.DueAt != 0 {
 			return false
 		}
+	}
+	if q.IncludeRecurring && ref.Recurrence != nil {
+		// A recurring task's anchor can be older than the visible range, so only discard series
+		// that start after it or ended before it. The calendar filters exact occurrence days.
+		if q.DueBefore != nil && ref.DueAt >= *q.DueBefore {
+			return false
+		}
+		if q.DueAfter != nil && ref.Recurrence.Until != 0 && ref.Recurrence.Until < *q.DueAfter {
+			return false
+		}
+		return true
 	}
 	// Due filters never match tasks without a due date.
 	if q.DueBefore != nil && (ref.DueAt == 0 || ref.DueAt >= *q.DueBefore) {

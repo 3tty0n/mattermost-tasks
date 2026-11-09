@@ -4,6 +4,15 @@
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
 export type TaskPriority = 'none' | 'low' | 'normal' | 'high' | 'urgent';
 export type TaskVisibility = 'private' | 'team' | 'channel';
+export type RecurrenceFrequency = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+export type Recurrence = {
+    frequency: RecurrenceFrequency;
+    interval?: number;
+    startDate?: string;
+    until?: number;
+    timezone?: string;
+};
 
 export const TASK_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done'];
 export const TASK_PRIORITIES: TaskPriority[] = ['none', 'low', 'normal', 'high', 'urgent'];
@@ -19,6 +28,7 @@ export type TaskSummary = {
     assigneeIds: string[];
     dueAt?: number;
     dueHasTime?: boolean;
+    recurrence?: Recurrence;
     position?: number;
     createdAt: number;
     updatedAt: number;
@@ -55,6 +65,7 @@ export type TaskQuery = {
     dueBefore?: number;
     dueAfter?: number;
     hasDue?: boolean;
+    includeRecurring?: boolean;
     sortBy?: TaskSort;
     direction?: SortDirection;
     page?: number;
@@ -81,6 +92,7 @@ export type CreateTaskInput = {
     priority: TaskPriority;
     dueAt?: number;
     dueHasTime?: boolean;
+    recurrence?: Recurrence;
     position?: number;
     sourcePostId?: string;
 };
@@ -96,6 +108,7 @@ export type UpdateTaskInput = {
     priority?: TaskPriority;
     dueAt?: number;
     dueHasTime?: boolean;
+    recurrence?: Recurrence;
     position?: number;
     sourcePostId?: string;
 };

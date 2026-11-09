@@ -16,7 +16,7 @@ responses set `Cache-Control: no-store` because task titles and descriptions are
 
 ## List tasks
 
-`GET /tasks?scope=my|team|channel|all&team_id=...&channel_id=...&status=todo,in_progress&assignee_id=...&priority=...&due_before=...&due_after=...&has_due=true&sort=due|created|priority&direction=asc|desc&page=0&per_page=20`
+`GET /tasks?scope=my|team|channel|all&team_id=...&channel_id=...&status=todo,in_progress&assignee_id=...&priority=...&due_before=...&due_after=...&has_due=true&include_recurring=true&sort=due|created|priority&direction=asc|desc&page=0&per_page=20`
 
 - `scope=my` returns tasks assigned to the actor in teams they can read, plus their own private
   tasks. It powers the webapp's **My tasks** scope.
@@ -29,6 +29,9 @@ responses set `Cache-Control: no-store` because task titles and descriptions are
   to `asc`. Manual order uses the persisted `position`, falling back to creation time for older
   tasks.
 - `per_page` defaults to 30 and is capped at 100.
+- `include_recurring=true` lets a due range include repeating tasks whose current due date is
+  before the range but which still have occurrences inside it. The calendar uses this; the list
+  and board do not need it.
 
 Response:
 
@@ -47,6 +50,13 @@ Response:
       "assigneeIds": ["userid"],
       "dueAt": 1767225600000,
       "dueHasTime": false,
+      "recurrence": {
+        "frequency": "daily",
+        "interval": 1,
+        "startDate": "2026-01-01",
+        "until": 1770249600000,
+        "timezone": "UTC"
+      },
       "position": 1700000000000,
       "createdAt": 1700000000000,
       "updatedAt": 1700000000000
@@ -62,6 +72,12 @@ Response:
 `visibility` is `private`, `team` or `channel`. A private task is only returned to its creator;
 team tasks to team members; channel tasks to channel members. `dueHasTime` absent or false means
 the due value is date-only and the UI must not show a time.
+
+`recurrence` is omitted for one-off tasks. When present, `frequency` is `daily`, `weekly`,
+`monthly` or `yearly`, `interval` is 1–99, `startDate` is the stable `YYYY-MM-DD` anchor used for
+month-end and leap-day clamping, `until` is an inclusive date-only end (0/omitted means endless)
+and `timezone` is the IANA zone used to preserve the local time. The task's `dueAt` is always its
+current/next occurrence.
 
 ## Create task
 
@@ -79,6 +95,12 @@ the due value is date-only and the UI must not show a time.
   "priority": "high",
   "dueAt": 1767225600000,
   "dueHasTime": false,
+  "recurrence": {
+    "frequency": "weekly",
+    "interval": 1,
+    "until": 1770249600000,
+    "timezone": "Asia/Tokyo"
+  },
   "sourcePostId": "optionalpostid"
 }
 ```
@@ -91,8 +113,10 @@ present, team otherwise):
 - `team`: every member of `teamId` can read it; `channelId` is cleared.
 - `channel`: only members of `channelId` can read it; a channel is required.
 
-`dueHasTime: true` requires a non-zero `dueAt`. A source post must be in an accessible
-public/private channel and is always channel-visible.
+`dueHasTime: true` requires a non-zero `dueAt`. `recurrence` requires a due date; send
+`{"frequency":"none"}` on update to clear it. A source post must be in an accessible
+public/private channel and is always channel-visible. Recurring tasks must use a valid IANA
+`timezone`; the server validates it and fills `interval` (default 1) and `startDate`.
 
 Returns 201 with the full task.
 
@@ -122,6 +146,12 @@ The POST alias exists because some reverse proxies reject PATCH. The body accept
   "priority": "urgent",
   "dueAt": 1767225600000,
   "dueHasTime": true,
+  "recurrence": {
+    "frequency": "monthly",
+    "interval": 2,
+    "until": 1770249600000,
+    "timezone": "Asia/Tokyo"
+  },
   "position": 1700000000000,
   "sourcePostId": "postid"
 }
@@ -133,7 +163,10 @@ the creator as assignee, team tasks have no channel, channel tasks require a cha
 with a source post must remain channel-visible.
 
 Metadata edits require the creator or a system administrator with current scope access. Status
-changes are allowed for the creator, an assignee or a system administrator. A `position`-only
+changes are allowed for the creator, an assignee or a system administrator. Marking a recurring
+task done advances its `dueAt` to the next occurrence and keeps it open with `status: "todo"`;
+once the end date is passed, the task stays done. Send `{"recurrence":{"frequency":"none"}}` to
+stop repeating. A `position`-only
 change is allowed for any user who can view the task, because manual order is shared within the
 scope. Private tasks are editable only by their creator. A status/position-only body skips the
 metadata checks but still checks scope access. Positions are non-negative numbers; clients

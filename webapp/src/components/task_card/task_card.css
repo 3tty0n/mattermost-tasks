@@ -79,6 +79,11 @@
     white-space: nowrap;
 }
 
+.Tasks-TaskCard__repeat {
+    display: inline-flex;
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+}
+
 .Tasks-TaskCard__due--overdue {
     color: var(--error-text);
     font-weight: var(--font-weight-semibold);

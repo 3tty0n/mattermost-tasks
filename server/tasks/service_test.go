@@ -3,6 +3,7 @@ package tasks
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
@@ -524,4 +525,148 @@ func TestUpdateVisibilityAndPrivateAccess(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, taskmodel.TaskVisibilityTeam, updated.Visibility)
 	assert.Empty(t, updated.ChannelID)
+}
+
+func TestRecurringTaskAdvancesOnCompletion(t *testing.T) {
+	env := newTestEnv(t)
+	teamID, channelID := model.NewId(), model.NewId()
+	creatorID, assigneeID := model.NewId(), model.NewId()
+	allowChannel(env.api, creatorID, channelID, teamID)
+	allowChannel(env.api, assigneeID, channelID, teamID)
+	denyAdmin(env.api, creatorID)
+	denyAdmin(env.api, assigneeID)
+
+	due := time.Date(2026, time.January, 5, 0, 0, 0, 0, time.UTC).UnixMilli()
+	task, err := env.service.Create(nil, "/tasks", creatorID, taskmodel.CreateTaskInput{
+		ChannelID:   channelID,
+		Title:       "Daily review",
+		AssigneeIDs: []string{assigneeID},
+		DueAt:       due,
+		Recurrence: &taskmodel.Recurrence{
+			Frequency: taskmodel.RecurrenceDaily,
+			TimeZone:  "UTC",
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, task.Recurrence)
+	assert.Equal(t, "2026-01-05", task.Recurrence.StartDate)
+
+	refs, err := env.store.ListTaskRefsByChannel(channelID)
+	require.NoError(t, err)
+	require.Len(t, refs, 1)
+	require.NotNil(t, refs[0].Recurrence)
+	assert.Equal(t, taskmodel.RecurrenceDaily, refs[0].Recurrence.Frequency)
+
+	done := taskmodel.TaskStatusDone
+	updated, err := env.service.Update(nil, "/tasks", assigneeID, task.ID, taskmodel.TaskPatch{Status: &done})
+	require.NoError(t, err)
+	assert.Equal(t, taskmodel.TaskStatusTodo, updated.Status)
+	assert.Equal(t, time.Date(2026, time.January, 6, 0, 0, 0, 0, time.UTC).UnixMilli(), updated.DueAt)
+	assert.Zero(t, updated.CompletedAt)
+	require.NotNil(t, updated.Recurrence)
+	assert.Equal(t, "2026-01-05", updated.Recurrence.StartDate)
+
+	title := "Renamed"
+	updated, err = env.service.Update(nil, "/tasks", creatorID, task.ID, taskmodel.TaskPatch{Title: &title})
+	require.NoError(t, err)
+	require.NotNil(t, updated.Recurrence)
+	assert.Equal(t, "2026-01-05", updated.Recurrence.StartDate)
+}
+
+func TestRecurringTaskStopsAtEndDate(t *testing.T) {
+	env := newTestEnv(t)
+	teamID, channelID := model.NewId(), model.NewId()
+	creatorID := model.NewId()
+	allowChannel(env.api, creatorID, channelID, teamID)
+	denyAdmin(env.api, creatorID)
+
+	due := time.Date(2026, time.January, 5, 0, 0, 0, 0, time.UTC).UnixMilli()
+	until := time.Date(2026, time.January, 6, 0, 0, 0, 0, time.UTC).UnixMilli()
+	task, err := env.service.Create(nil, "/tasks", creatorID, taskmodel.CreateTaskInput{
+		ChannelID: channelID,
+		Title:     "Short series",
+		DueAt:     due,
+		Recurrence: &taskmodel.Recurrence{
+			Frequency: taskmodel.RecurrenceDaily,
+			TimeZone:  "UTC",
+			Until:     until,
+		},
+	})
+	require.NoError(t, err)
+
+	done := taskmodel.TaskStatusDone
+	updated, err := env.service.Update(nil, "/tasks", creatorID, task.ID, taskmodel.TaskPatch{Status: &done})
+	require.NoError(t, err)
+	assert.Equal(t, taskmodel.TaskStatusTodo, updated.Status)
+	assert.Equal(t, until, updated.DueAt)
+
+	updated, err = env.service.Update(nil, "/tasks", creatorID, task.ID, taskmodel.TaskPatch{Status: &done})
+	require.NoError(t, err)
+	assert.Equal(t, taskmodel.TaskStatusDone, updated.Status)
+	assert.Equal(t, until, updated.DueAt)
+	assert.NotZero(t, updated.CompletedAt)
+}
+
+func TestUpdateClearsRecurrence(t *testing.T) {
+	env := newTestEnv(t)
+	teamID, channelID := model.NewId(), model.NewId()
+	creatorID := model.NewId()
+	allowChannel(env.api, creatorID, channelID, teamID)
+	denyAdmin(env.api, creatorID)
+
+	task, err := env.service.Create(nil, "/tasks", creatorID, taskmodel.CreateTaskInput{
+		ChannelID: channelID,
+		Title:     "Repeating",
+		DueAt:     time.Date(2026, time.January, 5, 0, 0, 0, 0, time.UTC).UnixMilli(),
+		Recurrence: &taskmodel.Recurrence{
+			Frequency: taskmodel.RecurrenceWeekly,
+			TimeZone:  "UTC",
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, task.Recurrence)
+
+	updated, err := env.service.Update(nil, "/tasks", creatorID, task.ID, taskmodel.TaskPatch{
+		Recurrence: &taskmodel.Recurrence{Frequency: taskmodel.RecurrenceNone},
+	})
+	require.NoError(t, err)
+	assert.Nil(t, updated.Recurrence)
+}
+
+func TestListIncludesRecurringTasksInRange(t *testing.T) {
+	env := newTestEnv(t)
+	teamID, channelID := model.NewId(), model.NewId()
+	creatorID := model.NewId()
+	allowChannel(env.api, creatorID, channelID, teamID)
+	denyAdmin(env.api, creatorID)
+
+	due := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC).UnixMilli()
+	_, err := env.service.Create(nil, "/tasks", creatorID, taskmodel.CreateTaskInput{
+		ChannelID: channelID,
+		Title:     "Daily standup",
+		DueAt:     due,
+		Recurrence: &taskmodel.Recurrence{
+			Frequency: taskmodel.RecurrenceDaily,
+			TimeZone:  "UTC",
+		},
+	})
+	require.NoError(t, err)
+
+	after := time.Date(2026, time.January, 9, 0, 0, 0, 0, time.UTC).UnixMilli()
+	before := time.Date(2026, time.January, 11, 0, 0, 0, 0, time.UTC).UnixMilli()
+	query := taskmodel.TaskQuery{
+		Scope:            taskmodel.TaskScopeChannel,
+		ChannelID:        channelID,
+		DueAfter:         &after,
+		DueBefore:        &before,
+		IncludeRecurring: true,
+	}
+	result, err := env.service.List(creatorID, query)
+	require.NoError(t, err)
+	assert.Equal(t, 1, result.Total)
+
+	query.IncludeRecurring = false
+	result, err = env.service.List(creatorID, query)
+	require.NoError(t, err)
+	assert.Equal(t, 0, result.Total)
 }

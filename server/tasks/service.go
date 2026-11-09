@@ -111,6 +111,10 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 	if input.DueHasTime && input.DueAt == 0 {
 		return nil, fmt.Errorf("%w: a due time requires a due date", model.ErrInvalid)
 	}
+	recurrence, err := model.NormalizeRecurrence(input.Recurrence, input.DueAt, input.DueHasTime)
+	if err != nil {
+		return nil, err
+	}
 	visibility := input.Visibility
 	if visibility == "" {
 		visibility = model.DefaultTaskVisibility(input.ChannelID)
@@ -192,6 +196,7 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 		Priority:     priority,
 		DueAt:        input.DueAt,
 		DueHasTime:   input.DueHasTime && input.DueAt != 0,
+		Recurrence:   recurrence,
 		Position:     position,
 		SourcePostID: input.SourcePostID,
 		ParentTaskID: input.ParentTaskID,
@@ -498,6 +503,31 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 		if current.DueAt == 0 {
 			current.DueHasTime = false
 		}
+		dueChanged := patch.DueAt != nil || patch.DueHasTime != nil
+		if patch.Recurrence != nil {
+			recurrence := *patch.Recurrence
+			if dueChanged {
+				recurrence.StartDate = ""
+			} else if recurrence.StartDate == "" && current.Recurrence != nil {
+				recurrence.StartDate = current.Recurrence.StartDate
+			}
+			current.Recurrence = &recurrence
+		}
+		if dueChanged && current.Recurrence != nil && patch.Recurrence == nil {
+			recurrence := *current.Recurrence
+			recurrence.StartDate = ""
+			current.Recurrence = &recurrence
+		}
+		if current.DueAt == 0 {
+			current.Recurrence = nil
+		}
+		if current.Recurrence != nil {
+			recurrence, recErr := model.NormalizeRecurrence(current.Recurrence, current.DueAt, current.DueHasTime)
+			if recErr != nil {
+				return nil, recErr
+			}
+			current.Recurrence = recurrence
+		}
 		if normalized.position != nil {
 			current.Position = *normalized.position
 		}
@@ -518,6 +548,14 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 		}
 		if normalized.parentTaskID != nil {
 			current.ParentTaskID = *normalized.parentTaskID
+		}
+		if normalized.status != nil && *normalized.status == model.TaskStatusDone && current.Recurrence != nil &&
+			(before == nil || before.Status != model.TaskStatusDone) {
+			if next, ok := current.Recurrence.NextDueAt(current.DueAt, current.DueHasTime, s.now()); ok {
+				current.DueAt = next
+				current.Status = model.TaskStatusTodo
+				current.CompletedAt = 0
+			}
 		}
 
 		if scopeChanged || patch.AssigneeIDs != nil {
