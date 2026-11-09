@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	taskmodel "github.com/3tty0n/mattermost-tasks/server/model"
 )
@@ -223,28 +224,34 @@ func (s *KVStore) syncEventRefs(oldEvent, nextEvent *taskmodel.Event) error {
 		}
 	}
 
-	oldCreator, newCreator := "", ""
-	if oldEvent != nil {
-		oldCreator = oldEvent.CreatorID
+	users := make(map[string]struct{}, len(oldRef.AssigneeIDs)+len(newRef.AssigneeIDs)+2)
+	if oldRef.CreatorID != "" {
+		users[oldRef.CreatorID] = struct{}{}
 	}
-	if nextEvent != nil {
-		newCreator = nextEvent.CreatorID
+	if newRef.CreatorID != "" {
+		users[newRef.CreatorID] = struct{}{}
 	}
-	switch {
-	case oldCreator != newCreator:
-		if oldCreator != "" {
-			if err := s.removeEventRef("event_user:", oldCreator, oldRef.ID); err != nil {
+	for _, userID := range oldRef.AssigneeIDs {
+		users[userID] = struct{}{}
+	}
+	for _, userID := range newRef.AssigneeIDs {
+		users[userID] = struct{}{}
+	}
+	for userID := range users {
+		if userID == "" {
+			continue
+		}
+		inOld := oldRef.CreatorID == userID || slices.Contains(oldRef.AssigneeIDs, userID)
+		inNew := newRef.CreatorID == userID || slices.Contains(newRef.AssigneeIDs, userID)
+		switch {
+		case inOld && !inNew:
+			if err := s.removeEventRef("event_user:", userID, oldRef.ID); err != nil {
 				errs = append(errs, err)
 			}
-		}
-		if newCreator != "" {
-			if err := s.upsertEventRef("event_user:", newCreator, newRef); err != nil {
+		case inNew:
+			if err := s.upsertEventRef("event_user:", userID, newRef); err != nil {
 				errs = append(errs, err)
 			}
-		}
-	case newCreator != "":
-		if err := s.upsertEventRef("event_user:", newCreator, newRef); err != nil {
-			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
@@ -323,6 +330,7 @@ func eventRefFieldsEqual(a, b *taskmodel.EventRef) bool {
 		a.ChannelID == b.ChannelID &&
 		a.Visibility == b.Visibility &&
 		a.CreatorID == b.CreatorID &&
+		slices.Equal(a.AssigneeIDs, b.AssigneeIDs) &&
 		a.Title == b.Title &&
 		a.StartAt == b.StartAt &&
 		a.EndAt == b.EndAt &&

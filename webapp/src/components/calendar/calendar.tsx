@@ -111,8 +111,13 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                 ids.add(id);
             }
         }
+        for (const event of events.data?.items ?? []) {
+            for (const id of event.assigneeIds) {
+                ids.add(id);
+            }
+        }
         return [...ids];
-    }, [tasks.data]);
+    }, [tasks.data, events.data]);
     const profiles = useProfiles(assigneeIds);
 
     const eventsByDay = useMemo(() => {
@@ -270,6 +275,7 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                 <EventCalendarCard
                     key={`${occurrence.event.id}:${occurrence.dateKey}`}
                     event={occurrence.event}
+                    profiles={profiles}
                     onOpen={onOpenEvent}
                 />
             ))}

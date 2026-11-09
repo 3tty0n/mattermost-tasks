@@ -134,6 +134,7 @@ type Task struct {
 	Priority     string      `json:"priority"`
 	DueAt        int64       `json:"dueAt,omitempty"`
 	DueHasTime   bool        `json:"dueHasTime,omitempty"`
+	TimeZone     string      `json:"timezone,omitempty"`
 	Recurrence   *Recurrence `json:"recurrence,omitempty"`
 	Position     float64     `json:"position,omitempty"`
 	SourcePostID string      `json:"sourcePostId,omitempty"`
@@ -181,6 +182,7 @@ type TaskRef struct {
 	AssigneeIDs []string    `json:"a,omitempty"`
 	DueAt       int64       `json:"d,omitempty"`
 	DueHasTime  bool        `json:"h,omitempty"`
+	TimeZone    string      `json:"tz,omitempty"`
 	Recurrence  *Recurrence `json:"r,omitempty"`
 	Position    float64     `json:"q,omitempty"`
 	CreatedAt   int64       `json:"k"`
@@ -203,6 +205,7 @@ func (t *Task) Ref() TaskRef {
 		AssigneeIDs: slices.Clone(t.AssigneeIDs),
 		DueAt:       t.DueAt,
 		DueHasTime:  t.DueHasTime,
+		TimeZone:    t.TimeZone,
 		Recurrence:  cloneRecurrence(t.Recurrence),
 		Position:    t.Position,
 		CreatedAt:   t.CreatedAt,
@@ -224,6 +227,7 @@ type TaskSummary struct {
 	AssigneeIDs []string    `json:"assigneeIds"`
 	DueAt       int64       `json:"dueAt,omitempty"`
 	DueHasTime  bool        `json:"dueHasTime,omitempty"`
+	TimeZone    string      `json:"timezone,omitempty"`
 	Recurrence  *Recurrence `json:"recurrence,omitempty"`
 	Position    float64     `json:"position,omitempty"`
 	CreatedAt   int64       `json:"createdAt"`
@@ -248,6 +252,7 @@ func (r TaskRef) Summary() TaskSummary {
 		AssigneeIDs: assignees,
 		DueAt:       r.DueAt,
 		DueHasTime:  r.DueHasTime,
+		TimeZone:    r.TimeZone,
 		Recurrence:  cloneRecurrence(r.Recurrence),
 		Position:    r.Position,
 		CreatedAt:   r.CreatedAt,
@@ -267,6 +272,7 @@ type CreateTaskInput struct {
 	Priority     string
 	DueAt        int64
 	DueHasTime   bool
+	TimeZone     string
 	Recurrence   *Recurrence
 	Position     float64
 	SourcePostID string
@@ -286,6 +292,7 @@ type TaskPatch struct {
 	Priority     *string
 	DueAt        *int64
 	DueHasTime   *bool
+	TimeZone     *string
 	Recurrence   *Recurrence
 	Position     *float64
 	SourcePostID *string
@@ -296,7 +303,7 @@ type TaskPatch struct {
 func (p TaskPatch) IsZero() bool {
 	return p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil && p.Description == nil &&
 		p.AssigneeIDs == nil && p.Status == nil && p.Priority == nil && p.DueAt == nil &&
-		p.DueHasTime == nil && p.Recurrence == nil && p.Position == nil && p.SourcePostID == nil && p.ParentTaskID == nil
+		p.DueHasTime == nil && p.TimeZone == nil && p.Recurrence == nil && p.Position == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }
 
 // OnlyStatus reports whether the patch only changes the status. Assignees may change status
@@ -304,14 +311,14 @@ func (p TaskPatch) IsZero() bool {
 func (p TaskPatch) OnlyStatus() bool {
 	return p.Status != nil && p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
 		p.Description == nil && p.AssigneeIDs == nil && p.Priority == nil && p.DueAt == nil &&
-		p.DueHasTime == nil && p.Recurrence == nil && p.Position == nil && p.SourcePostID == nil && p.ParentTaskID == nil
+		p.DueHasTime == nil && p.TimeZone == nil && p.Recurrence == nil && p.Position == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }
 
 // OnlyPosition reports a pure manual-order change.
 func (p TaskPatch) OnlyPosition() bool {
 	return p.Position != nil && p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
 		p.Description == nil && p.AssigneeIDs == nil && p.Status == nil && p.Priority == nil && p.DueAt == nil &&
-		p.DueHasTime == nil && p.Recurrence == nil && p.SourcePostID == nil && p.ParentTaskID == nil
+		p.DueHasTime == nil && p.TimeZone == nil && p.Recurrence == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }
 
 // OnlyStatusOrPosition allows a board drag that changes a column and its manual position.
@@ -321,7 +328,7 @@ func (p TaskPatch) OnlyStatusOrPosition() bool {
 	}
 	return p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
 		p.Description == nil && p.AssigneeIDs == nil && p.Priority == nil && p.DueAt == nil &&
-		p.DueHasTime == nil && p.Recurrence == nil && p.SourcePostID == nil && p.ParentTaskID == nil
+		p.DueHasTime == nil && p.TimeZone == nil && p.Recurrence == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }
 
 const (

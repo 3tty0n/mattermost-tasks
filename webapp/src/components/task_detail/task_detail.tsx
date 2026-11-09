@@ -7,6 +7,7 @@ import {type ReactNode, useEffect, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {recurrenceLabel} from 'recurrence_utils';
+import {machineTimeZone, timeZoneOptions} from 'timezone_utils';
 import {
     PRIORITY_TAG_TYPE,
     STATUS_MESSAGES,
@@ -74,6 +75,7 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
     const [savingField, setSavingField] = useState<EditableField>();
     const [assigneeTerm, setAssigneeTerm] = useState('');
     const [assigneeFocused, setAssigneeFocused] = useState(false);
+    const [dueTimeZone, setDueTimeZone] = useState(() => machineTimeZone());
 
     const team = useSelector((state: GlobalState) => (task ? selectTeam(state, task.teamId) : undefined));
     const channel = useSelector((state: GlobalState) => (task?.channelId ? selectChannel(state, task.channelId) : undefined));
@@ -103,6 +105,7 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
         getTask(taskId, controller.signal).then(
             (loaded) => {
                 setTask(loaded);
+                setDueTimeZone(loaded.timezone || machineTimeZone());
                 setLoading(false);
             },
             (err: unknown) => {
@@ -521,11 +524,20 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
                     className='Tasks-TaskDetail__propertyPanel'
                 >
                     <DueDatePicker
+                        key={dueTimeZone}
                         value={task.dueAt}
                         hasTime={task.dueHasTime}
+                        timeZone={dueTimeZone}
                         onChange={(value, hasTime) => {
-                            saveField('due', {dueAt: value ?? 0, dueHasTime: hasTime});
+                            saveField('due', {dueAt: value ?? 0, dueHasTime: hasTime, timezone: dueTimeZone});
                         }}
+                    />
+                    <Select
+                        size='small'
+                        label={intl.formatMessage({id: 'tasks.editor.timezone', defaultMessage: 'Time zone'})}
+                        options={timeZoneOptions(dueTimeZone).map((zone) => ({value: zone, label: zone}))}
+                        value={dueTimeZone}
+                        onChange={setDueTimeZone}
                     />
                 </div>
             )}

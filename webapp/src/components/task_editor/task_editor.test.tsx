@@ -130,6 +130,33 @@ describe('TaskEditor', () => {
         })));
     });
 
+    it('saves the task time zone', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <TaskEditor
+                defaults={{
+                    teamId: ids.team,
+                    channelId: ids.channel,
+                    dueAt: Date.UTC(2026, 0, 5, 0),
+                    dueHasTime: true,
+                    timeZone: 'Asia/Tokyo',
+                }}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Tokyo review');
+        await user.click(screen.getByRole('button', {name: 'Add task'}));
+
+        await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'Tokyo review',
+            dueAt: Date.UTC(2026, 0, 5, 0),
+            dueHasTime: true,
+            timezone: 'Asia/Tokyo',
+        })));
+    });
+
     it('lists users as soon as the assignee field is focused', async () => {
         const user = userEvent.setup();
         renderWithStore(

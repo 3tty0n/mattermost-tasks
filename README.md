@@ -26,13 +26,15 @@ system, no external service, no second database.
 | Calendar events, separate from tasks | Timed or all-day, with task/event visual distinction |
 
 **Due dates the way you expect:** a date is date-only by default. Open the calendar, choose a day,
-and press **OK**. Enable **Set time** only when you need a time. Set **Repeat** to daily, weekly,
-monthly, yearly or a custom interval; choose when the series ends, or leave it endless. Completing
-a repeating task moves it to its next occurrence.
+and press **OK**. Enable **Set time** only when you need a time. Timed tasks and events store their
+own IANA **time zone** (default: the machine's region) so the entered wall time is unambiguous;
+every viewer sees the resulting instant in their own machine's time zone. Set **Repeat** to daily,
+weekly, monthly, yearly or a custom interval; choose when the series ends, or leave it endless.
+Completing a repeating task moves it to its next occurrence.
 
 **Team and Mine in one sidebar:** switch between them at the top. The sidebar opens on **Team**
 in a channel and **Mine** in a DM. **Team** shows the current team's tasks and events plus your own
-**Only me** items; **Mine** collects tasks assigned to you and events you created. New tasks default
+**Only me** items; **Mine** collects tasks assigned to you and events you created or are assigned to. New tasks default
 to **Team** in channels and **Only me** in DMs; you can also choose **Only me** explicitly in the
 editor.
 Private-channel tasks are filtered from lists and return 404 to non-members. Every route re-checks
@@ -89,7 +91,7 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
 
 - **Team / Mine:** switch scopes with the tabs at the top. A channel starts on **Team**, which
   shows the current team's readable tasks and events plus your own **Only me** items. A DM starts
-  on **Mine**, which collects tasks assigned to you and events you created across teams.
+  on **Mine**, which collects tasks assigned to you and events you created or are assigned to across teams.
 - **Visibility:** new tasks default to **Team** in channels and **Only me** in DMs. Choose
   **Only me** explicitly in the editor to keep a task private; it is always assigned to you.
   Channel visibility is still available for channel-specific work. **Only me** tasks appear in the
@@ -105,11 +107,12 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   **New task** button defaults the due date to today; double-clicking a day overrides it with that
   day. Repeating tasks appear on every occurrence, not just their next due date.
 - **Events:** create an event with the **+** in a day header (week view) or in the selected day's
-  agenda (month view). Events have a start/end time, an optional all-day flag, visibility and an
-  optional description. They are deliberately separate from tasks: no checkbox, priority or
-  assignee. Events appear as accent-colored cards with a calendar icon and time range; tasks keep
-  their priority dots and assignee avatars, and month cells show tasks as dots and events as bars.
-  Click an event to edit it; creators and administrators can delete it.
+  agenda (month view). Events have a start/end time in a selectable **time zone**, an optional
+  all-day flag, visibility, assignees and an optional description. They are deliberately separate
+  from tasks: no checkbox or priority. Events appear as accent-colored cards with a calendar icon
+  and time range plus assignee avatars; tasks keep their priority dots and assignee avatars, and
+  month cells show tasks as dots and events as bars. Click an event to edit it; creators and
+  administrators can delete it.
 - **Manual order:** the default sort is **Manual**. Drag a list row or board card to reorder it;
   drop on the upper/lower half to place before/after the target. Positions are saved on the server.
 - **Quick add:** the **+** at the top right of each board column creates a task in that column
@@ -121,8 +124,8 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   board cards open the same view in a popup. Name and description start as previews (description
   is rendered Markdown). Click either field to edit; click outside to save, or press **Esc** to
   cancel. In the task facts, **Visible to**, **Team**, **Channel** and **Assignees** are inline
-  editable by clicking the value, and the due-date pill opens the same calendar picker as
-  **New task**. Status is a dropdown in the detail header.
+  editable by clicking the value. The due-date pill opens the same calendar picker as
+  **New task**, with a **Time zone** selector. Status is a dropdown in the detail header.
 - **Due date:** click the due-date pill in the task detail (or the due property while creating),
   pick a day, then **OK**. Turn on **Set time** to include a time; leave it off for a date-only
   task. In Calendar view, **New task** starts with today as the due date.

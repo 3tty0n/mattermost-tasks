@@ -7,11 +7,12 @@ import {IntlProvider} from 'react-intl';
 
 import DueDatePicker from './due_date_picker';
 
-function renderPicker(value: number | undefined, onChange: jest.Mock) {
+function renderPicker(value: number | undefined, onChange: jest.Mock, timeZone?: string) {
     return render(
         <IntlProvider locale='en'>
             <DueDatePicker
                 value={value}
+                timeZone={timeZone}
                 onChange={onChange}
             />
         </IntlProvider>,
@@ -59,6 +60,19 @@ describe('DueDatePicker', () => {
         await user.click(screen.getByRole('button', {name: 'OK'}));
 
         expect(onChange).toHaveBeenCalledWith(new Date(2026, 0, 20, 14, 30).getTime(), true);
+    });
+
+    it('shows and commits wall time in the selected timezone', async () => {
+        const user = userEvent.setup({advanceTimers: jest.advanceTimersByTime});
+        const onChange = jest.fn();
+        const value = Date.UTC(2026, 0, 20, 0, 0); // 09:00 Asia/Tokyo
+        renderPicker(value, onChange, 'Asia/Tokyo');
+
+        fireEvent.click(screen.getByRole('checkbox', {name: 'Set time'}));
+        expect(screen.getByLabelText('Time')).toHaveValue('09:00');
+        await user.click(screen.getByRole('button', {name: 'OK'}));
+
+        expect(onChange).toHaveBeenCalledWith(value, true);
     });
 
     it('navigates between months', async () => {

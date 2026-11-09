@@ -96,6 +96,7 @@ describe('TasksSidebar', () => {
             channelId: ids.channel,
             visibility: 'channel',
             creatorId: ids.user,
+            assigneeIds: [ids.user],
             title: 'Sprint planning',
             startAt: Date.now(),
             endAt: Date.now() + 3600000,

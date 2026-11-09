@@ -3,6 +3,7 @@
 
 import {useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
+import {epochToZonedParts, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
 
 import ChevronLeftIcon from '@mattermost/compass-icons/components/chevron-left';
 import ChevronRightIcon from '@mattermost/compass-icons/components/chevron-right';
@@ -16,6 +17,7 @@ import './due_date_picker.css';
 type Props = {
     value?: number;
     hasTime?: boolean;
+    timeZone?: string;
     onChange: (value: number | undefined, hasTime: boolean) => void;
 };
 
@@ -27,16 +29,27 @@ function sameDay(a: Date, b: Date): boolean {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-export default function DueDatePicker({value, hasTime = false, onChange}: Props) {
+export default function DueDatePicker({value, hasTime = false, timeZone, onChange}: Props) {
     const intl = useIntl();
+    const zone = timeZone || machineTimeZone();
     const initial = value ? new Date(value) : new Date();
-    const initialYear = value && !hasTime ? initial.getUTCFullYear() : initial.getFullYear();
-    const initialMonth = value && !hasTime ? initial.getUTCMonth() : initial.getMonth();
-    const initialDay = value && !hasTime ? initial.getUTCDate() : initial.getDate();
+    const zoned = value && hasTime ? epochToZonedParts(value, zone) : undefined;
+    let initialYear = initial.getFullYear();
+    let initialMonth = initial.getMonth();
+    let initialDay = initial.getDate();
+    if (value && !hasTime) {
+        initialYear = initial.getUTCFullYear();
+        initialMonth = initial.getUTCMonth();
+        initialDay = initial.getUTCDate();
+    } else if (zoned) {
+        initialYear = zoned.year;
+        initialMonth = zoned.month - 1;
+        initialDay = zoned.day;
+    }
     const [selected, setSelected] = useState(() => new Date(initialYear, initialMonth, initialDay));
     const [month, setMonth] = useState(() => new Date(initialYear, initialMonth, 1));
     const [timeEnabled, setTimeEnabled] = useState(hasTime);
-    const [time, setTime] = useState(() => (value && hasTime ? `${pad(initial.getHours())}:${pad(initial.getMinutes())}` : ''));
+    const [time, setTime] = useState(() => (zoned ? `${pad(zoned.hour)}:${pad(zoned.minute)}` : ''));
 
     const today = new Date();
     const monthLabel = intl.formatDate(month, {month: 'long', year: 'numeric'});
@@ -57,15 +70,12 @@ export default function DueDatePicker({value, hasTime = false, onChange}: Props)
 
     const confirm = () => {
         const useTime = timeEnabled && time !== '';
-        const [hours, minutes] = useTime ? time.split(':').map(Number) : [0, 0];
-        const date = new Date(
-            selected.getFullYear(),
-            selected.getMonth(),
-            selected.getDate(),
-            Number.isFinite(hours) ? hours : 0,
-            Number.isFinite(minutes) ? minutes : 0,
-        );
-        onChange(useTime ? date.getTime() : Date.UTC(selected.getFullYear(), selected.getMonth(), selected.getDate()), useTime);
+        if (!useTime) {
+            onChange(Date.UTC(selected.getFullYear(), selected.getMonth(), selected.getDate()), false);
+            return;
+        }
+        const wall = `${selected.getFullYear()}-${pad(selected.getMonth() + 1)}-${pad(selected.getDate())}T${time}`;
+        onChange(zonedDateTimeToEpoch(wall, zone) ?? 0, true);
     };
 
     return (

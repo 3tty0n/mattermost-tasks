@@ -3,6 +3,7 @@ package events
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	mmodel "github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
@@ -89,7 +90,11 @@ func (s *EventService) Create(c *plugin.Context, path, actorID string, input mod
 	if err != nil {
 		return nil, err
 	}
-	timeZone, err := model.NormalizeEventTimeZone(input.TimeZone)
+	timeZone, err := model.NormalizeTimeZone(input.TimeZone)
+	if err != nil {
+		return nil, err
+	}
+	assigneeIDs, err := model.NormalizeIDs(input.AssigneeIDs, "assignees", model.MaxAssignees)
 	if err != nil {
 		return nil, err
 	}
@@ -111,6 +116,12 @@ func (s *EventService) Create(c *plugin.Context, path, actorID string, input mod
 	} else {
 		channelID = ""
 	}
+	if visibility == model.TaskVisibilityPrivate {
+		assigneeIDs = []string{actorID}
+	}
+	if err := s.validateAssignees(scope, assigneeIDs); err != nil {
+		return nil, err
+	}
 
 	now := s.now()
 	event := &model.Event{
@@ -119,6 +130,7 @@ func (s *EventService) Create(c *plugin.Context, path, actorID string, input mod
 		ChannelID:   channelID,
 		Visibility:  visibility,
 		CreatorID:   actorID,
+		AssigneeIDs: assigneeIDs,
 		Title:       title,
 		Description: description,
 		StartAt:     startAt,
@@ -174,11 +186,11 @@ func (s *EventService) List(actorID string, query model.EventQuery) (*EventListR
 			return nil, err
 		}
 		refs = filterEventRefs(loaded, func(ref model.EventRef) bool {
-			if ref.CreatorID != actorID {
+			if ref.CreatorID != actorID && !slices.Contains(ref.AssigneeIDs, actorID) {
 				return false
 			}
 			if ref.EffectiveVisibility() == model.TaskVisibilityPrivate {
-				return true
+				return ref.CreatorID == actorID
 			}
 			return cache.CanView(actorID, ref.TeamID, ref.ChannelID)
 		})
@@ -283,8 +295,10 @@ func (s *EventService) Update(c *plugin.Context, path, actorID, eventID string, 
 		}
 
 		scopeChanged := newTeam != current.TeamID || newChannel != current.ChannelID || newVisibility != oldVisibility
-		if scopeChanged {
-			scope, resolveErr := s.access.Resolve(actorID, newTeam, newChannel)
+		var scope *access.Scope
+		if scopeChanged || patch.AssigneeIDs != nil {
+			var resolveErr error
+			scope, resolveErr = s.access.Resolve(actorID, newTeam, newChannel)
 			if resolveErr != nil {
 				return nil, resolveErr
 			}
@@ -293,6 +307,25 @@ func (s *EventService) Update(c *plugin.Context, path, actorID, eventID string, 
 				newChannel = scope.ChannelID
 			} else {
 				newChannel = ""
+			}
+		}
+		assigneeIDs := slices.Clone(current.AssigneeIDs)
+		if patch.AssigneeIDs != nil {
+			normalized, normalizeErr := model.NormalizeIDs(*patch.AssigneeIDs, "assignees", model.MaxAssignees)
+			if normalizeErr != nil {
+				return nil, normalizeErr
+			}
+			assigneeIDs = normalized
+		}
+		if newVisibility == model.TaskVisibilityPrivate {
+			assigneeIDs = []string{current.CreatorID}
+		}
+		if scopeChanged || patch.AssigneeIDs != nil {
+			if scope == nil {
+				scope = &access.Scope{TeamID: newTeam, ChannelID: newChannel}
+			}
+			if err := s.validateAssignees(scope, assigneeIDs); err != nil {
+				return nil, err
 			}
 		}
 
@@ -315,7 +348,7 @@ func (s *EventService) Update(c *plugin.Context, path, actorID, eventID string, 
 		if patch.TimeZone != nil {
 			timeZone = *patch.TimeZone
 		}
-		timeZone, timeZoneErr := model.NormalizeEventTimeZone(timeZone)
+		timeZone, timeZoneErr := model.NormalizeTimeZone(timeZone)
 		if timeZoneErr != nil {
 			return nil, timeZoneErr
 		}
@@ -337,6 +370,7 @@ func (s *EventService) Update(c *plugin.Context, path, actorID, eventID string, 
 		current.Visibility = newVisibility
 		current.TeamID = newTeam
 		current.ChannelID = newChannel
+		current.AssigneeIDs = assigneeIDs
 		current.StartAt = startAt
 		current.EndAt = endAt
 		current.AllDay = allDay
@@ -389,6 +423,18 @@ func (s *EventService) canViewEvent(actorID string, event *model.Event) bool {
 		return event.CreatorID == actorID
 	}
 	return s.access.CanView(actorID, event.TeamID, event.ChannelID)
+}
+
+func (s *EventService) validateAssignees(scope *access.Scope, assigneeIDs []string) error {
+	if scope == nil {
+		return nil
+	}
+	for _, assigneeID := range assigneeIDs {
+		if !s.access.CanAssign(assigneeID, scope) {
+			return fmt.Errorf("%w: every assignee must be a member of the event's scope", model.ErrInvalid)
+		}
+	}
+	return nil
 }
 
 func filterEventRefs(refs []model.EventRef, keep func(model.EventRef) bool) []model.EventRef {

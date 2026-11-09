@@ -70,6 +70,7 @@
   "tasks.editor.status": "Status",
   "tasks.editor.team": "Team",
   "tasks.editor.team_level": "Team-level (no channel)",
+  "tasks.editor.timezone": "Time zone",
   "tasks.editor.title": "Title",
   "tasks.editor.title_required": "Enter a task title.",
   "tasks.empty": "No tasks here",

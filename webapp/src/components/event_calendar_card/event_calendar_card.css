@@ -28,6 +28,19 @@
     line-height: var(--line-height-25);
 }
 
+.Tasks-EventCard__assignees {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--spacing-xxxxs);
+    margin-left: auto;
+}
+
+.Tasks-EventCard__extra {
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+    font-size: var(--font-size-50);
+}
+
 .Tasks-EventCard__title {
     width: 100%;
     padding: 0;
@@ -46,6 +59,19 @@
     white-space: nowrap;
 }
 
-.Tasks-EventCard:hover .Tasks-EventCard__title {
+.Tasks-EventCard:hover .Tasks-EventCard__assignees {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--spacing-xxxxs);
+    margin-left: auto;
+}
+
+.Tasks-EventCard__extra {
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+    font-size: var(--font-size-50);
+}
+
+.Tasks-EventCard__title {
     color: var(--button-bg);
 }

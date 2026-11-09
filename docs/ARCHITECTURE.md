@@ -78,10 +78,10 @@ administrator. Assignment never grants access to a private channel.
   source backlink.
 - The sidebar switches between **Team** and **Mine** at the top. A channel opens on Team and a DM
   on Mine. The team query returns readable team/channel tasks and events plus the actor's own
-  private items; Mine collects tasks assigned to the actor and events created by the actor.
+  private items; Mine collects tasks assigned to the actor and events created by or assigned to the actor.
 - Events are a separate aggregate (`event:` records and `event_team:` / `event_channel:` /
   `event_user:` indexes) with the same visibility and access rules as tasks. They have start/end
-  times, an all-day flag and no status, priority or completion. The calendar fetches tasks and
+  times, an all-day flag, assignees and no status, priority or completion. The calendar fetches tasks and
   events separately for the same range and merges them on the client. In the UI, events use an
   accent-bordered card with a time range and task cards keep priority/assignee metadata; month
   cells show tasks as dots and events as bars.
@@ -91,7 +91,12 @@ administrator. Assignment never grants access to a private channel.
   and old tasks without a position fall back to creation time.
 - The task detail view edits visibility, team, channel, assignees and the due date inline;
   source-post tasks keep their fixed scope. The due-date control reuses the New task calendar
-  picker. There is no separate full-edit modal from the detail view.
+  picker and includes an IANA timezone selector. There is no separate full-edit modal from the
+  detail view.
+- Timed tasks and events store the IANA timezone used to enter their wall time. Display always
+  converts the absolute instant into the viewer's machine timezone (overridable only by the
+  viewer's own environment), so two people in different regions see the same meeting at their
+  local times.
 - The due calendar commits only on **OK**. Time is off by default and only a date is stored unless
   the user enables **Set time**. Recurrence stores a frequency, interval, stable start date,
   optional end date and IANA timezone in both the task and its compact ref. The calendar asks for

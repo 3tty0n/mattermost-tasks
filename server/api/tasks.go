@@ -20,6 +20,7 @@ type createTaskRequest struct {
 	Priority     string                `json:"priority"`
 	DueAt        int64                 `json:"dueAt"`
 	DueHasTime   bool                  `json:"dueHasTime"`
+	TimeZone     string                `json:"timezone"`
 	Recurrence   *taskmodel.Recurrence `json:"recurrence"`
 	Position     float64               `json:"position"`
 	SourcePostID string                `json:"sourcePostId"`
@@ -38,6 +39,7 @@ func (req createTaskRequest) input() taskmodel.CreateTaskInput {
 		Priority:     req.Priority,
 		DueAt:        req.DueAt,
 		DueHasTime:   req.DueHasTime,
+		TimeZone:     req.TimeZone,
 		Recurrence:   req.Recurrence,
 		Position:     req.Position,
 		SourcePostID: req.SourcePostID,
@@ -56,6 +58,7 @@ type updateTaskRequest struct {
 	Priority     *string               `json:"priority"`
 	DueAt        *int64                `json:"dueAt"`
 	DueHasTime   *bool                 `json:"dueHasTime"`
+	TimeZone     *string               `json:"timezone"`
 	Recurrence   *taskmodel.Recurrence `json:"recurrence"`
 	Position     *float64              `json:"position"`
 	SourcePostID *string               `json:"sourcePostId"`
@@ -74,6 +77,7 @@ func (req updateTaskRequest) patch() taskmodel.TaskPatch {
 		Priority:     req.Priority,
 		DueAt:        req.DueAt,
 		DueHasTime:   req.DueHasTime,
+		TimeZone:     req.TimeZone,
 		Recurrence:   req.Recurrence,
 		Position:     req.Position,
 		SourcePostID: req.SourcePostID,

@@ -278,12 +278,13 @@ func TestTaskAPIDueTime(t *testing.T) {
 	allowChannel(env.api, actorID, channelID, teamID)
 	denyAdmin(env.api, actorID)
 
-	body := `{"channelId":"` + channelID + `","title":"Timed","dueAt":1767225600000,"dueHasTime":true}`
+	body := `{"channelId":"` + channelID + `","title":"Timed","dueAt":1767225600000,"dueHasTime":true,"timezone":"Asia/Tokyo"}`
 	w := env.serve(http.MethodPost, "/api/v1/tasks", body, actorID)
 	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
 	created := decodeResponse[taskmodel.Task](t, w)
 	assert.True(t, created.DueHasTime)
 	assert.Equal(t, int64(1767225600000), created.DueAt)
+	assert.Equal(t, "Asia/Tokyo", created.TimeZone)
 
 	w = env.serve(http.MethodPost, "/api/v1/tasks/"+created.ID, `{"dueAt":0}`, actorID)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
@@ -433,15 +434,16 @@ func TestTaskAPIRecurrence(t *testing.T) {
 func TestEventAPILifecycle(t *testing.T) {
 	env := newAPITestEnv(t)
 	teamID, channelID := model.NewId(), model.NewId()
-	creatorID, strangerID := model.NewId(), model.NewId()
+	creatorID, assigneeID, strangerID := model.NewId(), model.NewId(), model.NewId()
 	allowChannel(env.api, creatorID, channelID, teamID)
+	allowChannel(env.api, assigneeID, channelID, teamID)
 	env.api.On("HasPermissionToTeam", creatorID, teamID, model.PermissionViewTeam).Return(true).Maybe()
 	denyAdmin(env.api, creatorID)
 	env.api.On("HasPermissionToChannel", strangerID, channelID, model.PermissionReadChannel).Return(false).Maybe()
 
 	start := int64(1767225600000) // 2026-01-01 00:00 UTC
 	end := int64(1767229200000)   // 2026-01-01 01:00 UTC
-	body := `{"channelId":"` + channelID + `","title":"Sprint planning","startAt":` +
+	body := `{"channelId":"` + channelID + `","title":"Sprint planning","assigneeIds":["` + assigneeID + `"],"startAt":` +
 		strconv.FormatInt(start, 10) + `,"endAt":` + strconv.FormatInt(end, 10) +
 		`,"allDay":false,"timezone":"UTC","visibility":"channel"}`
 	w := env.serve(http.MethodPost, "/api/v1/events", body, creatorID)
@@ -450,6 +452,7 @@ func TestEventAPILifecycle(t *testing.T) {
 	assert.Equal(t, "Sprint planning", created.Title)
 	assert.Equal(t, channelID, created.ChannelID)
 	assert.Equal(t, taskmodel.TaskVisibilityChannel, created.Visibility)
+	assert.Equal(t, []string{assigneeID}, created.AssigneeIDs)
 
 	w = env.serve(http.MethodGet, "/api/v1/events/"+created.ID, "", creatorID)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
@@ -457,6 +460,11 @@ func TestEventAPILifecycle(t *testing.T) {
 
 	w = env.serve(http.MethodGet, "/api/v1/events/"+created.ID, "", strangerID)
 	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	myEvents := "/api/v1/events?scope=my&from=" + strconv.FormatInt(start-86400000, 10) + "&to=" + strconv.FormatInt(end+86400000, 10)
+	w = env.serve(http.MethodGet, myEvents, "", assigneeID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Equal(t, 1, decodeResponse[events.EventListResult](t, w).Total)
 
 	rangeQuery := "/api/v1/events?scope=team&team_id=" + teamID +
 		"&from=" + strconv.FormatInt(start-86400000, 10) +

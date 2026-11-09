@@ -111,7 +111,21 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 	if input.DueHasTime && input.DueAt == 0 {
 		return nil, fmt.Errorf("%w: a due time requires a due date", model.ErrInvalid)
 	}
-	recurrence, err := model.NormalizeRecurrence(input.Recurrence, input.DueAt, input.DueHasTime)
+	timeZoneInput := input.TimeZone
+	if timeZoneInput == "" && input.Recurrence != nil {
+		timeZoneInput = input.Recurrence.TimeZone
+	}
+	timeZone, err := model.NormalizeTimeZone(timeZoneInput)
+	if err != nil {
+		return nil, err
+	}
+	recurrenceInput := input.Recurrence
+	if recurrenceInput != nil {
+		copied := *recurrenceInput
+		copied.TimeZone = timeZone
+		recurrenceInput = &copied
+	}
+	recurrence, err := model.NormalizeRecurrence(recurrenceInput, input.DueAt, input.DueHasTime)
 	if err != nil {
 		return nil, err
 	}
@@ -196,6 +210,7 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 		Priority:     priority,
 		DueAt:        input.DueAt,
 		DueHasTime:   input.DueHasTime && input.DueAt != 0,
+		TimeZone:     timeZone,
 		Recurrence:   recurrence,
 		Position:     position,
 		SourcePostID: input.SourcePostID,
@@ -503,9 +518,22 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 		if current.DueAt == 0 {
 			current.DueHasTime = false
 		}
+		if patch.TimeZone != nil {
+			timeZone, timeZoneErr := model.NormalizeTimeZone(*patch.TimeZone)
+			if timeZoneErr != nil {
+				return nil, timeZoneErr
+			}
+			current.TimeZone = timeZone
+		}
+		if current.TimeZone == "" && current.Recurrence != nil {
+			current.TimeZone = current.Recurrence.TimeZone
+		}
 		dueChanged := patch.DueAt != nil || patch.DueHasTime != nil
 		if patch.Recurrence != nil {
 			recurrence := *patch.Recurrence
+			if current.TimeZone != "" {
+				recurrence.TimeZone = current.TimeZone
+			}
 			if dueChanged {
 				recurrence.StartDate = ""
 			} else if recurrence.StartDate == "" && current.Recurrence != nil {
@@ -522,7 +550,11 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 			current.Recurrence = nil
 		}
 		if current.Recurrence != nil {
-			recurrence, recErr := model.NormalizeRecurrence(current.Recurrence, current.DueAt, current.DueHasTime)
+			recurrenceInput := *current.Recurrence
+			if current.TimeZone != "" {
+				recurrenceInput.TimeZone = current.TimeZone
+			}
+			recurrence, recErr := model.NormalizeRecurrence(&recurrenceInput, current.DueAt, current.DueHasTime)
 			if recErr != nil {
 				return nil, recErr
 			}

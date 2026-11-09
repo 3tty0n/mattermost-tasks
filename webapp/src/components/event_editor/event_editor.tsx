@@ -2,18 +2,23 @@
 // See LICENSE.txt for license information.
 
 import {DAY_IN_MS} from 'calendar_utils';
-import {createEvent, deleteEvent, getEvent, updateEvent} from 'client';
+import {createEvent, deleteEvent, getEvent, getProfilePictureUrl, updateEvent} from 'client';
+import {useAssignees, useDebouncedValue, useProfiles} from 'hooks';
 import {useEffect, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {fromDateInput, toDateInput} from 'recurrence_utils';
-import {fromDateTimeInput, toDateTimeInput} from 'utils';
+import {epochToZonedDateInput, epochToZonedDateTimeInput, machineTimeZone, timeZoneOptions, zonedDateTimeToEpoch} from 'timezone_utils';
+import {profileName} from 'utils';
 
 import {Button} from '@mattermost/compass-ui/components/button';
 import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
+import {Chip} from '@mattermost/compass-ui/components/chip';
+import {SearchInput} from '@mattermost/compass-ui/components/search-input';
 import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
 import {Select} from '@mattermost/compass-ui/components/select';
 import {Spinner} from '@mattermost/compass-ui/components/spinner';
+import {UserAvatar} from '@mattermost/compass-ui/components/user-avatar';
 
 import {selectCurrentTeam, selectCurrentUserId, selectIsSystemAdmin, selectMyChannels, selectMyTeams} from 'selectors';
 
@@ -29,6 +34,8 @@ export type EventEditorDefaults = {
     visibility?: TaskVisibility;
     startAt?: number;
     allDay?: boolean;
+    assigneeIds?: string[];
+    timeZone?: string;
 };
 
 type Props = {
@@ -55,18 +62,23 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
 
     const initialStart = defaults?.startAt ?? defaultStartAt();
     const initialEnd = initialStart + (60 * 60 * 1000);
+    const initialTimeZone = defaults?.timeZone ?? machineTimeZone();
+    const [timeZone, setTimeZone] = useState(initialTimeZone);
     const [loading, setLoading] = useState(Boolean(eventId));
     const [event, setEvent] = useState<Event>();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [allDay, setAllDay] = useState(Boolean(defaults?.allDay));
-    const [startDate, setStartDate] = useState(toDateInput(initialStart, true));
-    const [endDate, setEndDate] = useState(toDateInput(initialEnd - 1, true));
-    const [startTime, setStartTime] = useState(toDateTimeInput(initialStart, true));
-    const [endTime, setEndTime] = useState(toDateTimeInput(initialEnd, true));
+    const [startDate, setStartDate] = useState(epochToZonedDateInput(initialStart, initialTimeZone));
+    const [endDate, setEndDate] = useState(epochToZonedDateInput(initialEnd - 1, initialTimeZone));
+    const [startTime, setStartTime] = useState(epochToZonedDateTimeInput(initialStart, initialTimeZone));
+    const [endTime, setEndTime] = useState(epochToZonedDateTimeInput(initialEnd, initialTimeZone));
     const [teamID, setTeamID] = useState(defaults?.teamId ?? currentTeam?.id ?? myTeams[0]?.id ?? '');
     const [channelID, setChannelID] = useState(defaults?.channelId ?? '');
     const [visibility, setVisibility] = useState<TaskVisibility>(defaults?.visibility ?? 'private');
+    const [assigneeIds, setAssigneeIds] = useState<string[]>(defaults?.assigneeIds ?? (currentUserId ? [currentUserId] : []));
+    const [assigneeTerm, setAssigneeTerm] = useState('');
+    const [assigneeFocused, setAssigneeFocused] = useState(false);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -84,13 +96,16 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                 setTitle(loaded.title);
                 setDescription(loaded.description ?? '');
                 setAllDay(Boolean(loaded.allDay));
-                setStartDate(toDateInput(loaded.startAt, !loaded.allDay));
-                setEndDate(toDateInput(loaded.endAt - DAY_IN_MS, !loaded.allDay));
-                setStartTime(toDateTimeInput(loaded.startAt, true));
-                setEndTime(toDateTimeInput(loaded.endAt, true));
+                const loadedZone = loaded.timezone || machineTimeZone();
+                setTimeZone(loadedZone);
+                setStartDate(loaded.allDay ? toDateInput(loaded.startAt, false) : epochToZonedDateInput(loaded.startAt, loadedZone));
+                setEndDate(loaded.allDay ? toDateInput(loaded.endAt - DAY_IN_MS, false) : epochToZonedDateInput(loaded.endAt - DAY_IN_MS, loadedZone));
+                setStartTime(epochToZonedDateTimeInput(loaded.startAt, loadedZone));
+                setEndTime(epochToZonedDateTimeInput(loaded.endAt, loadedZone));
                 setTeamID(loaded.teamId);
                 setChannelID(loaded.channelId ?? '');
                 setVisibility(loaded.visibility);
+                setAssigneeIds(loaded.assigneeIds ?? []);
                 setLoading(false);
             },
             (err: unknown) => {
@@ -106,6 +121,14 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
 
     const canModify = !eventId || Boolean(event && (event.creatorId === currentUserId || isAdmin));
     const canDelete = Boolean(event && (event.creatorId === currentUserId || isAdmin));
+    const debouncedAssigneeTerm = useDebouncedValue(assigneeTerm, 200);
+    const assigneeResults = useAssignees(
+        teamID,
+        channelID || undefined,
+        debouncedAssigneeTerm,
+        Boolean(teamID) && canModify && visibility !== 'private' && assigneeFocused,
+    );
+    const selectedProfiles = useProfiles(assigneeIds);
     const teamOptions = myTeams.map((memberTeam) => ({value: memberTeam.id, label: memberTeam.display_name}));
     if (teamID && !teamOptions.some((option) => option.value === teamID)) {
         teamOptions.push({value: teamID, label: currentTeam?.id === teamID ? currentTeam.display_name : teamID});
@@ -130,6 +153,10 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     const changeVisibility = (value: string) => {
         const next = value as TaskVisibility;
         setVisibility(next);
+        if (next === 'private') {
+            setAssigneeIds([event?.creatorId ?? currentUserId ?? '']);
+            setChannelID('');
+        }
         if (next === 'channel' && !channelID) {
             const fallback = myChannels.find((memberChannel) => (
                 memberChannel.team_id === teamID &&
@@ -142,12 +169,26 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
         }
     };
 
+    const changeTimeZone = (next: string) => {
+        if (!allDay) {
+            const start = zonedDateTimeToEpoch(startTime, timeZone);
+            const end = zonedDateTimeToEpoch(endTime, timeZone);
+            if (start) {
+                setStartTime(epochToZonedDateTimeInput(start, next));
+            }
+            if (end) {
+                setEndTime(epochToZonedDateTimeInput(end, next));
+            }
+        }
+        setTimeZone(next);
+    };
+
     const toggleAllDay = (next: boolean) => {
         if (next) {
-            const start = fromDateTimeInput(startTime, true) ?? initialStart;
-            const end = fromDateTimeInput(endTime, true) ?? (start + (60 * 60 * 1000));
-            setStartDate(toDateInput(start, true));
-            setEndDate(toDateInput(Math.max(start, end - 1), true));
+            const start = zonedDateTimeToEpoch(startTime, timeZone) ?? initialStart;
+            const end = zonedDateTimeToEpoch(endTime, timeZone) ?? (start + (60 * 60 * 1000));
+            setStartDate(epochToZonedDateInput(start, timeZone));
+            setEndDate(epochToZonedDateInput(Math.max(start, end - 1), timeZone));
         } else {
             setStartTime(`${startDate}T09:00`);
             setEndTime(`${endDate}T10:00`);
@@ -165,8 +206,8 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
             }
             return {startAt, endAt: endAt + DAY_IN_MS};
         }
-        const startAt = fromDateTimeInput(startTime, true);
-        const endAt = fromDateTimeInput(endTime, true);
+        const startAt = zonedDateTimeToEpoch(startTime, timeZone);
+        const endAt = zonedDateTimeToEpoch(endTime, timeZone);
         if (!startAt || !endAt || endAt <= startAt) {
             setError(intl.formatMessage({id: 'tasks.event.end_before_start', defaultMessage: 'The end must be on or after the start.'}));
             return undefined;
@@ -194,7 +235,6 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
         }
         setSaving(true);
         setError(undefined);
-        const timezone = new Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
         try {
             if (event) {
                 const updated = await updateEvent(event.id, {
@@ -203,10 +243,11 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                     teamId: teamID,
                     channelId: visibility === 'channel' ? channelID : '',
                     visibility,
+                    assigneeIds,
                     startAt: times.startAt,
                     endAt: times.endAt,
                     allDay,
-                    timezone,
+                    timezone: timeZone,
                 });
                 onSaved(updated);
             } else {
@@ -216,10 +257,11 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                     teamId: teamID,
                     channelId: visibility === 'channel' ? channelID : undefined,
                     visibility,
+                    assigneeIds,
                     startAt: times.startAt,
                     endAt: times.endAt,
                     allDay,
-                    timezone,
+                    timezone: timeZone,
                 });
                 onSaved(created);
             }
@@ -454,6 +496,14 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                             )}
                         </label>
                     </div>
+                    <Select
+                        size='small'
+                        label={intl.formatMessage({id: 'tasks.editor.timezone', defaultMessage: 'Time zone'})}
+                        options={timeZoneOptions(timeZone).map((zone) => ({value: zone, label: zone}))}
+                        value={timeZone}
+                        disabled={!canModify}
+                        onChange={changeTimeZone}
+                    />
                     <div className='Tasks-EventEditor__row'>
                         <div className='Tasks-EventEditor__field'>
                             <Select
@@ -484,6 +534,105 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                             onChange={setChannelID}
                         />
                     )}
+                    <div className='Tasks-EventEditor__assignees'>
+                        <span className='Tasks-EventEditor__label'>
+                            <FormattedMessage
+                                id='tasks.event.assignees'
+                                defaultMessage='Assignees'
+                            />
+                        </span>
+                        {assigneeIds.length > 0 && (
+                            <div className='Tasks-EventEditor__chips'>
+                                {assigneeIds.map((userID) => {
+                                    const profile = selectedProfiles[userID];
+                                    const name = profileName(profile, userID);
+                                    const src = getProfilePictureUrl(profile);
+                                    return (
+                                        <Chip
+                                            key={userID}
+                                            leadingAvatar={src ? {src, alt: name} : undefined}
+                                            onRemove={canModify && visibility !== 'private' ? () => {
+                                                setAssigneeIds((current) => current.filter((id) => id !== userID));
+                                            } : undefined}
+                                        >
+                                            {name}
+                                        </Chip>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        {visibility === 'private' ? (
+                            <span className='Tasks-EventEditor__hint'>
+                                <FormattedMessage
+                                    id='tasks.editor.private_assignee_hint'
+                                    defaultMessage='Private tasks are visible only to you and are always assigned to you.'
+                                />
+                            </span>
+                        ) : canModify && (
+                            <>
+                                <SearchInput
+                                    size='small'
+                                    label={intl.formatMessage({id: 'tasks.editor.add_assignee', defaultMessage: 'Add assignee'})}
+                                    value={assigneeTerm}
+                                    disabled={!canModify}
+                                    onChange={(changeEvent) => setAssigneeTerm(changeEvent.target.value)}
+                                    onFocus={() => setAssigneeFocused(true)}
+                                    onClear={() => setAssigneeTerm('')}
+                                    clearLabel={intl.formatMessage({id: 'tasks.search.clear', defaultMessage: 'Clear search'})}
+                                />
+                                {assigneeResults.loading && (
+                                    <span className='Tasks-EventEditor__hint'>
+                                        <FormattedMessage
+                                            id='tasks.loading'
+                                            defaultMessage='Loading…'
+                                        />
+                                    </span>
+                                )}
+                                {assigneeResults.error && (
+                                    <span className='Tasks-EventEditor__hint Tasks-EventEditor__hint--error'>
+                                        {assigneeResults.error}
+                                    </span>
+                                )}
+                                {assigneeFocused && assigneeResults.data && assigneeResults.data.length > 0 && (
+                                    <ul className='Tasks-EventEditor__results'>
+                                        {assigneeResults.data.
+                                            filter((assignee) => !assigneeIds.includes(assignee.id)).
+                                            map((assignee) => {
+                                                const name = profileName(assignee, assignee.username);
+                                                const username = assignee.username ? `@${assignee.username}` : '';
+                                                const src = getProfilePictureUrl({id: assignee.id, last_picture_update: assignee.lastPictureUpdate});
+                                                return (
+                                                    <li
+                                                        key={assignee.id}
+                                                        className='Tasks-EventEditor__result'
+                                                    >
+                                                        <Checkbox
+                                                            checked={false}
+                                                            onChange={() => setAssigneeIds((current) => [...current, assignee.id])}
+                                                        >
+                                                            <span className='Tasks-EventEditor__resultIdentity'>
+                                                                <UserAvatar
+                                                                    alt={name}
+                                                                    name={name}
+                                                                    src={src}
+                                                                    size='24'
+                                                                />
+                                                                <span className='Tasks-EventEditor__resultNames'>
+                                                                    <span>{name}</span>
+                                                                    {username && name !== assignee.username && (
+                                                                        <span className='Tasks-EventEditor__resultUsername'>{username}</span>
+                                                                    )}
+                                                                </span>
+                                                            </span>
+                                                        </Checkbox>
+                                                    </li>
+                                                );
+                                            })}
+                                    </ul>
+                                )}
+                            </>
+                        )}
+                    </div>
                 </div>
             )}
         </Dialog>

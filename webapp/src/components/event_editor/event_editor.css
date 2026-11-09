@@ -56,3 +56,62 @@
     display: flex;
     gap: var(--spacing-s);
 }
+
+.Tasks-EventEditor__assignees {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.Tasks-EventEditor__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xxs);
+}
+
+.Tasks-EventEditor__hint {
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-50);
+    line-height: var(--line-height-50);
+}
+
+.Tasks-EventEditor__hint--error {
+    color: var(--error-text);
+}
+
+.Tasks-EventEditor__results {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xxxs);
+    max-height: 200px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.Tasks-EventEditor__result {
+    padding: var(--spacing-xxxs);
+    border-radius: var(--radius-s);
+}
+
+.Tasks-EventEditor__result:hover {
+    background: rgba(var(--center-channel-color-rgb), 0.04);
+}
+
+.Tasks-EventEditor__resultIdentity {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.Tasks-EventEditor__resultNames {
+    display: flex;
+    flex-direction: column;
+}
+
+.Tasks-EventEditor__resultUsername {
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-50);
+    line-height: var(--line-height-50);
+}

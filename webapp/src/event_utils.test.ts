@@ -26,6 +26,7 @@ function event(overrides: Partial<EventSummary> = {}): EventSummary {
         teamId: 'team',
         visibility: 'team',
         creatorId: 'user',
+        assigneeIds: [],
         title: 'Event',
         startAt: new Date(2026, 0, 5, 9, 0).getTime(),
         endAt: new Date(2026, 0, 5, 10, 0).getTime(),

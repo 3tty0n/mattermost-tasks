@@ -11,15 +11,16 @@ import (
 )
 
 type createEventRequest struct {
-	TeamID      string `json:"teamId"`
-	ChannelID   string `json:"channelId"`
-	Visibility  string `json:"visibility"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	StartAt     int64  `json:"startAt"`
-	EndAt       int64  `json:"endAt"`
-	AllDay      bool   `json:"allDay"`
-	TimeZone    string `json:"timezone"`
+	TeamID      string   `json:"teamId"`
+	ChannelID   string   `json:"channelId"`
+	Visibility  string   `json:"visibility"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	AssigneeIDs []string `json:"assigneeIds"`
+	StartAt     int64    `json:"startAt"`
+	EndAt       int64    `json:"endAt"`
+	AllDay      bool     `json:"allDay"`
+	TimeZone    string   `json:"timezone"`
 }
 
 func (req createEventRequest) input() taskmodel.CreateEventInput {
@@ -29,6 +30,7 @@ func (req createEventRequest) input() taskmodel.CreateEventInput {
 		Visibility:  req.Visibility,
 		Title:       req.Title,
 		Description: req.Description,
+		AssigneeIDs: req.AssigneeIDs,
 		StartAt:     req.StartAt,
 		EndAt:       req.EndAt,
 		AllDay:      req.AllDay,
@@ -37,15 +39,16 @@ func (req createEventRequest) input() taskmodel.CreateEventInput {
 }
 
 type updateEventRequest struct {
-	TeamID      *string `json:"teamId"`
-	ChannelID   *string `json:"channelId"`
-	Visibility  *string `json:"visibility"`
-	Title       *string `json:"title"`
-	Description *string `json:"description"`
-	StartAt     *int64  `json:"startAt"`
-	EndAt       *int64  `json:"endAt"`
-	AllDay      *bool   `json:"allDay"`
-	TimeZone    *string `json:"timezone"`
+	TeamID      *string   `json:"teamId"`
+	ChannelID   *string   `json:"channelId"`
+	Visibility  *string   `json:"visibility"`
+	Title       *string   `json:"title"`
+	Description *string   `json:"description"`
+	AssigneeIDs *[]string `json:"assigneeIds"`
+	StartAt     *int64    `json:"startAt"`
+	EndAt       *int64    `json:"endAt"`
+	AllDay      *bool     `json:"allDay"`
+	TimeZone    *string   `json:"timezone"`
 }
 
 func (req updateEventRequest) patch() taskmodel.EventPatch {
@@ -55,6 +58,7 @@ func (req updateEventRequest) patch() taskmodel.EventPatch {
 		Visibility:  req.Visibility,
 		Title:       req.Title,
 		Description: req.Description,
+		AssigneeIDs: req.AssigneeIDs,
 		StartAt:     req.StartAt,
 		EndAt:       req.EndAt,
 		AllDay:      req.AllDay,

@@ -28,6 +28,7 @@ export type TaskSummary = {
     assigneeIds: string[];
     dueAt?: number;
     dueHasTime?: boolean;
+    timezone?: string;
     recurrence?: Recurrence;
     position?: number;
     createdAt: number;
@@ -49,6 +50,7 @@ export type Event = {
     channelId?: string;
     visibility: TaskVisibility;
     creatorId: string;
+    assigneeIds: string[];
     title: string;
     description?: string;
     startAt: number;
@@ -75,6 +77,7 @@ export type CreateEventInput = {
     teamId?: string;
     channelId?: string;
     visibility?: TaskVisibility;
+    assigneeIds?: string[];
     title: string;
     description?: string;
     startAt: number;
@@ -87,6 +90,7 @@ export type UpdateEventInput = {
     teamId?: string;
     channelId?: string;
     visibility?: TaskVisibility;
+    assigneeIds?: string[];
     title?: string;
     description?: string;
     startAt?: number;
@@ -144,6 +148,7 @@ export type CreateTaskInput = {
     priority: TaskPriority;
     dueAt?: number;
     dueHasTime?: boolean;
+    timezone?: string;
     recurrence?: Recurrence;
     position?: number;
     sourcePostId?: string;
@@ -160,6 +165,7 @@ export type UpdateTaskInput = {
     priority?: TaskPriority;
     dueAt?: number;
     dueHasTime?: boolean;
+    timezone?: string;
     recurrence?: Recurrence;
     position?: number;
     sourcePostId?: string;

@@ -550,6 +550,7 @@ func TestRecurringTaskAdvancesOnCompletion(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, task.Recurrence)
 	assert.Equal(t, "2026-01-05", task.Recurrence.StartDate)
+	assert.Equal(t, "UTC", task.TimeZone)
 
 	refs, err := env.store.ListTaskRefsByChannel(channelID)
 	require.NoError(t, err)

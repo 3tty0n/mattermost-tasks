@@ -152,6 +152,7 @@ describe('Calendar', () => {
                 teamId: ids.team,
                 visibility: 'team',
                 creatorId: ids.user,
+                assigneeIds: [ids.user],
                 title: 'Sprint planning',
                 startAt: todayAt(10),
                 endAt: todayAt(11),

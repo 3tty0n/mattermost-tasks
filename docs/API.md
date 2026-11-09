@@ -19,7 +19,8 @@ responses set `Cache-Control: no-store` because task titles and descriptions are
 `GET /tasks?scope=my|team|channel|all&team_id=...&channel_id=...&status=todo,in_progress&assignee_id=...&priority=...&due_before=...&due_after=...&has_due=true&include_recurring=true&sort=due|created|priority&direction=asc|desc&page=0&per_page=20`
 
 - `scope=my` returns tasks assigned to the actor in teams they can read, plus their own private
-  tasks. It powers the webapp's **Mine** scope.
+  tasks. Events use the same scope for events they created or are assigned to. It powers the
+  webapp's **Mine** scope.
 - `scope=team` requires `team_id` and powers the webapp's **Team** scope. It includes team/channel
   tasks the actor can read plus the actor's own private tasks in that team.
 - `scope=channel` requires `channel_id`.
@@ -50,6 +51,7 @@ Response:
       "assigneeIds": ["userid"],
       "dueAt": 1767225600000,
       "dueHasTime": false,
+      "timezone": "Asia/Tokyo",
       "recurrence": {
         "frequency": "daily",
         "interval": 1,
@@ -71,7 +73,9 @@ Response:
 
 `visibility` is `private`, `team` or `channel`. A private task is only returned to its creator;
 team tasks to team members; channel tasks to channel members. `dueHasTime` absent or false means
-the due value is date-only and the UI must not show a time.
+the due value is date-only and the UI must not show a time. `timezone` is the IANA zone in which
+the timed due value was entered (defaults to `UTC`); clients display the instant in the viewer's
+own machine timezone.
 
 `recurrence` is omitted for one-off tasks. When present, `frequency` is `daily`, `weekly`,
 `monthly` or `yearly`, `interval` is 1–99, `startDate` is the stable `YYYY-MM-DD` anchor used for
@@ -95,6 +99,7 @@ current/next occurrence.
   "priority": "high",
   "dueAt": 1767225600000,
   "dueHasTime": false,
+  "timezone": "Asia/Tokyo",
   "recurrence": {
     "frequency": "weekly",
     "interval": 1,
@@ -146,6 +151,7 @@ The POST alias exists because some reverse proxies reject PATCH. The body accept
   "priority": "urgent",
   "dueAt": 1767225600000,
   "dueHasTime": true,
+  "timezone": "Asia/Tokyo",
   "recurrence": {
     "frequency": "monthly",
     "interval": 2,
@@ -195,7 +201,7 @@ DELETE /events/{id}
 ```
 
 `from` and `to` are required epoch-millisecond bounds (exclusive end); the server returns events
-whose interval overlaps them. `scope=my` lists events created by the actor; `scope=team` requires
+whose interval overlaps them. `scope=my` lists events created by or assigned to the actor; `scope=team` requires
 `team_id` and lists readable team/channel events plus the actor's own private events.
 
 Create body:
@@ -207,6 +213,7 @@ Create body:
   "visibility": "channel",
   "title": "Sprint planning",
   "description": "Optional text",
+  "assigneeIds": ["userid"],
   "startAt": 1767225600000,
   "endAt": 1767229200000,
   "allDay": false,
@@ -217,7 +224,10 @@ Create body:
 - `startAt` and `endAt` are epoch milliseconds; `endAt` must be after `startAt`.
 - All-day events use UTC midnight boundaries and an exclusive `endAt` (a one-day event starts at
   midnight and ends at the following midnight).
-- `timezone` is an IANA name used for display/recurrence metadata; it defaults to `UTC`.
+- `timezone` is the IANA zone in which the start/end wall times were entered; it defaults to
+  `UTC`. The stored instants are displayed in each viewer's own machine timezone.
+- `assigneeIds` are users who can see the event through its scope; they are shown on event cards
+  and are included in the `scope=my` event list.
 - `visibility` follows task rules: `private` is creator-only, `team` is team-readable and
   `channel` is channel-readable. A channel is required for channel visibility.
 - Only the creator or a system administrator may update or delete an event.

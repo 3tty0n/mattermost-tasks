@@ -139,10 +139,11 @@ describe('TaskDetail inline editing', () => {
         await user.click(await screen.findByRole('button', {name: 'Tuesday, January 6, 2026'}));
         await user.click(screen.getByRole('button', {name: 'OK'}));
 
-        await waitFor(() => expect(updateTaskMock).toHaveBeenCalledWith(baseTask.id, {
+        await waitFor(() => expect(updateTaskMock).toHaveBeenCalledWith(baseTask.id, expect.objectContaining({
             dueAt: Date.UTC(2026, 0, 6),
             dueHasTime: false,
-        }));
+            timezone: expect.any(String),
+        })));
     });
 
     it('adds an assignee from the detail view', async () => {

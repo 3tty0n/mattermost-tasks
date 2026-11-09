@@ -11,29 +11,36 @@ import (
 )
 
 // Event is a calendar appointment. It is deliberately separate from Task: events do not have a
-// completion state, priority or assignees, and their start/end describe reserved time rather than
-// a deadline.
+// completion state or priority, and their start/end describe reserved time rather than a deadline.
+// Assignees are participants in the appointment, not people who complete it.
 type Event struct {
-	ID          string `json:"id"`
-	TeamID      string `json:"teamId"`
-	ChannelID   string `json:"channelId,omitempty"`
-	Visibility  string `json:"visibility"`
-	CreatorID   string `json:"creatorId"`
-	Title       string `json:"title"`
-	Description string `json:"description,omitempty"`
-	StartAt     int64  `json:"startAt"`
-	EndAt       int64  `json:"endAt"`
-	AllDay      bool   `json:"allDay,omitempty"`
-	TimeZone    string `json:"timezone,omitempty"`
-	CreatedAt   int64  `json:"createdAt"`
-	UpdatedAt   int64  `json:"updatedAt"`
-	Version     int64  `json:"version"`
+	ID          string   `json:"id"`
+	TeamID      string   `json:"teamId"`
+	ChannelID   string   `json:"channelId,omitempty"`
+	Visibility  string   `json:"visibility"`
+	CreatorID   string   `json:"creatorId"`
+	AssigneeIDs []string `json:"assigneeIds"`
+	Title       string   `json:"title"`
+	Description string   `json:"description,omitempty"`
+	StartAt     int64    `json:"startAt"`
+	EndAt       int64    `json:"endAt"`
+	AllDay      bool     `json:"allDay,omitempty"`
+	TimeZone    string   `json:"timezone,omitempty"`
+	CreatedAt   int64    `json:"createdAt"`
+	UpdatedAt   int64    `json:"updatedAt"`
+	Version     int64    `json:"version"`
 }
 
 // Clone returns a deep copy for the store's CAS retry callback.
 func (e *Event) Clone() *Event {
 	clone := *e
+	clone.AssigneeIDs = slices.Clone(e.AssigneeIDs)
 	return &clone
+}
+
+// HasAssignee reports whether userID is assigned to the event.
+func (e *Event) HasAssignee(userID string) bool {
+	return slices.Contains(e.AssigneeIDs, userID)
 }
 
 // EffectiveVisibility resolves records written before the visibility field existed.
@@ -46,19 +53,20 @@ func (e *Event) EffectiveVisibility() string {
 
 // EventRef is the compact record kept in the event indexes.
 type EventRef struct {
-	ID         string `json:"i"`
-	TeamID     string `json:"t"`
-	ChannelID  string `json:"c,omitempty"`
-	Visibility string `json:"z"`
-	CreatorID  string `json:"o"`
-	Title      string `json:"n"`
-	StartAt    int64  `json:"s"`
-	EndAt      int64  `json:"e"`
-	AllDay     bool   `json:"d,omitempty"`
-	TimeZone   string `json:"tz,omitempty"`
-	CreatedAt  int64  `json:"k"`
-	UpdatedAt  int64  `json:"u"`
-	Version    int64  `json:"v"`
+	ID          string   `json:"i"`
+	TeamID      string   `json:"t"`
+	ChannelID   string   `json:"c,omitempty"`
+	Visibility  string   `json:"z"`
+	CreatorID   string   `json:"o"`
+	AssigneeIDs []string `json:"a,omitempty"`
+	Title       string   `json:"n"`
+	StartAt     int64    `json:"s"`
+	EndAt       int64    `json:"e"`
+	AllDay      bool     `json:"d,omitempty"`
+	TimeZone    string   `json:"tz,omitempty"`
+	CreatedAt   int64    `json:"k"`
+	UpdatedAt   int64    `json:"u"`
+	Version     int64    `json:"v"`
 }
 
 // EffectiveVisibility resolves a compact ref written before the visibility field existed.
@@ -72,36 +80,38 @@ func (r EventRef) EffectiveVisibility() string {
 // Ref builds the index reference for an event.
 func (e *Event) Ref() EventRef {
 	return EventRef{
-		ID:         e.ID,
-		TeamID:     e.TeamID,
-		ChannelID:  e.ChannelID,
-		Visibility: e.EffectiveVisibility(),
-		CreatorID:  e.CreatorID,
-		Title:      truncateRunes(e.Title, MaxTitleRunes),
-		StartAt:    e.StartAt,
-		EndAt:      e.EndAt,
-		AllDay:     e.AllDay,
-		TimeZone:   e.TimeZone,
-		CreatedAt:  e.CreatedAt,
-		UpdatedAt:  e.UpdatedAt,
-		Version:    e.Version,
+		ID:          e.ID,
+		TeamID:      e.TeamID,
+		ChannelID:   e.ChannelID,
+		Visibility:  e.EffectiveVisibility(),
+		CreatorID:   e.CreatorID,
+		AssigneeIDs: slices.Clone(e.AssigneeIDs),
+		Title:       truncateRunes(e.Title, MaxTitleRunes),
+		StartAt:     e.StartAt,
+		EndAt:       e.EndAt,
+		AllDay:      e.AllDay,
+		TimeZone:    e.TimeZone,
+		CreatedAt:   e.CreatedAt,
+		UpdatedAt:   e.UpdatedAt,
+		Version:     e.Version,
 	}
 }
 
 // EventSummary is the calendar/list representation sent to the webapp.
 type EventSummary struct {
-	ID         string `json:"id"`
-	TeamID     string `json:"teamId"`
-	ChannelID  string `json:"channelId,omitempty"`
-	Visibility string `json:"visibility"`
-	CreatorID  string `json:"creatorId"`
-	Title      string `json:"title"`
-	StartAt    int64  `json:"startAt"`
-	EndAt      int64  `json:"endAt"`
-	AllDay     bool   `json:"allDay,omitempty"`
-	TimeZone   string `json:"timezone,omitempty"`
-	CreatedAt  int64  `json:"createdAt"`
-	UpdatedAt  int64  `json:"updatedAt"`
+	ID          string   `json:"id"`
+	TeamID      string   `json:"teamId"`
+	ChannelID   string   `json:"channelId,omitempty"`
+	Visibility  string   `json:"visibility"`
+	CreatorID   string   `json:"creatorId"`
+	AssigneeIDs []string `json:"assigneeIds"`
+	Title       string   `json:"title"`
+	StartAt     int64    `json:"startAt"`
+	EndAt       int64    `json:"endAt"`
+	AllDay      bool     `json:"allDay,omitempty"`
+	TimeZone    string   `json:"timezone,omitempty"`
+	CreatedAt   int64    `json:"createdAt"`
+	UpdatedAt   int64    `json:"updatedAt"`
 }
 
 // Summary converts an event index reference to its API representation.
@@ -112,13 +122,20 @@ func (r EventRef) Summary() EventSummary {
 		ChannelID:  r.ChannelID,
 		Visibility: r.EffectiveVisibility(),
 		CreatorID:  r.CreatorID,
-		Title:      r.Title,
-		StartAt:    r.StartAt,
-		EndAt:      r.EndAt,
-		AllDay:     r.AllDay,
-		TimeZone:   r.TimeZone,
-		CreatedAt:  r.CreatedAt,
-		UpdatedAt:  r.UpdatedAt,
+		AssigneeIDs: func() []string {
+			ids := slices.Clone(r.AssigneeIDs)
+			if ids == nil {
+				return []string{}
+			}
+			return ids
+		}(),
+		Title:     r.Title,
+		StartAt:   r.StartAt,
+		EndAt:     r.EndAt,
+		AllDay:    r.AllDay,
+		TimeZone:  r.TimeZone,
+		CreatedAt: r.CreatedAt,
+		UpdatedAt: r.UpdatedAt,
 	}
 }
 
@@ -129,6 +146,7 @@ type CreateEventInput struct {
 	Visibility  string
 	Title       string
 	Description string
+	AssigneeIDs []string
 	StartAt     int64
 	EndAt       int64
 	AllDay      bool
@@ -142,6 +160,7 @@ type EventPatch struct {
 	Visibility  *string
 	Title       *string
 	Description *string
+	AssigneeIDs *[]string
 	StartAt     *int64
 	EndAt       *int64
 	AllDay      *bool
@@ -151,7 +170,7 @@ type EventPatch struct {
 // IsZero reports whether the patch changes nothing.
 func (p EventPatch) IsZero() bool {
 	return p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
-		p.Description == nil && p.StartAt == nil && p.EndAt == nil && p.AllDay == nil && p.TimeZone == nil
+		p.Description == nil && p.AssigneeIDs == nil && p.StartAt == nil && p.EndAt == nil && p.AllDay == nil && p.TimeZone == nil
 }
 
 // EventQuery is a validated event list query. Events are fetched for a time range.
@@ -235,17 +254,17 @@ func NormalizeEventTimes(startAt, endAt int64, allDay bool) (int64, int64, error
 	return startAt, endAt, nil
 }
 
-// NormalizeEventTimeZone validates an IANA timezone and returns UTC for an empty value.
-func NormalizeEventTimeZone(value string) (string, error) {
+// NormalizeTimeZone validates an IANA timezone and returns UTC for an empty value.
+func NormalizeTimeZone(value string) (string, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return "UTC", nil
 	}
 	if len(value) > 64 {
-		return "", fmt.Errorf("%w: invalid event timezone", ErrInvalid)
+		return "", fmt.Errorf("%w: invalid timezone", ErrInvalid)
 	}
 	if _, err := time.LoadLocation(value); err != nil {
-		return "", fmt.Errorf("%w: unknown event timezone", ErrInvalid)
+		return "", fmt.Errorf("%w: unknown timezone", ErrInvalid)
 	}
 	return value, nil
 }

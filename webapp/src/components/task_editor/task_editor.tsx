@@ -7,6 +7,7 @@ import {useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {fromDateInput, recurrencePillLabel, toDateInput} from 'recurrence_utils';
+import {epochToZonedDateTimeInput, machineTimeZone, timeZoneOptions, zonedDateTimeToEpoch} from 'timezone_utils';
 import {
     PRIORITY_MESSAGES,
     STATUS_MESSAGES,
@@ -58,6 +59,7 @@ export type TaskEditorDefaults = {
     assigneeIds?: string[];
     dueAt?: number;
     dueHasTime?: boolean;
+    timeZone?: string;
     sourcePostId?: string;
 };
 
@@ -101,7 +103,9 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? 'normal');
     const initialDueAt = task?.dueAt ?? defaults?.dueAt;
     const initialDueHasTime = task?.dueHasTime ?? defaults?.dueHasTime ?? false;
-    const [due, setDue] = useState(toDateTimeInput(initialDueAt, initialDueHasTime));
+    const initialTimeZone = task?.timezone ?? defaults?.timeZone ?? machineTimeZone();
+    const [timeZone, setTimeZone] = useState(initialTimeZone);
+    const [due, setDue] = useState(initialDueAt && initialDueHasTime ? epochToZonedDateTimeInput(initialDueAt, initialTimeZone) : toDateTimeInput(initialDueAt, false));
     const [dueHasTime, setDueHasTime] = useState(initialDueHasTime);
     const initialRecurrence = task?.recurrence;
     const [repeat, setRepeat] = useState<RepeatMode>(initialRepeatMode(initialRecurrence));
@@ -162,8 +166,20 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     } else if (selectedTeam) {
         scopeLabel = selectedTeam.display_name;
     }
-    const dueValue = fromDateTimeInput(due, dueHasTime);
-    const dueDateInput = toDateInput(dueValue, dueHasTime);
+    const dueValue = dueHasTime ? zonedDateTimeToEpoch(due, timeZone) : fromDateTimeInput(due, false);
+    let dueDateInput = toDateInput(dueValue, false);
+    if (dueHasTime) {
+        dueDateInput = dueValue ? epochToZonedDateTimeInput(dueValue, timeZone).slice(0, 10) : '';
+    }
+    const taskTimeZoneOptions = timeZoneOptions(timeZone);
+
+    const changeTimeZone = (next: string) => {
+        const instant = dueValue;
+        setTimeZone(next);
+        if (dueHasTime && instant) {
+            setDue(epochToZonedDateTimeInput(instant, next));
+        }
+    };
     const scopeLocked = Boolean(task?.sourcePostId || defaults?.sourcePostId);
 
     const buildRecurrence = (): Recurrence => {
@@ -175,7 +191,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
         return {
             frequency,
             interval: repeat === 'custom' ? Math.min(99, Math.max(1, repeatInterval)) : 1,
-            timezone: new Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+            timezone: timeZone,
             ...(recurrenceStartDate ? {startDate: recurrenceStartDate} : {}),
             ...(until ? {until} : {}),
         };
@@ -318,8 +334,9 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                     assigneeIds,
                     status,
                     priority,
-                    dueAt: fromDateTimeInput(due, dueHasTime) ?? 0,
+                    dueAt: dueValue ?? 0,
                     dueHasTime,
+                    timezone: timeZone,
                     recurrence,
                 });
                 onSaved(updated);
@@ -333,8 +350,9 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                     assigneeIds,
                     status,
                     priority,
-                    dueAt: fromDateTimeInput(due, dueHasTime),
+                    dueAt: dueValue,
                     dueHasTime,
+                    timezone: timeZone,
                     recurrence,
                     sourcePostId: defaults?.sourcePostId,
                 });
@@ -602,10 +620,12 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                                     />
                                 </span>
                                 <DueDatePicker
+                                    key={timeZone}
                                     value={dueValue}
                                     hasTime={dueHasTime}
+                                    timeZone={timeZone}
                                     onChange={(value, hasTime) => {
-                                        setDue(toDateTimeInput(value, hasTime));
+                                        setDue(value && hasTime ? epochToZonedDateTimeInput(value, timeZone) : toDateTimeInput(value, false));
                                         setDueHasTime(hasTime);
                                         setRecurrenceStartDate(undefined);
                                         if (!value) {
@@ -620,6 +640,13 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                                         }
                                         setOpenProperty(undefined);
                                     }}
+                                />
+                                <Select
+                                    size='small'
+                                    label={intl.formatMessage({id: 'tasks.editor.timezone', defaultMessage: 'Time zone'})}
+                                    options={taskTimeZoneOptions.map((zone) => ({value: zone, label: zone}))}
+                                    value={timeZone}
+                                    onChange={changeTimeZone}
                                 />
                             </div>
                         )}
