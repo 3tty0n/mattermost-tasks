@@ -1,4 +1,4 @@
-// Package access centralizes the Mattermost permission checks used by tasks, bookmarks and the
+// Package access centralizes the Mattermost permission checks used by tasks and the
 // slash commands. Every entry point uses these functions so a route can not accidentally skip a
 // membership check.
 package access
@@ -37,7 +37,7 @@ func (c *Checker) CanViewTeam(userID, teamID string) bool {
 }
 
 // CanViewChannel reports whether the user may see records in a channel. This is the check that
-// keeps private channel tasks and bookmarks inside their channel; being assigned to a task is
+// keeps private channel tasks inside their channel; being assigned to a task is
 // never accepted as a substitute.
 func (c *Checker) CanViewChannel(userID, channelID string) bool {
 	return c.client.User.HasPermissionToChannel(userID, channelID, model.PermissionReadChannel)
@@ -112,7 +112,7 @@ func (c *Checker) CanAssign(assigneeID string, scope *Scope) bool {
 }
 
 // ResolvePost loads a post and the scope it belongs to, checking read access. It is used when a
-// task or bookmark is created from a post so the client can not attach a record to a channel the
+// task is created from a post so the client can not attach a record to a channel the
 // user can not read.
 func (c *Checker) ResolvePost(userID, postID string) (*Scope, error) {
 	if !model.IsValidId(postID) {

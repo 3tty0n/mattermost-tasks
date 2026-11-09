@@ -1,5 +1,5 @@
 // Package events publishes the plugin's WebSocket change notifications. Payloads carry IDs only:
-// every recipient of a WebSocket event can read its payload, so task titles and bookmark URLs
+// every recipient of a WebSocket event can read its payload, so task titles and descriptions
 // never leave the server this way.
 package events
 
@@ -33,17 +33,6 @@ func (p *Publisher) TaskChanged(action string, task *taskmodel.Task) {
 		"teamId":    task.TeamID,
 		"channelId": task.ChannelID,
 	}, broadcast(task.TeamID, task.ChannelID))
-}
-
-// BookmarkChanged notifies the bookmark's channel or team.
-func (p *Publisher) BookmarkChanged(action string, bookmark *taskmodel.Bookmark) {
-	p.client.Frontend.PublishWebSocketEvent(Event, map[string]any{
-		"entity":     "bookmark",
-		"action":     action,
-		"bookmarkId": bookmark.ID,
-		"teamId":     bookmark.TeamID,
-		"channelId":  bookmark.ChannelID,
-	}, broadcast(bookmark.TeamID, bookmark.ChannelID))
 }
 
 func broadcast(teamID, channelID string) *model.WebsocketBroadcast {

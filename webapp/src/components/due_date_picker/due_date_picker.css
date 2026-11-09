@@ -1,0 +1,111 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-DueDatePicker {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-s);
+}
+
+.Tasks-DueDatePicker__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-xs);
+}
+
+.Tasks-DueDatePicker__month {
+    color: var(--center-channel-color);
+    font-size: var(--font-size-100);
+    font-weight: var(--font-weight-semibold);
+}
+
+.Tasks-DueDatePicker__weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--spacing-xxxxs);
+}
+
+.Tasks-DueDatePicker__weekday {
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-50);
+    text-align: center;
+}
+
+.Tasks-DueDatePicker__grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--spacing-xxxxs);
+}
+
+.Tasks-DueDatePicker__day {
+    width: 32px;
+    height: 32px;
+    margin: 0 auto;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--center-channel-color);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--font-size-100);
+    line-height: var(--line-height-100);
+}
+
+.Tasks-DueDatePicker__day:hover {
+    background: rgba(var(--center-channel-color-rgb), 0.08);
+}
+
+.Tasks-DueDatePicker__day--outside {
+    color: rgba(var(--center-channel-color-rgb), 0.32);
+}
+
+.Tasks-DueDatePicker__day--today {
+    border-color: var(--button-bg);
+}
+
+.Tasks-DueDatePicker__day--selected {
+    background: var(--button-bg);
+    color: var(--button-color);
+}
+
+.Tasks-DueDatePicker__day--selected:hover {
+    background: var(--button-bg);
+}
+
+.Tasks-DueDatePicker__time {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.Tasks-DueDatePicker__timeLabel {
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: var(--font-size-75);
+    font-weight: var(--font-weight-semibold);
+}
+
+.Tasks-DueDatePicker__timeInput {
+    box-sizing: border-box;
+    height: 32px;
+    padding: 0 var(--spacing-s);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-s);
+    background: var(--center-channel-bg);
+    color: var(--center-channel-color);
+    font-family: inherit;
+    font-size: var(--font-size-100);
+}
+
+.Tasks-DueDatePicker__timeInput:focus-visible {
+    border-color: var(--button-bg);
+    outline: 2px solid rgba(var(--button-bg-rgb), 0.24);
+    outline-offset: 1px;
+}
+
+.Tasks-DueDatePicker__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-xs);
+}

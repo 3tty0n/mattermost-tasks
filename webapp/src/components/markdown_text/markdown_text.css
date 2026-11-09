@@ -1,0 +1,13 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-Markdown {
+    color: var(--center-channel-color);
+    font-size: var(--font-size-100);
+    line-height: var(--line-height-200);
+    overflow-wrap: anywhere;
+}
+
+.Tasks-Markdown__plain {
+    white-space: pre-wrap;
+}

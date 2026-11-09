@@ -33,9 +33,10 @@ type Props = {
     filters: TaskFiltersState;
     onChange: (next: Partial<TaskFiltersState>) => void;
     assignees?: Assignee[];
+    showStatus?: boolean;
 };
 
-export default function TaskFilters({filters, onChange, assignees}: Props) {
+export default function TaskFilters({filters, onChange, assignees, showStatus = true}: Props) {
     const intl = useIntl();
     const people = assignees ?? [];
 
@@ -65,14 +66,16 @@ export default function TaskFilters({filters, onChange, assignees}: Props) {
     ];
 
     return (
-        <div className='TasksBookmarks-TaskFilters'>
-            <Select
-                size='small'
-                label={intl.formatMessage({id: 'tasks.filters.status', defaultMessage: 'Status'})}
-                options={statusOptions}
-                value={filters.status}
-                onChange={(value) => onChange({status: value as TaskFiltersState['status']})}
-            />
+        <div className='Tasks-TaskFilters'>
+            {showStatus && (
+                <Select
+                    size='small'
+                    label={intl.formatMessage({id: 'tasks.filters.status', defaultMessage: 'Status'})}
+                    options={statusOptions}
+                    value={filters.status}
+                    onChange={(value) => onChange({status: value as TaskFiltersState['status']})}
+                />
+            )}
             <Select
                 size='small'
                 label={intl.formatMessage({id: 'tasks.filters.priority', defaultMessage: 'Priority'})}

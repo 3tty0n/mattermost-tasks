@@ -19,7 +19,7 @@ type Props = {
 export default function Dialog({title, onClose, footer, children}: Props) {
     return (
         <div
-            className='TasksBookmarks-DialogOverlay'
+            className='Tasks-DialogOverlay'
             onMouseDown={(event) => {
                 if (event.target === event.currentTarget) {
                     onClose();
@@ -28,7 +28,7 @@ export default function Dialog({title, onClose, footer, children}: Props) {
             role='presentation'
         >
             <Modal
-                className='TasksBookmarks-Dialog'
+                className='Tasks-Dialog'
                 title={title}
                 onClose={onClose}
                 footer={footer}

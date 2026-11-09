@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/3tty0n/mattermost-tasks/server/access"
-	"github.com/3tty0n/mattermost-tasks/server/bookmarks"
 	taskmodel "github.com/3tty0n/mattermost-tasks/server/model"
 	"github.com/3tty0n/mattermost-tasks/server/store/kvstore"
 	"github.com/3tty0n/mattermost-tasks/server/tasks"
@@ -23,15 +22,13 @@ import (
 
 type noopPublisher struct{}
 
-func (noopPublisher) TaskChanged(string, *taskmodel.Task)         {}
-func (noopPublisher) BookmarkChanged(string, *taskmodel.Bookmark) {}
+func (noopPublisher) TaskChanged(string, *taskmodel.Task) {}
 
 type apiTestEnv struct {
-	handler   *Handler
-	api       *testutil.API
-	store     kvstore.Store
-	tasks     *tasks.Service
-	bookmarks *bookmarks.Service
+	handler *Handler
+	api     *testutil.API
+	store   kvstore.Store
+	tasks   *tasks.Service
 }
 
 func newAPITestEnv(t *testing.T) *apiTestEnv {
@@ -43,13 +40,11 @@ func newAPITestEnv(t *testing.T) *apiTestEnv {
 	store := kvstore.NewStoreWithKV(kvstore.NewMemoryKV())
 	publisher := noopPublisher{}
 	taskService := tasks.NewService(client, store, checker, publisher, nil, tasks.WithClock(func() int64 { return 1000 }))
-	bookmarkService := bookmarks.NewService(client, store, checker, publisher, bookmarks.WithClock(func() int64 { return 1000 }))
 	return &apiTestEnv{
-		handler:   NewHandler(api, client, checker, taskService, bookmarkService),
-		api:       api,
-		store:     store,
-		tasks:     taskService,
-		bookmarks: bookmarkService,
+		handler: NewHandler(api, client, checker, taskService),
+		api:     api,
+		store:   store,
+		tasks:   taskService,
 	}
 }
 
@@ -97,11 +92,6 @@ func TestAllRoutesRejectUnauthenticatedRequests(t *testing.T) {
 		{http.MethodGet, "/api/v1/tasks/" + id},
 		{http.MethodPatch, "/api/v1/tasks/" + id},
 		{http.MethodDelete, "/api/v1/tasks/" + id},
-		{http.MethodGet, "/api/v1/bookmarks"},
-		{http.MethodPost, "/api/v1/bookmarks"},
-		{http.MethodGet, "/api/v1/bookmarks/" + id},
-		{http.MethodPatch, "/api/v1/bookmarks/" + id},
-		{http.MethodDelete, "/api/v1/bookmarks/" + id},
 		{http.MethodGet, "/api/v1/assignees"},
 	}
 	for _, route := range routes {
@@ -144,6 +134,10 @@ func TestTaskAPILifecycle(t *testing.T) {
 	assert.Equal(t, 1, list.Total)
 	require.Len(t, list.Items, 1)
 	assert.Equal(t, "Ship the release", list.Items[0].Title)
+
+	w = env.serve(http.MethodPost, "/api/v1/tasks/"+created.ID, `{"status":"in_progress"}`, creatorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Equal(t, taskmodel.TaskStatusInProgress, decodeResponse[taskmodel.Task](t, w).Status)
 
 	w = env.serve(http.MethodPatch, "/api/v1/tasks/"+created.ID, `{"status":"done"}`, creatorID)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
@@ -203,68 +197,6 @@ func TestTaskAPIValidationAndPermissions(t *testing.T) {
 	})
 }
 
-func TestBookmarkAPILifecycle(t *testing.T) {
-	env := newAPITestEnv(t)
-	teamID, channelID := model.NewId(), model.NewId()
-	creatorID, strangerID := model.NewId(), model.NewId()
-	allowChannel(env.api, creatorID, channelID, teamID)
-	denyAdmin(env.api, creatorID)
-	env.api.On("HasPermissionToChannel", strangerID, channelID, model.PermissionReadChannel).Return(false).Maybe()
-
-	createBody := `{"channelId":"` + channelID + `","url":"https://example.com/docs","title":"Docs","tags":["work"]}`
-	w := env.serve(http.MethodPost, "/api/v1/bookmarks", createBody, creatorID)
-	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
-	created := decodeResponse[taskmodel.Bookmark](t, w)
-	assert.Equal(t, "https://example.com/docs", created.URL)
-
-	w = env.serve(http.MethodGet, "/api/v1/bookmarks/"+created.ID, "", creatorID)
-	require.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, created.ID, decodeResponse[taskmodel.Bookmark](t, w).ID)
-
-	w = env.serve(http.MethodGet, "/api/v1/bookmarks/"+created.ID, "", strangerID)
-	assert.Equal(t, http.StatusNotFound, w.Code)
-
-	w = env.serve(http.MethodGet, "/api/v1/bookmarks?scope=channel&channel_id="+channelID+"&q=docs", "", creatorID)
-	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	list := decodeResponse[bookmarks.ListResult](t, w)
-	assert.Equal(t, 1, list.Total)
-
-	w = env.serve(http.MethodPatch, "/api/v1/bookmarks/"+created.ID, `{"title":"Renamed"}`, creatorID)
-	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	assert.Equal(t, "Renamed", decodeResponse[taskmodel.Bookmark](t, w).Title)
-
-	w = env.serve(http.MethodDelete, "/api/v1/bookmarks/"+created.ID, "", creatorID)
-	require.Equal(t, http.StatusNoContent, w.Code)
-
-	w = env.serve(http.MethodGet, "/api/v1/bookmarks/"+created.ID, "", creatorID)
-	assert.Equal(t, http.StatusNotFound, w.Code)
-}
-
-func TestBookmarkAPIValidation(t *testing.T) {
-	env := newAPITestEnv(t)
-	teamID, channelID := model.NewId(), model.NewId()
-	actorID := model.NewId()
-	allowChannel(env.api, actorID, channelID, teamID)
-
-	t.Run("javascript URL", func(t *testing.T) {
-		body := `{"channelId":"` + channelID + `","url":"javascript:alert(1)","title":"x"}`
-		w := env.serve(http.MethodPost, "/api/v1/bookmarks", body, actorID)
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-
-	t.Run("credentials in URL", func(t *testing.T) {
-		body := `{"channelId":"` + channelID + `","url":"https://user:pass@example.com","title":"x"}`
-		w := env.serve(http.MethodPost, "/api/v1/bookmarks", body, actorID)
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-	})
-
-	t.Run("team list forbidden", func(t *testing.T) {
-		env.api.On("HasPermissionToTeam", actorID, teamID, model.PermissionViewTeam).Return(false).Maybe()
-		w := env.serve(http.MethodGet, "/api/v1/bookmarks?scope=team&team_id="+teamID, "", actorID)
-		assert.Equal(t, http.StatusForbidden, w.Code)
-	})
-}
-
 func TestAssigneesAPI(t *testing.T) {
 	env := newAPITestEnv(t)
 	teamID, channelID := model.NewId(), model.NewId()
@@ -311,4 +243,32 @@ func TestAPISetsNoStoreAndContentType(t *testing.T) {
 	assert.Equal(t, "no-store", w.Header().Get("Cache-Control"))
 	assert.Equal(t, "nosniff", w.Header().Get("X-Content-Type-Options"))
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+}
+
+func TestTaskAPIDueTime(t *testing.T) {
+	env := newAPITestEnv(t)
+	teamID, channelID := model.NewId(), model.NewId()
+	actorID := model.NewId()
+	allowChannel(env.api, actorID, channelID, teamID)
+	denyAdmin(env.api, actorID)
+
+	body := `{"channelId":"` + channelID + `","title":"Timed","dueAt":1767225600000,"dueHasTime":true}`
+	w := env.serve(http.MethodPost, "/api/v1/tasks", body, actorID)
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	created := decodeResponse[taskmodel.Task](t, w)
+	assert.True(t, created.DueHasTime)
+	assert.Equal(t, int64(1767225600000), created.DueAt)
+
+	w = env.serve(http.MethodPost, "/api/v1/tasks/"+created.ID, `{"dueAt":0}`, actorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	cleared := decodeResponse[taskmodel.Task](t, w)
+	assert.False(t, cleared.DueHasTime)
+	assert.Zero(t, cleared.DueAt)
+
+	w = env.serve(http.MethodPost, "/api/v1/tasks/"+created.ID, `{"dueHasTime":true}`, actorID)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	w = env.serve(http.MethodPost, "/api/v1/tasks/"+created.ID, `{"dueAt":1767225600000,"dueHasTime":false}`, actorID)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.False(t, decodeResponse[taskmodel.Task](t, w).DueHasTime)
 }

@@ -61,7 +61,7 @@ function baseState(): Record<string, unknown> & {entities: Record<string, unknow
             },
             preferences: {myPreferences: {}},
         },
-        [pluginStateKey]: {tasksRevision: 0, bookmarksRevision: 0} satisfies TasksState,
+        [pluginStateKey]: {tasksRevision: 0} satisfies TasksState,
     };
 }
 

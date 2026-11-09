@@ -1,4 +1,4 @@
-// Package kvstore persists tasks and bookmarks in the Mattermost plugin KV store and maintains
+// Package kvstore persists tasks in the Mattermost plugin KV store and maintains
 // compact per-scope indexes for list views. It never scans keys: every query reads a bounded set
 // of index shards for the requested team, channel or user.
 package kvstore

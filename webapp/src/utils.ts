@@ -45,40 +45,67 @@ export function nextStatus(status: TaskStatus): TaskStatus {
     return 'todo';
 }
 
-export function formatDue(intl: IntlShape, dueAt: number | undefined): string {
+export function formatDue(intl: IntlShape, dueAt: number | undefined, hasTime = false): string {
     if (!dueAt) {
         return '';
     }
     const date = new Date(dueAt);
     const now = new Date();
     const sameYear = date.getFullYear() === now.getFullYear();
-    return intl.formatDate(date, {
+    const day = intl.formatDate(date, {
         month: 'short',
         day: 'numeric',
         year: sameYear ? undefined : 'numeric',
-    }) + ' ' + intl.formatTime(date, {hour: 'numeric', minute: '2-digit'});
+    });
+    if (!hasTime) {
+        return day;
+    }
+    return day + ' ' + intl.formatTime(date, {hour: 'numeric', minute: '2-digit'});
 }
 
-export function isOverdue(dueAt: number | undefined): boolean {
-    return Boolean(dueAt && dueAt < Date.now());
+export function isOverdue(dueAt: number | undefined, hasTime = false): boolean {
+    if (!dueAt) {
+        return false;
+    }
+    if (hasTime) {
+        return dueAt < Date.now();
+    }
+
+    // A date-only task stays current through the end of its UTC calendar day.
+    const date = new Date(dueAt);
+    const endOfDay = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1) - 1;
+    return endOfDay < Date.now();
 }
 
-// datetime-local needs YYYY-MM-DDTHH:mm in local time, not an ISO/UTC string.
-export function toDateTimeInput(dueAt: number | undefined): string {
+// datetime-local needs YYYY-MM-DDTHH:mm in local time, not an ISO/UTC string. Date-only values are
+// kept in UTC so every member of a team sees the same calendar day.
+export function toDateTimeInput(dueAt: number | undefined, hasTime = false): string {
     if (!dueAt) {
         return '';
     }
     const date = new Date(dueAt);
     const pad = (value: number) => String(value).padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    const year = hasTime ? date.getFullYear() : date.getUTCFullYear();
+    const month = hasTime ? date.getMonth() : date.getUTCMonth();
+    const day = hasTime ? date.getDate() : date.getUTCDate();
+    const hours = hasTime ? date.getHours() : 0;
+    const minutes = hasTime ? date.getMinutes() : 0;
+    return `${year}-${pad(month + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}`;
 }
 
-export function fromDateTimeInput(value: string): number | undefined {
+export function fromDateTimeInput(value: string, hasTime = false): number | undefined {
     if (!value) {
         return undefined;
     }
-    const millis = new Date(value).getTime();
-    return Number.isNaN(millis) ? undefined : millis;
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+    if (!match) {
+        return undefined;
+    }
+    const [, year, month, day, hours, minutes] = match.map(Number);
+    if (!hasTime) {
+        return Date.UTC(year, month - 1, day);
+    }
+    return new Date(year, month - 1, day, hours, minutes).getTime();
 }
 
 const URL_PATTERN = /https?:\/\/[^\s<>"']+/gi;
@@ -97,7 +124,7 @@ export function extractUrls(message: string): string[] {
     return unique;
 }
 
-// postTitle turns a post's first line into a sensible task/bookmark title.
+// postTitle turns a post's first line into a sensible task title.
 export function postTitle(message: string): string {
     const line = message.split('\n').find((candidate) => candidate.trim() !== '') ?? '';
     const cleaned = line.

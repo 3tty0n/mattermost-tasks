@@ -1,10 +1,10 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {fetchAssignees, fetchBookmarks, fetchTasks, getProfiles, type Profile} from 'client';
+import {fetchAssignees, fetchTasks, getProfiles, type Profile} from 'client';
 import {useEffect, useRef, useState} from 'react';
 
-import type {Assignee, BookmarkQuery, BookmarkSummary, ListResult, TaskQuery, TaskSummary} from 'types';
+import type {Assignee, ListResult, TaskQuery, TaskSummary} from 'types';
 
 type AsyncState<T> = {
     data?: T;
@@ -19,7 +19,7 @@ function errorMessage(error: unknown): string {
     return String(error);
 }
 
-function useList<T>(query: TaskQuery | BookmarkQuery | null, revision: number, fetcher: (query: never, signal: AbortSignal) => Promise<ListResult<T>>) {
+function useList<T>(query: TaskQuery | null, revision: number, fetcher: (query: never, signal: AbortSignal) => Promise<ListResult<T>>) {
     const queryKey = query ? JSON.stringify(query) : '';
     const [state, setState] = useState<AsyncState<ListResult<T>>>({loading: Boolean(query)});
     const previousKey = useRef('');
@@ -53,10 +53,6 @@ function useList<T>(query: TaskQuery | BookmarkQuery | null, revision: number, f
 
 export function useTasks(query: TaskQuery | null, revision: number) {
     return useList<TaskSummary>(query, revision, fetchTasks);
-}
-
-export function useBookmarks(query: BookmarkQuery | null, revision: number) {
-    return useList<BookmarkSummary>(query, revision, fetchBookmarks);
 }
 
 export function useAssignees(teamId: string | undefined, channelId: string | undefined, term: string, enabled: boolean) {

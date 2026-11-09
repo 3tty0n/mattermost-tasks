@@ -4,11 +4,12 @@
 import {screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
+    createTask,
     fetchAssignees,
-    fetchBookmarks,
     fetchTasks,
     getProfiles,
     getProfilePictureUrl,
+    getTask,
     updateTask,
 } from 'client';
 
@@ -25,7 +26,6 @@ jest.mock('client', () => ({
     deleteBookmark: jest.fn(),
     deleteTask: jest.fn(),
     fetchAssignees: jest.fn(),
-    fetchBookmarks: jest.fn(),
     fetchTasks: jest.fn(),
     getBookmark: jest.fn(),
     getProfiles: jest.fn(),
@@ -37,10 +37,11 @@ jest.mock('client', () => ({
     updateTask: jest.fn(),
 }));
 
+const createTaskMock = createTask as jest.MockedFunction<typeof createTask>;
 const fetchTasksMock = fetchTasks as jest.MockedFunction<typeof fetchTasks>;
 const fetchAssigneesMock = fetchAssignees as jest.MockedFunction<typeof fetchAssignees>;
-const fetchBookmarksMock = fetchBookmarks as jest.MockedFunction<typeof fetchBookmarks>;
 const getProfilesMock = getProfiles as jest.MockedFunction<typeof getProfiles>;
+const getTaskMock = getTask as jest.MockedFunction<typeof getTask>;
 const updateTaskMock = updateTask as jest.MockedFunction<typeof updateTask>;
 
 const task = (overrides: Partial<TaskSummary> = {}): TaskSummary => ({
@@ -65,7 +66,6 @@ describe('TasksSidebar', () => {
     beforeEach(() => {
         fetchTasksMock.mockResolvedValue(page([task(), task({id: 'task-2', title: 'Write docs', status: 'done', priority: 'normal', dueAt: undefined})]));
         fetchAssigneesMock.mockResolvedValue([]);
-        fetchBookmarksMock.mockResolvedValue({items: [], total: 0, page: 0, perPage: 20, hasMore: false});
         getProfilesMock.mockResolvedValue({});
         (getProfilePictureUrl as jest.Mock).mockReturnValue(undefined);
         updateTaskMock.mockResolvedValue({
@@ -73,6 +73,16 @@ describe('TasksSidebar', () => {
             status: 'in_progress',
             creatorId: ids.user,
             version: 2,
+        });
+        createTaskMock.mockResolvedValue({
+            ...task({title: 'New card'}),
+            creatorId: ids.user,
+            version: 1,
+        });
+        getTaskMock.mockResolvedValue({
+            ...task(),
+            creatorId: ids.user,
+            version: 1,
         });
     });
 
@@ -122,6 +132,68 @@ describe('TasksSidebar', () => {
             scope: 'team',
             teamId: ids.team,
         }), expect.anything()));
+    });
+
+    it('switches to a board grouped by status', async () => {
+        const user = userEvent.setup();
+        renderWithStore(<TasksSidebar/>);
+        await screen.findByRole('button', {name: 'Pick up mail'});
+
+        await user.click(screen.getByRole('button', {name: 'Board view'}));
+
+        await waitFor(() => expect(fetchTasksMock).toHaveBeenLastCalledWith(expect.objectContaining({
+            page: 0,
+            perPage: 100,
+        }), expect.anything()));
+        const query = fetchTasksMock.mock.calls[fetchTasksMock.mock.calls.length - 1][0];
+        expect(query.statuses).toBeUndefined();
+        expect(screen.getAllByText('In progress').length).toBeGreaterThan(0);
+        expect(screen.queryByRole('combobox', {name: 'Status'})).not.toBeInTheDocument();
+    });
+
+    it('opens task details when a list card is clicked', async () => {
+        const user = userEvent.setup();
+        renderWithStore(<TasksSidebar/>);
+        const title = await screen.findByRole('button', {name: 'Pick up mail'});
+
+        await user.click(title.closest('li') as HTMLElement);
+
+        await waitFor(() => expect(getTaskMock).toHaveBeenCalledWith('task-1', expect.anything()));
+    });
+
+    it('quick-adds a task from a board column', async () => {
+        const user = userEvent.setup();
+        renderWithStore(<TasksSidebar/>);
+        await screen.findByRole('button', {name: 'Pick up mail'});
+        await user.click(screen.getByRole('button', {name: 'Board view'}));
+
+        await user.click(screen.getByRole('button', {name: 'Add task to To do'}));
+        await user.type(screen.getByLabelText('Task name'), 'New card');
+        await user.click(screen.getByRole('button', {name: 'Add'}));
+
+        await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'New card',
+            status: 'todo',
+            assigneeIds: [ids.user],
+        })));
+    });
+
+    it('shows a board card description in a popup', async () => {
+        const user = userEvent.setup();
+        getTaskMock.mockResolvedValueOnce({
+            ...task(),
+            description: '**Board description**',
+            creatorId: ids.user,
+            version: 1,
+        });
+        renderWithStore(<TasksSidebar/>);
+        await screen.findByRole('button', {name: 'Pick up mail'});
+        await user.click(screen.getByRole('button', {name: 'Board view'}));
+
+        await user.click(screen.getByRole('button', {name: 'Pick up mail'}));
+
+        expect(await screen.findByText('**Board description**')).toBeVisible();
+        expect(screen.getByRole('button', {name: 'Open task'})).toBeVisible();
     });
 
     it('filters by status', async () => {

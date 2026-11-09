@@ -16,6 +16,7 @@ export type TaskSummary = {
     priority: TaskPriority;
     assigneeIds: string[];
     dueAt?: number;
+    dueHasTime?: boolean;
     createdAt: number;
     updatedAt: number;
 };
@@ -26,24 +27,6 @@ export type Task = TaskSummary & {
     sourcePostId?: string;
     parentTaskId?: string;
     completedAt?: number;
-    version: number;
-};
-
-export type BookmarkSummary = {
-    id: string;
-    teamId: string;
-    channelId?: string;
-    url: string;
-    title: string;
-    tags: string[];
-    creatorId: string;
-    sourcePostId?: string;
-    createdAt: number;
-    updatedAt: number;
-};
-
-export type Bookmark = BookmarkSummary & {
-    description?: string;
     version: number;
 };
 
@@ -75,18 +58,6 @@ export type TaskQuery = {
     perPage?: number;
 };
 
-export type BookmarkScope = 'team' | 'channel' | 'all';
-
-export type BookmarkQuery = {
-    scope: BookmarkScope;
-    teamId?: string;
-    channelId?: string;
-    search?: string;
-    tag?: string;
-    page?: number;
-    perPage?: number;
-};
-
 export type Assignee = {
     id: string;
     username: string;
@@ -105,6 +76,7 @@ export type CreateTaskInput = {
     status: TaskStatus;
     priority: TaskPriority;
     dueAt?: number;
+    dueHasTime?: boolean;
     sourcePostId?: string;
 };
 
@@ -117,34 +89,14 @@ export type UpdateTaskInput = {
     status?: TaskStatus;
     priority?: TaskPriority;
     dueAt?: number;
-    sourcePostId?: string;
-};
-
-export type CreateBookmarkInput = {
-    teamId?: string;
-    channelId?: string;
-    url: string;
-    title: string;
-    description?: string;
-    tags: string[];
-    sourcePostId?: string;
-};
-
-export type UpdateBookmarkInput = {
-    teamId?: string;
-    channelId?: string;
-    url?: string;
-    title?: string;
-    description?: string;
-    tags?: string[];
+    dueHasTime?: boolean;
     sourcePostId?: string;
 };
 
 export type ComposerRequest = {
-    kind: 'task' | 'bookmark';
+    kind: 'task';
     postId?: string;
     channelId?: string;
     title?: string;
     description?: string;
-    urls?: string[];
 };

@@ -18,7 +18,6 @@ jest.mock('client', () => ({
     deleteBookmark: jest.fn(),
     deleteTask: jest.fn(),
     fetchAssignees: jest.fn(),
-    fetchBookmarks: jest.fn(),
     fetchTasks: jest.fn(),
     getBookmark: jest.fn(),
     getProfiles: jest.fn(),
@@ -76,11 +75,11 @@ describe('TaskEditor', () => {
 
         await user.type(screen.getByLabelText('Title'), 'Ship the release');
         await user.type(screen.getByLabelText('Description'), 'Before Friday');
-        await waitFor(() => expect(fetchAssigneesMock).toHaveBeenCalled());
+        await user.type(screen.getByLabelText('Add assignee'), 'alice');
         const alice = await screen.findByRole('checkbox', {name: 'Alice'});
         await user.click(alice);
 
-        await user.click(screen.getByRole('button', {name: 'Create task'}));
+        await user.click(screen.getByRole('button', {name: 'Add task'}));
 
         await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
             teamId: ids.team,
@@ -106,10 +105,10 @@ describe('TaskEditor', () => {
         );
 
         await user.type(screen.getByLabelText('Title'), 'Nope');
-        await user.click(screen.getByRole('button', {name: 'Create task'}));
+        await user.click(screen.getByRole('button', {name: 'Add task'}));
 
         expect(await screen.findByText('You don’t have permission to do that')).toBeVisible();
-        expect(screen.getByRole('button', {name: 'Create task'})).toBeVisible();
+        expect(screen.getByRole('button', {name: 'Add task'})).toBeVisible();
     });
 
     it('requires a title', async () => {
@@ -122,9 +121,56 @@ describe('TaskEditor', () => {
             />,
         );
 
-        await user.click(screen.getByRole('button', {name: 'Create task'}));
+        await user.click(screen.getByRole('button', {name: 'Add task'}));
         expect(await screen.findByText('Enter a task title.')).toBeVisible();
         expect(createTaskMock).not.toHaveBeenCalled();
+    });
+
+    it('saves a due date selected in the calendar', async () => {
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date(2026, 0, 15, 10, 0));
+        const user = userEvent.setup({advanceTimers: jest.advanceTimersByTime});
+        const onSaved = jest.fn();
+        renderWithStore(
+            <TaskEditor
+                defaults={{teamId: ids.team, channelId: ids.channel}}
+                onClose={jest.fn()}
+                onSaved={onSaved}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Ship with a due date');
+        await user.click(screen.getByRole('button', {name: 'Due date'}));
+        await user.click(screen.getByRole('button', {name: /January 20, 2026/}));
+        await user.click(screen.getByRole('button', {name: 'OK'}));
+        await user.click(screen.getByRole('button', {name: 'Add task'}));
+
+        expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
+            dueAt: Date.UTC(2026, 0, 20),
+            dueHasTime: false,
+        }));
+        jest.useRealTimers();
+    });
+
+    it('inserts Markdown formatting and shows a preview', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <TaskEditor
+                defaults={{teamId: ids.team, channelId: ids.channel}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        const description = screen.getByLabelText('Description') as HTMLTextAreaElement;
+        await user.type(description, 'hello');
+        description.setSelectionRange(0, 5);
+        await user.click(screen.getByRole('button', {name: 'Bold'}));
+        expect(description.value).toBe('**hello**');
+
+        await user.click(screen.getByRole('button', {name: 'Preview'}));
+        expect(screen.getByText('**hello**')).toBeVisible();
+        expect(screen.getByRole('button', {name: 'Edit description'})).toBeVisible();
     });
 
     it('updates an existing task', async () => {

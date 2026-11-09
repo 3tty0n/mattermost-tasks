@@ -15,15 +15,14 @@ const RECONNECTED = `${manifest.id}/reconnected`;
 const OPEN_COMPOSER = `${manifest.id}/open_composer`;
 const CLEAR_COMPOSER = `${manifest.id}/clear_composer`;
 
-type RemoteEventAction = {type: typeof REMOTE_EVENT; entity: 'task' | 'bookmark'};
+type RemoteEventAction = {type: typeof REMOTE_EVENT};
 type OpenTaskAction = {type: typeof OPEN_TASK; taskId: string};
 type OpenComposerAction = {type: typeof OPEN_COMPOSER; request: ComposerRequest};
 
 export type TasksState = {
 
-    // Components refetch the visible list when these change. Payloads are IDs only.
+    // Components refetch the visible list when this changes. Payloads are IDs only.
     tasksRevision: number;
-    bookmarksRevision: number;
 
     // Set by a #task-<id> deep link or by clicking a list row.
     openTaskId?: string;
@@ -34,11 +33,10 @@ export type TasksState = {
 
 const initialState: TasksState = {
     tasksRevision: 0,
-    bookmarksRevision: 0,
 };
 
-export function remoteEvent(entity: 'task' | 'bookmark'): RemoteEventAction {
-    return {type: REMOTE_EVENT, entity};
+export function remoteEvent(): RemoteEventAction {
+    return {type: REMOTE_EVENT};
 }
 
 export function openTask(taskId: string): OpenTaskAction {
@@ -63,19 +61,14 @@ export function clearComposer(): UnknownAction {
 
 export function reducer(state: TasksState = initialState, action: UnknownAction): TasksState {
     switch (action.type) {
-    case REMOTE_EVENT: {
-        const {entity} = action as RemoteEventAction;
-        if (entity === 'bookmark') {
-            return {...state, bookmarksRevision: state.bookmarksRevision + 1};
-        }
+    case REMOTE_EVENT:
         return {...state, tasksRevision: state.tasksRevision + 1};
-    }
     case OPEN_TASK:
         return {...state, openTaskId: (action as OpenTaskAction).taskId};
     case CLOSE_TASK:
         return {...state, openTaskId: undefined};
     case RECONNECTED:
-        return {...state, tasksRevision: state.tasksRevision + 1, bookmarksRevision: state.bookmarksRevision + 1};
+        return {...state, tasksRevision: state.tasksRevision + 1};
     case OPEN_COMPOSER:
         return {...state, composer: (action as OpenComposerAction).request};
     case CLEAR_COMPOSER:
@@ -93,10 +86,6 @@ function pluginState(state: GlobalState): TasksState | undefined {
 
 export function getTasksRevision(state: GlobalState): number {
     return pluginState(state)?.tasksRevision ?? 0;
-}
-
-export function getBookmarksRevision(state: GlobalState): number {
-    return pluginState(state)?.bookmarksRevision ?? 0;
 }
 
 export function getOpenTaskId(state: GlobalState): string | undefined {

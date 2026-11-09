@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/3tty0n/mattermost-tasks/server/bookmarks"
 	taskmodel "github.com/3tty0n/mattermost-tasks/server/model"
 	"github.com/3tty0n/mattermost-tasks/server/tasks"
 )
@@ -80,7 +79,7 @@ func restartPlugin(t *testing.T, th *testhelper.TestHelper) {
 	waitForPluginRunning(t, th)
 }
 
-func TestTaskAndBookmarkIntegration(t *testing.T) {
+func TestTaskIntegration(t *testing.T) {
 	th := testhelper.Setup(t)
 
 	task := createTaskIntegration(t, th, th.Client, map[string]any{
@@ -111,30 +110,12 @@ func TestTaskAndBookmarkIntegration(t *testing.T) {
 	assert.Empty(t, teamTask.ChannelID)
 
 	// Status updates are visible through the API.
-	response, payload = pluginRequest(t, th, th.Client, http.MethodPatch, "/tasks/"+task.ID, map[string]any{"status": "done"})
+	response, payload = pluginRequest(t, th, th.Client, http.MethodPost, "/tasks/"+task.ID, map[string]any{"status": "done"})
 	require.Equal(t, http.StatusOK, response.StatusCode, string(payload))
 	var updated taskmodel.Task
 	require.NoError(t, json.Unmarshal(payload, &updated))
 	assert.Equal(t, taskmodel.TaskStatusDone, updated.Status)
 	assert.NotZero(t, updated.CompletedAt)
-
-	// Bookmarks use the same scope model.
-	response, payload = pluginRequest(t, th, th.Client, http.MethodPost, "/bookmarks", map[string]any{
-		"channelId": th.Channel.Id,
-		"url":       "https://example.com/docs",
-		"title":     "Docs",
-		"tags":      []string{"integration"},
-	})
-	require.Equal(t, http.StatusCreated, response.StatusCode, string(payload))
-	var bookmark taskmodel.Bookmark
-	require.NoError(t, json.Unmarshal(payload, &bookmark))
-	assert.Equal(t, "https://example.com/docs", bookmark.URL)
-
-	response, payload = pluginRequest(t, th, th.Client, http.MethodGet, "/bookmarks?scope=channel&channel_id="+th.Channel.Id+"&q=docs", nil)
-	require.Equal(t, http.StatusOK, response.StatusCode, string(payload))
-	var bookmarkList bookmarks.ListResult
-	require.NoError(t, json.Unmarshal(payload, &bookmarkList))
-	assert.Equal(t, 1, bookmarkList.Total)
 
 	// KV records survive a plugin restart (deactivate/reactivate).
 	restartPlugin(t, th)
@@ -154,7 +135,7 @@ func TestTaskAndBookmarkIntegration(t *testing.T) {
 func TestAssignmentNotificationIntegration(t *testing.T) {
 	th := testhelper.Setup(t)
 
-	bot, _, err := th.AdminClient.GetUserByUsername(t.Context(), "tasks-bookmarks-bot", "")
+	bot, _, err := th.AdminClient.GetUserByUsername(t.Context(), "tasks-bot", "")
 	require.NoError(t, err, "the plugin bot should exist after activation")
 
 	task := createTaskIntegration(t, th, th.AdminClient, map[string]any{

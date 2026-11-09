@@ -6,7 +6,9 @@ import {memo} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {PRIORITY_TAG_TYPE, formatDue, isOverdue, priorityLabel, profileName, statusLabel} from 'utils';
 
+import ChevronRightIcon from '@mattermost/compass-icons/components/chevron-right';
 import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
+import {Icon} from '@mattermost/compass-ui/components/icon';
 import {Tag} from '@mattermost/compass-ui/components/tag';
 import {UserAvatar} from '@mattermost/compass-ui/components/user-avatar';
 
@@ -26,13 +28,19 @@ type Props = {
 function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatus}: Props) {
     const intl = useIntl();
     const done = task.status === 'done';
-    const overdue = !done && isOverdue(task.dueAt);
+    const overdue = !done && isOverdue(task.dueAt, task.dueHasTime);
     const visibleAssignees = task.assigneeIds.slice(0, 3);
     const extraAssignees = task.assigneeIds.length - visibleAssignees.length;
 
     return (
-        <li className={`TasksBookmarks-TaskRow${done ? ' TasksBookmarks-TaskRow--done' : ''}`}>
-            <div className='TasksBookmarks-TaskRow__check'>
+        <li
+            className={`Tasks-TaskRow${done ? ' Tasks-TaskRow--done' : ''}`}
+            onClick={onOpen}
+        >
+            <div
+                className='Tasks-TaskRow__check'
+                onClick={(event) => event.stopPropagation()}
+            >
                 <Checkbox
                     checked={done}
                     onChange={onToggleDone}
@@ -42,19 +50,25 @@ function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatu
                     )}
                 />
             </div>
-            <div className='TasksBookmarks-TaskRow__main'>
+            <div className='Tasks-TaskRow__main'>
                 <button
                     type='button'
-                    className='TasksBookmarks-TaskRow__title'
-                    onClick={onOpen}
+                    className='Tasks-TaskRow__title'
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onOpen();
+                    }}
                 >
                     {task.title}
                 </button>
-                <div className='TasksBookmarks-TaskRow__meta'>
+                <div className='Tasks-TaskRow__meta'>
                     <button
                         type='button'
-                        className={`TasksBookmarks-TaskRow__status TasksBookmarks-TaskRow__status--${task.status}`}
-                        onClick={onCycleStatus}
+                        className={`Tasks-TaskRow__status Tasks-TaskRow__status--${task.status}`}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onCycleStatus();
+                        }}
                         aria-label={intl.formatMessage(
                             {id: 'tasks.row.change_status', defaultMessage: 'Change status, currently {status}'},
                             {status: statusLabel(intl, task.status)},
@@ -70,16 +84,16 @@ function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatu
                         />
                     )}
                     {task.dueAt && task.dueAt > 0 && (
-                        <span className={`TasksBookmarks-TaskRow__due${overdue ? ' TasksBookmarks-TaskRow__due--overdue' : ''}`}>
-                            {formatDue(intl, task.dueAt)}
+                        <span className={`Tasks-TaskRow__due${overdue ? ' Tasks-TaskRow__due--overdue' : ''}`}>
+                            {formatDue(intl, task.dueAt, task.dueHasTime)}
                         </span>
                     )}
                     {scopeLabel && (
-                        <span className='TasksBookmarks-TaskRow__scope'>{scopeLabel}</span>
+                        <span className='Tasks-TaskRow__scope'>{scopeLabel}</span>
                     )}
                 </div>
             </div>
-            <div className='TasksBookmarks-TaskRow__assignees'>
+            <div className='Tasks-TaskRow__assignees'>
                 {visibleAssignees.map((userId) => {
                     const profile = profiles[userId];
                     const name = profileName(profile, userId);
@@ -95,14 +109,20 @@ function TaskRow({task, profiles, scopeLabel, onOpen, onToggleDone, onCycleStatu
                 })}
                 {extraAssignees > 0 && (
                     <span
-                        className='TasksBookmarks-TaskRow__extra'
+                        className='Tasks-TaskRow__extra'
                         aria-label={intl.formatMessage({id: 'tasks.row.more_assignees', defaultMessage: '{count} more assignees'}, {count: extraAssignees})}
                     >
                         {`+${extraAssignees}`}
                     </span>
                 )}
             </div>
-            <span className='TasksBookmarks-TaskRow__srOnly'>
+            <span className='Tasks-TaskRow__chevron'>
+                <Icon
+                    size='16'
+                    glyph={<ChevronRightIcon/>}
+                />
+            </span>
+            <span className='Tasks-TaskRow__srOnly'>
                 <FormattedMessage
                     id='tasks.row.open_hint'
                     defaultMessage='Open task details'

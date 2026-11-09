@@ -5,14 +5,12 @@ package command
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 
 	mmodel "github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
 
-	"github.com/3tty0n/mattermost-tasks/server/bookmarks"
 	"github.com/3tty0n/mattermost-tasks/server/model"
 	"github.com/3tty0n/mattermost-tasks/server/tasks"
 )
@@ -26,33 +24,31 @@ type Command interface {
 
 // Handler implements Command.
 type Handler struct {
-	client    *pluginapi.Client
-	tasks     *tasks.Service
-	bookmarks *bookmarks.Service
+	client *pluginapi.Client
+	tasks  *tasks.Service
 }
 
 // NewCommandHandler registers the /task command and returns its handler.
-func NewCommandHandler(client *pluginapi.Client, tasksService *tasks.Service, bookmarksService *bookmarks.Service) (Command, error) {
-	autocomplete := mmodel.NewAutocompleteData(trigger, "[subcommand]", "Manage tasks and bookmarks")
+func NewCommandHandler(client *pluginapi.Client, tasksService *tasks.Service) (Command, error) {
+	autocomplete := mmodel.NewAutocompleteData(trigger, "[subcommand]", "Manage tasks")
 	autocomplete.AddStaticListArgument("Subcommand", false, []mmodel.AutocompleteListItem{
 		{Item: "list", HelpText: "Show tasks assigned to you"},
 		{Item: "show", HelpText: "Show a task by ID"},
 		{Item: "create", HelpText: "Create a task in this channel"},
 		{Item: "done", HelpText: "Mark a task as done"},
-		{Item: "bookmark", HelpText: "Save a URL bookmark in this channel"},
 	})
 
 	err := client.SlashCommand.Register(&mmodel.Command{
 		Trigger:          trigger,
 		AutoComplete:     true,
-		AutoCompleteDesc: "Manage tasks and bookmarks",
+		AutoCompleteDesc: "Manage tasks",
 		AutoCompleteHint: "[subcommand]",
 		AutocompleteData: autocomplete,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to register /%s command: %w", trigger, err)
 	}
-	return &Handler{client: client, tasks: tasksService, bookmarks: bookmarksService}, nil
+	return &Handler{client: client, tasks: tasksService}, nil
 }
 
 // Handle is called from the ExecuteCommand hook for every command registered above.
@@ -77,8 +73,6 @@ func (h *Handler) Handle(c *plugin.Context, args *mmodel.CommandArgs) (*mmodel.C
 		return h.create(c, args, fields[2:])
 	case "done":
 		return h.done(c, args, fields[2:])
-	case "bookmark":
-		return h.bookmark(c, args, fields[2:])
 	case "help":
 		return ephemeral(helpText()), nil
 	default:
@@ -88,12 +82,11 @@ func (h *Handler) Handle(c *plugin.Context, args *mmodel.CommandArgs) (*mmodel.C
 
 func helpText() string {
 	return strings.Join([]string{
-		"**Tasks & Bookmarks**",
+		"**Tasks**",
 		"- `/task list` — tasks assigned to you",
 		"- `/task show <id>` — details for one task",
 		"- `/task create <title>` — create a task in this channel, assigned to you",
 		"- `/task done <id>` — mark a task done",
-		"- `/task bookmark <url> [title]` — save a URL in this channel",
 	}, "\n")
 }
 
@@ -128,7 +121,7 @@ func (h *Handler) show(args *mmodel.CommandArgs, params []string) (*mmodel.Comma
 		fmt.Sprintf("- **Priority:** %s", task.Priority),
 	}
 	if task.DueAt != 0 {
-		lines = append(lines, fmt.Sprintf("- **Due:** %s", tasks.FormatDue(task.DueAt)))
+		lines = append(lines, fmt.Sprintf("- **Due:** %s", tasks.FormatDue(task.DueAt, task.DueHasTime)))
 	}
 	if task.Description != "" {
 		lines = append(lines, "", task.Description)
@@ -164,32 +157,6 @@ func (h *Handler) done(c *plugin.Context, args *mmodel.CommandArgs, params []str
 		return h.errorResponse(err, "Couldn't update that task.")
 	}
 	return ephemeral(fmt.Sprintf("Marked **%s** as done.", task.Title)), nil
-}
-
-func (h *Handler) bookmark(c *plugin.Context, args *mmodel.CommandArgs, params []string) (*mmodel.CommandResponse, error) {
-	if len(params) == 0 {
-		return ephemeral("Usage: `/task bookmark <url> [title]`"), nil
-	}
-	rawURL := params[0]
-	if !strings.Contains(rawURL, "://") {
-		rawURL = "https://" + rawURL
-	}
-	title := rawURL
-	if len(params) > 1 {
-		title = strings.Join(params[1:], " ")
-	} else if parsed, err := url.Parse(rawURL); err == nil && parsed.Host != "" {
-		title = parsed.Host
-	}
-	bookmark, err := h.bookmarks.Create(c, "/"+trigger+" bookmark", args.UserId, model.CreateBookmarkInput{
-		TeamID:    args.TeamId,
-		ChannelID: args.ChannelId,
-		URL:       rawURL,
-		Title:     title,
-	})
-	if err != nil {
-		return h.errorResponse(err, "Couldn't save the bookmark.")
-	}
-	return ephemeral(fmt.Sprintf("Saved bookmark **%s** (`%s`).", bookmark.Title, bookmark.ID)), nil
 }
 
 func (h *Handler) errorResponse(err error, fallback string) (*mmodel.CommandResponse, error) {

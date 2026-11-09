@@ -90,6 +90,7 @@ type Task struct {
 	Status       string   `json:"status"`
 	Priority     string   `json:"priority"`
 	DueAt        int64    `json:"dueAt,omitempty"`
+	DueHasTime   bool     `json:"dueHasTime,omitempty"`
 	SourcePostID string   `json:"sourcePostId,omitempty"`
 	ParentTaskID string   `json:"parentTaskId,omitempty"`
 	CreatedAt    int64    `json:"createdAt"`
@@ -123,6 +124,7 @@ type TaskRef struct {
 	Priority    string   `json:"p"`
 	AssigneeIDs []string `json:"a,omitempty"`
 	DueAt       int64    `json:"d,omitempty"`
+	DueHasTime  bool     `json:"h,omitempty"`
 	CreatedAt   int64    `json:"k"`
 	UpdatedAt   int64    `json:"u"`
 	Version     int64    `json:"v"`
@@ -140,6 +142,7 @@ func (t *Task) Ref() TaskRef {
 		Priority:    t.Priority,
 		AssigneeIDs: slices.Clone(t.AssigneeIDs),
 		DueAt:       t.DueAt,
+		DueHasTime:  t.DueHasTime,
 		CreatedAt:   t.CreatedAt,
 		UpdatedAt:   t.UpdatedAt,
 		Version:     t.Version,
@@ -156,6 +159,7 @@ type TaskSummary struct {
 	Priority    string   `json:"priority"`
 	AssigneeIDs []string `json:"assigneeIds"`
 	DueAt       int64    `json:"dueAt,omitempty"`
+	DueHasTime  bool     `json:"dueHasTime,omitempty"`
 	CreatedAt   int64    `json:"createdAt"`
 	UpdatedAt   int64    `json:"updatedAt"`
 }
@@ -175,6 +179,7 @@ func (r TaskRef) Summary() TaskSummary {
 		Priority:    r.Priority,
 		AssigneeIDs: assignees,
 		DueAt:       r.DueAt,
+		DueHasTime:  r.DueHasTime,
 		CreatedAt:   r.CreatedAt,
 		UpdatedAt:   r.UpdatedAt,
 	}
@@ -190,6 +195,7 @@ type CreateTaskInput struct {
 	Status       string
 	Priority     string
 	DueAt        int64
+	DueHasTime   bool
 	SourcePostID string
 	ParentTaskID string
 }
@@ -205,6 +211,7 @@ type TaskPatch struct {
 	Status       *string
 	Priority     *string
 	DueAt        *int64
+	DueHasTime   *bool
 	SourcePostID *string
 	ParentTaskID *string
 }
@@ -213,7 +220,7 @@ type TaskPatch struct {
 func (p TaskPatch) IsZero() bool {
 	return p.TeamID == nil && p.ChannelID == nil && p.Title == nil && p.Description == nil &&
 		p.AssigneeIDs == nil && p.Status == nil && p.Priority == nil && p.DueAt == nil &&
-		p.SourcePostID == nil && p.ParentTaskID == nil
+		p.DueHasTime == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }
 
 // OnlyStatus reports whether the patch only changes the status. Assignees may change status
@@ -221,7 +228,7 @@ func (p TaskPatch) IsZero() bool {
 func (p TaskPatch) OnlyStatus() bool {
 	return p.Status != nil && p.TeamID == nil && p.ChannelID == nil && p.Title == nil &&
 		p.Description == nil && p.AssigneeIDs == nil && p.Priority == nil && p.DueAt == nil &&
-		p.SourcePostID == nil && p.ParentTaskID == nil
+		p.DueHasTime == nil && p.SourcePostID == nil && p.ParentTaskID == nil
 }
 
 const (
@@ -288,4 +295,12 @@ func NormalizeIDs(ids []string, field string, max int) ([]string, error) {
 		out = []string{}
 	}
 	return out, nil
+}
+
+// ValidateSourcePost checks the ID shape of a source post.
+func ValidateSourcePost(postID string) error {
+	if postID != "" && !model.IsValidId(postID) {
+		return fmt.Errorf("%w: invalid source post", ErrInvalid)
+	}
+	return nil
 }

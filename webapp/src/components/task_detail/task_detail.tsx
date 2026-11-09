@@ -31,6 +31,8 @@ import type {GlobalState} from '@mattermost/types/store';
 
 import {selectChannel, selectCurrentUserId, selectIsSystemAdmin, selectTeam} from 'selectors';
 
+import MarkdownText from 'components/markdown_text/markdown_text';
+
 import type {Task, TaskStatus} from 'types';
 
 import './task_detail.css';
@@ -83,7 +85,7 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
 
     if (loading && !task) {
         return (
-            <div className='TasksBookmarks-TaskDetail TasksBookmarks-TaskDetail--centered'>
+            <div className='Tasks-TaskDetail Tasks-TaskDetail--centered'>
                 <Spinner aria-label={intl.formatMessage({id: 'tasks.loading', defaultMessage: 'Loading…'})}/>
             </div>
         );
@@ -91,8 +93,8 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
 
     if (error || !task) {
         return (
-            <div className='TasksBookmarks-TaskDetail'>
-                <div className='TasksBookmarks-TaskDetail__toolbar'>
+            <div className='Tasks-TaskDetail'>
+                <div className='Tasks-TaskDetail__toolbar'>
                     <IconButton
                         icon={<Icon glyph={<ArrowLeftIcon/>}/>}
                         aria-label={intl.formatMessage({id: 'tasks.detail.back', defaultMessage: 'Back to tasks'})}
@@ -143,14 +145,14 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
     };
 
     return (
-        <div className='TasksBookmarks-TaskDetail'>
-            <div className='TasksBookmarks-TaskDetail__toolbar'>
+        <div className='Tasks-TaskDetail'>
+            <div className='Tasks-TaskDetail__toolbar'>
                 <IconButton
                     icon={<Icon glyph={<ArrowLeftIcon/>}/>}
                     aria-label={intl.formatMessage({id: 'tasks.detail.back', defaultMessage: 'Back to tasks'})}
                     onClick={onClose}
                 />
-                <div className='TasksBookmarks-TaskDetail__actions'>
+                <div className='Tasks-TaskDetail__actions'>
                     {canModify && (
                         <Button
                             emphasis='tertiary'
@@ -189,7 +191,7 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
             )}
 
             {confirmDelete && (
-                <div className='TasksBookmarks-TaskDetail__confirm'>
+                <div className='Tasks-TaskDetail__confirm'>
                     <span>
                         <FormattedMessage
                             id='tasks.detail.confirm_delete'
@@ -222,9 +224,9 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
                 </div>
             )}
 
-            <h2 className='TasksBookmarks-TaskDetail__title'>{task.title}</h2>
+            <h2 className='Tasks-TaskDetail__title'>{task.title}</h2>
 
-            <div className='TasksBookmarks-TaskDetail__meta'>
+            <div className='Tasks-TaskDetail__meta'>
                 {canChangeStatus ? (
                     <Select
                         size='small'
@@ -246,50 +248,50 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
                     size='small'
                 />
                 {task.dueAt && (
-                    <span className={`TasksBookmarks-TaskDetail__due${isOverdue(task.dueAt) && task.status !== 'done' ? ' TasksBookmarks-TaskDetail__due--overdue' : ''}`}>
-                        {formatDue(intl, task.dueAt)}
+                    <span className={`Tasks-TaskDetail__due${isOverdue(task.dueAt, task.dueHasTime) && task.status !== 'done' ? ' Tasks-TaskDetail__due--overdue' : ''}`}>
+                        {formatDue(intl, task.dueAt, task.dueHasTime)}
                     </span>
                 )}
             </div>
 
-            <dl className='TasksBookmarks-TaskDetail__facts'>
-                <dt className='TasksBookmarks-TaskDetail__term'>
+            <dl className='Tasks-TaskDetail__facts'>
+                <dt className='Tasks-TaskDetail__term'>
                     <FormattedMessage
                         id='tasks.detail.team'
                         defaultMessage='Team'
                     />
                 </dt>
-                <dd className='TasksBookmarks-TaskDetail__value'>{team?.display_name ?? task.teamId}</dd>
-                <dt className='TasksBookmarks-TaskDetail__term'>
+                <dd className='Tasks-TaskDetail__value'>{team?.display_name ?? task.teamId}</dd>
+                <dt className='Tasks-TaskDetail__term'>
                     <FormattedMessage
                         id='tasks.detail.channel'
                         defaultMessage='Channel'
                     />
                 </dt>
-                <dd className='TasksBookmarks-TaskDetail__value'>{task.channelId ? (channel?.display_name ?? task.channelId) : intl.formatMessage({id: 'tasks.detail.team_level', defaultMessage: 'Team-level task'})}</dd>
-                <dt className='TasksBookmarks-TaskDetail__term'>
+                <dd className='Tasks-TaskDetail__value'>{task.channelId ? (channel?.display_name ?? task.channelId) : intl.formatMessage({id: 'tasks.detail.team_level', defaultMessage: 'Team-level task'})}</dd>
+                <dt className='Tasks-TaskDetail__term'>
                     <FormattedMessage
                         id='tasks.detail.assignees'
                         defaultMessage='Assignees'
                     />
                 </dt>
-                <dd className='TasksBookmarks-TaskDetail__value'>
+                <dd className='Tasks-TaskDetail__value'>
                     {task.assigneeIds.length === 0 ? (
-                        <span className='TasksBookmarks-TaskDetail__muted'>
+                        <span className='Tasks-TaskDetail__muted'>
                             <FormattedMessage
                                 id='tasks.detail.no_assignees'
                                 defaultMessage='No assignees'
                             />
                         </span>
                     ) : (
-                        <ul className='TasksBookmarks-TaskDetail__people'>
+                        <ul className='Tasks-TaskDetail__people'>
                             {task.assigneeIds.map((userId) => {
                                 const profile = profiles[userId];
                                 const name = profileName(profile, userId);
                                 return (
                                     <li
                                         key={userId}
-                                        className='TasksBookmarks-TaskDetail__person'
+                                        className='Tasks-TaskDetail__person'
                                     >
                                         <UserAvatar
                                             alt={name}
@@ -304,22 +306,22 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
                         </ul>
                     )}
                 </dd>
-                <dt className='TasksBookmarks-TaskDetail__term'>
+                <dt className='Tasks-TaskDetail__term'>
                     <FormattedMessage
                         id='tasks.detail.creator'
                         defaultMessage='Created by'
                     />
                 </dt>
-                <dd className='TasksBookmarks-TaskDetail__value'>{profileName(profiles[task.creatorId], task.creatorId)}</dd>
+                <dd className='Tasks-TaskDetail__value'>{profileName(profiles[task.creatorId], task.creatorId)}</dd>
                 {sourcePostURL && (
                     <>
-                        <dt className='TasksBookmarks-TaskDetail__term'>
+                        <dt className='Tasks-TaskDetail__term'>
                             <FormattedMessage
                                 id='tasks.detail.source'
                                 defaultMessage='Source post'
                             />
                         </dt>
-                        <dd className='TasksBookmarks-TaskDetail__value'>
+                        <dd className='Tasks-TaskDetail__value'>
                             {/* eslint-disable-next-line @mattermost/use-external-link -- plugin bundles cannot import host internals */}
                             <a
                                 href={sourcePostURL}
@@ -337,14 +339,17 @@ export default function TaskDetail({taskId, revision, onClose, onEdit, onChanged
             </dl>
 
             {task.description && (
-                <section className='TasksBookmarks-TaskDetail__description'>
-                    <h3 className='TasksBookmarks-TaskDetail__sectionTitle'>
+                <section className='Tasks-TaskDetail__description'>
+                    <h3 className='Tasks-TaskDetail__sectionTitle'>
                         <FormattedMessage
                             id='tasks.detail.description'
                             defaultMessage='Description'
                         />
                     </h3>
-                    <p className='TasksBookmarks-TaskDetail__text'>{task.description}</p>
+                    <MarkdownText
+                        text={task.description}
+                        className='Tasks-TaskDetail__text'
+                    />
                 </section>
             )}
         </div>

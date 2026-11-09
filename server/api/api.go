@@ -20,7 +20,6 @@ import (
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
 
 	"github.com/3tty0n/mattermost-tasks/server/access"
-	"github.com/3tty0n/mattermost-tasks/server/bookmarks"
 	taskmodel "github.com/3tty0n/mattermost-tasks/server/model"
 	"github.com/3tty0n/mattermost-tasks/server/tasks"
 )
@@ -31,18 +30,16 @@ type Handler struct {
 	client    *pluginapi.Client
 	access    *access.Checker
 	tasks     *tasks.Service
-	bookmarks *bookmarks.Service
 	router    *mux.Router
 }
 
 // NewHandler builds the API router.
-func NewHandler(pluginAPI plugin.API, client *pluginapi.Client, checker *access.Checker, tasksService *tasks.Service, bookmarksService *bookmarks.Service) *Handler {
+func NewHandler(pluginAPI plugin.API, client *pluginapi.Client, checker *access.Checker, tasksService *tasks.Service) *Handler {
 	h := &Handler{
 		pluginAPI: pluginAPI,
 		client:    client,
 		access:    checker,
 		tasks:     tasksService,
-		bookmarks: bookmarksService,
 	}
 	h.router = h.initRouter()
 	return h
@@ -61,14 +58,10 @@ func (h *Handler) initRouter() *mux.Router {
 	apiRouter.HandleFunc("/tasks", h.handleListTasks).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/tasks", h.handleCreateTask).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/tasks/{task_id}", h.handleGetTask).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/tasks/{task_id}", h.handleUpdateTask).Methods(http.MethodPatch)
+	// PATCH is the documented update method; POST is accepted as well because some
+	// production reverse proxies reject PATCH before the request reaches Mattermost.
+	apiRouter.HandleFunc("/tasks/{task_id}", h.handleUpdateTask).Methods(http.MethodPatch, http.MethodPost)
 	apiRouter.HandleFunc("/tasks/{task_id}", h.handleDeleteTask).Methods(http.MethodDelete)
-
-	apiRouter.HandleFunc("/bookmarks", h.handleListBookmarks).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/bookmarks", h.handleCreateBookmark).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/bookmarks/{bookmark_id}", h.handleGetBookmark).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/bookmarks/{bookmark_id}", h.handleUpdateBookmark).Methods(http.MethodPatch)
-	apiRouter.HandleFunc("/bookmarks/{bookmark_id}", h.handleDeleteBookmark).Methods(http.MethodDelete)
 
 	apiRouter.HandleFunc("/assignees", h.handleListAssignees).Methods(http.MethodGet)
 
@@ -179,7 +172,7 @@ func setSecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
-		// Task titles, bookmark URLs and search results are private user data.
+		// Task titles, descriptions and search results are private user data.
 		w.Header().Set("Cache-Control", "no-store")
 		next.ServeHTTP(w, r)
 	})
@@ -246,15 +239,6 @@ func actorID(r *http.Request) string {
 
 func taskIDFromPath(w http.ResponseWriter, r *http.Request) (string, bool) {
 	id := mux.Vars(r)["task_id"]
-	if !model.IsValidId(id) {
-		writeError(w, r, http.StatusNotFound, "Not found", nil)
-		return "", false
-	}
-	return id, true
-}
-
-func bookmarkIDFromPath(w http.ResponseWriter, r *http.Request) (string, bool) {
-	id := mux.Vars(r)["bookmark_id"]
 	if !model.IsValidId(id) {
 		writeError(w, r, http.StatusNotFound, "Not found", nil)
 		return "", false

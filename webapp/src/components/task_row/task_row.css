@@ -1,7 +1,7 @@
 /* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
    See LICENSE.txt for license information. */
 
-.TasksBookmarks-TaskRow {
+.Tasks-TaskRow {
     display: flex;
     align-items: flex-start;
     gap: var(--spacing-s);
@@ -9,20 +9,29 @@
     border-bottom: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
 }
 
-.TasksBookmarks-TaskRow:hover {
-    background: rgba(var(--center-channel-color-rgb), 0.04);
+.Tasks-TaskRow {
+    cursor: pointer;
 }
 
-.TasksBookmarks-TaskRow--done .TasksBookmarks-TaskRow__title {
+.Tasks-TaskRow:hover {
+    background: rgba(var(--center-channel-color-rgb), 0.04);
+    box-shadow: inset 3px 0 0 var(--button-bg);
+}
+
+.Tasks-TaskRow:hover .Tasks-TaskRow__title {
+    color: var(--button-bg);
+}
+
+.Tasks-TaskRow--done .Tasks-TaskRow__title {
     color: rgba(var(--center-channel-color-rgb), 0.56);
     text-decoration: line-through;
 }
 
-.TasksBookmarks-TaskRow__check {
+.Tasks-TaskRow__check {
     padding-top: 2px;
 }
 
-.TasksBookmarks-TaskRow__main {
+.Tasks-TaskRow__main {
     display: flex;
     flex: 1;
     flex-direction: column;
@@ -30,7 +39,7 @@
     gap: var(--spacing-xxs);
 }
 
-.TasksBookmarks-TaskRow__title {
+.Tasks-TaskRow__title {
     padding: 0;
     border: 0;
     background: none;
@@ -44,12 +53,12 @@
     overflow-wrap: anywhere;
 }
 
-.TasksBookmarks-TaskRow__title:hover {
+.Tasks-TaskRow__title:hover {
     color: var(--button-bg);
     text-decoration: underline;
 }
 
-.TasksBookmarks-TaskRow__meta {
+.Tasks-TaskRow__meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -59,7 +68,7 @@
     line-height: var(--line-height-50);
 }
 
-.TasksBookmarks-TaskRow__status {
+.Tasks-TaskRow__status {
     padding: 1px var(--spacing-xs);
     border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
     border-radius: var(--radius-pill);
@@ -71,44 +80,56 @@
     line-height: inherit;
 }
 
-.TasksBookmarks-TaskRow__status:hover {
+.Tasks-TaskRow__status:hover {
     border-color: var(--button-bg);
     color: var(--button-bg);
 }
 
-.TasksBookmarks-TaskRow__status--in_progress {
+.Tasks-TaskRow__status--in_progress {
     border-color: rgba(var(--button-bg-rgb), 0.48);
     color: var(--button-bg);
 }
 
-.TasksBookmarks-TaskRow__status--done {
+.Tasks-TaskRow__status--done {
     border-color: rgba(var(--online-indicator-rgb, 61, 184, 120), 0.48);
 }
 
-.TasksBookmarks-TaskRow__due--overdue {
+.Tasks-TaskRow__due--overdue {
     color: var(--error-text);
     font-weight: var(--font-weight-semibold);
 }
 
-.TasksBookmarks-TaskRow__scope {
+.Tasks-TaskRow__scope {
     overflow: hidden;
     max-width: 160px;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.TasksBookmarks-TaskRow__assignees {
+.Tasks-TaskRow__chevron {
     display: flex;
-    align-items: center;
-    gap: 2px;
+    flex: none;
+    align-self: center;
+    color: rgba(var(--center-channel-color-rgb), 0.48);
+    opacity: 0;
 }
 
-.TasksBookmarks-TaskRow__extra {
+.Tasks-TaskRow:hover .Tasks-TaskRow__chevron {
+    opacity: 1;
+}
+
+.Tasks-TaskRow__assignees {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xxxxs);
+}
+
+.Tasks-TaskRow__extra {
     color: rgba(var(--center-channel-color-rgb), 0.64);
     font-size: var(--font-size-50);
 }
 
-.TasksBookmarks-TaskRow__srOnly {
+.Tasks-TaskRow__srOnly {
     position: absolute;
     width: 1px;
     height: 1px;

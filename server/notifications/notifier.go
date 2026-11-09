@@ -20,13 +20,14 @@ import (
 const queueSize = 64
 
 type assignment struct {
-	taskID    string
-	title     string
-	teamID    string
-	channelID string
-	priority  string
-	dueAt     int64
-	userIDs   []string
+	taskID     string
+	title      string
+	teamID     string
+	channelID  string
+	priority   string
+	dueAt      int64
+	dueHasTime bool
+	userIDs    []string
 }
 
 // Notifier queues and delivers assignment messages from the plugin bot.
@@ -113,13 +114,14 @@ func (n *Notifier) NotifyAssignment(task *model.Task, assigneeIDs []string) {
 	}
 
 	item := assignment{
-		taskID:    task.ID,
-		title:     task.Title,
-		teamID:    task.TeamID,
-		channelID: task.ChannelID,
-		priority:  task.Priority,
-		dueAt:     task.DueAt,
-		userIDs:   append([]string(nil), assigneeIDs...),
+		taskID:     task.ID,
+		title:      task.Title,
+		teamID:     task.TeamID,
+		channelID:  task.ChannelID,
+		priority:   task.Priority,
+		dueAt:      task.DueAt,
+		dueHasTime: task.DueHasTime,
+		userIDs:    append([]string(nil), assigneeIDs...),
 	}
 	select {
 	case n.queue <- item:
@@ -192,7 +194,7 @@ func formatMessage(item assignment, teamName, channelName, link string) string {
 	}
 	if item.dueAt != 0 {
 		builder.WriteString("\n- **Due:** ")
-		builder.WriteString(tasks.FormatDue(item.dueAt))
+		builder.WriteString(tasks.FormatDue(item.dueAt, item.dueHasTime))
 	}
 	builder.WriteString("\n- **Priority:** ")
 	builder.WriteString(item.priority)

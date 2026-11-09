@@ -173,47 +173,6 @@ func TestTaskStoreConcurrentUpdates(t *testing.T) {
 	assert.Equal(t, final.Title, refs[0].Title)
 }
 
-func TestBookmarkStoreLifecycle(t *testing.T) {
-	store := newTestStore()
-	bookmark := &taskmodel.Bookmark{
-		ID:        "bookmark-1",
-		TeamID:    "team-a",
-		ChannelID: "channel-a",
-		URL:       "https://example.com",
-		Title:     "Example",
-		Tags:      []string{"docs"},
-		CreatorID: "creator",
-		CreatedAt: 1,
-		UpdatedAt: 1,
-		Version:   1,
-	}
-	require.NoError(t, store.CreateBookmark(bookmark))
-
-	teamRefs, err := store.ListBookmarkRefsByTeam("team-a")
-	require.NoError(t, err)
-	require.Len(t, teamRefs, 1)
-	assert.Equal(t, "https://example.com", teamRefs[0].URL)
-
-	_, err = store.UpdateBookmark("bookmark-1", func(current *taskmodel.Bookmark) (*taskmodel.Bookmark, error) {
-		current.Title = "Changed"
-		current.Tags = []string{"work"}
-		return current, nil
-	})
-	require.NoError(t, err)
-	channelRefs, err := store.ListBookmarkRefsByChannel("channel-a")
-	require.NoError(t, err)
-	require.Len(t, channelRefs, 1)
-	assert.Equal(t, "Changed", channelRefs[0].Title)
-	assert.Equal(t, []string{"work"}, channelRefs[0].Tags)
-
-	require.NoError(t, store.DeleteBookmark("bookmark-1"))
-	_, err = store.GetBookmark("bookmark-1")
-	assert.ErrorIs(t, err, ErrNotFound)
-	teamRefs, err = store.ListBookmarkRefsByTeam("team-a")
-	require.NoError(t, err)
-	assert.Empty(t, teamRefs)
-}
-
 func TestMemoryKVCompareAndSet(t *testing.T) {
 	kv := NewMemoryKV()
 	saved, err := kv.CompareAndSet("key", nil, map[string]string{"a": "b"})

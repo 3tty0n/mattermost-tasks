@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/3tty0n/mattermost-tasks/server/access"
-	"github.com/3tty0n/mattermost-tasks/server/bookmarks"
 	taskmodel "github.com/3tty0n/mattermost-tasks/server/model"
 	"github.com/3tty0n/mattermost-tasks/server/store/kvstore"
 	"github.com/3tty0n/mattermost-tasks/server/tasks"
@@ -31,9 +30,8 @@ func newCommandEnv(t *testing.T) *commandEnv {
 	checker := access.NewChecker(client)
 	store := kvstore.NewStoreWithKV(kvstore.NewMemoryKV())
 	taskService := tasks.NewService(client, store, checker, nil, nil, tasks.WithClock(func() int64 { return 1000 }))
-	bookmarkService := bookmarks.NewService(client, store, checker, nil, bookmarks.WithClock(func() int64 { return 1000 }))
 	return &commandEnv{
-		handler: &Handler{client: client, tasks: taskService, bookmarks: bookmarkService},
+		handler: &Handler{client: client, tasks: taskService},
 		api:     api,
 		store:   store,
 	}
@@ -54,7 +52,7 @@ func TestCommandHelpAndUnknown(t *testing.T) {
 
 	response, err := env.handler.Handle(nil, args(userID, "", "", "/task"))
 	require.NoError(t, err)
-	assert.Contains(t, response.Text, "Tasks & Bookmarks")
+	assert.Contains(t, response.Text, "**Tasks**")
 
 	response, err = env.handler.Handle(nil, args(userID, "", "", "/task help"))
 	require.NoError(t, err)
@@ -118,23 +116,6 @@ func TestCommandCreateAndDone(t *testing.T) {
 	task, err := env.store.GetTask(refs[0].ID)
 	require.NoError(t, err)
 	assert.Equal(t, taskmodel.TaskStatusDone, task.Status)
-}
-
-func TestCommandBookmark(t *testing.T) {
-	env := newCommandEnv(t)
-	userID := model.NewId()
-	teamID, channelID := model.NewId(), model.NewId()
-	allowChannel(env.api, userID, channelID, teamID)
-
-	response, err := env.handler.Handle(nil, args(userID, teamID, channelID, "/task bookmark example.com/docs Team docs"))
-	require.NoError(t, err)
-	assert.Contains(t, response.Text, "Saved bookmark")
-
-	refs, err := env.store.ListBookmarkRefsByChannel(channelID)
-	require.NoError(t, err)
-	require.Len(t, refs, 1)
-	assert.Equal(t, "https://example.com/docs", refs[0].URL)
-	assert.Equal(t, "Team docs", refs[0].Title)
 }
 
 func TestCommandErrorsAreEphemeral(t *testing.T) {

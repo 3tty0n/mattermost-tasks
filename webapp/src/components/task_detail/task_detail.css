@@ -1,7 +1,7 @@
 /* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
    See LICENSE.txt for license information. */
 
-.TasksBookmarks-TaskDetail {
+.Tasks-TaskDetail {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-m);
@@ -10,24 +10,24 @@
     overflow-y: auto;
 }
 
-.TasksBookmarks-TaskDetail--centered {
+.Tasks-TaskDetail--centered {
     align-items: center;
     justify-content: center;
 }
 
-.TasksBookmarks-TaskDetail__toolbar {
+.Tasks-TaskDetail__toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--spacing-s);
 }
 
-.TasksBookmarks-TaskDetail__actions {
+.Tasks-TaskDetail__actions {
     display: flex;
     gap: var(--spacing-xs);
 }
 
-.TasksBookmarks-TaskDetail__confirm {
+.Tasks-TaskDetail__confirm {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -39,7 +39,7 @@
     font-size: var(--font-size-100);
 }
 
-.TasksBookmarks-TaskDetail__title {
+.Tasks-TaskDetail__title {
     margin: 0;
     color: var(--center-channel-color);
     font-size: var(--font-size-300);
@@ -48,24 +48,24 @@
     overflow-wrap: anywhere;
 }
 
-.TasksBookmarks-TaskDetail__meta {
+.Tasks-TaskDetail__meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--spacing-s);
 }
 
-.TasksBookmarks-TaskDetail__due {
+.Tasks-TaskDetail__due {
     color: rgba(var(--center-channel-color-rgb), 0.72);
     font-size: var(--font-size-100);
 }
 
-.TasksBookmarks-TaskDetail__due--overdue {
+.Tasks-TaskDetail__due--overdue {
     color: var(--error-text);
     font-weight: var(--font-weight-semibold);
 }
 
-.TasksBookmarks-TaskDetail__facts {
+.Tasks-TaskDetail__facts {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
     gap: var(--spacing-xs) var(--spacing-m);
@@ -74,16 +74,16 @@
     line-height: var(--line-height-100);
 }
 
-.TasksBookmarks-TaskDetail__term {
+.Tasks-TaskDetail__term {
     color: rgba(var(--center-channel-color-rgb), 0.56);
 }
 
-.TasksBookmarks-TaskDetail__value {
+.Tasks-TaskDetail__value {
     margin: 0;
     overflow-wrap: anywhere;
 }
 
-.TasksBookmarks-TaskDetail__people {
+.Tasks-TaskDetail__people {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xxs);
@@ -92,23 +92,23 @@
     list-style: none;
 }
 
-.TasksBookmarks-TaskDetail__person {
+.Tasks-TaskDetail__person {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
 }
 
-.TasksBookmarks-TaskDetail__muted {
+.Tasks-TaskDetail__muted {
     color: rgba(var(--center-channel-color-rgb), 0.56);
 }
 
-.TasksBookmarks-TaskDetail__description {
+.Tasks-TaskDetail__description {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
 }
 
-.TasksBookmarks-TaskDetail__sectionTitle {
+.Tasks-TaskDetail__sectionTitle {
     margin: 0;
     color: rgba(var(--center-channel-color-rgb), 0.72);
     font-size: var(--font-size-100);
@@ -116,11 +116,10 @@
     line-height: var(--line-height-100);
 }
 
-.TasksBookmarks-TaskDetail__text {
+.Tasks-TaskDetail__text {
     margin: 0;
     color: var(--center-channel-color);
     font-size: var(--font-size-100);
     line-height: var(--line-height-200);
     overflow-wrap: anywhere;
-    white-space: pre-wrap;
 }

@@ -5,16 +5,11 @@ import manifest from 'manifest';
 
 import type {
     Assignee,
-    Bookmark,
-    BookmarkQuery,
-    BookmarkSummary,
-    CreateBookmarkInput,
     CreateTaskInput,
     ListResult,
     Task,
     TaskQuery,
     TaskSummary,
-    UpdateBookmarkInput,
     UpdateTaskInput,
 } from './types';
 
@@ -103,6 +98,7 @@ async function doFetch<T>(path: string, options: RequestOptions = {}, signal?: A
             method,
             body: options.body,
             headers: requestHeaders(method, options.body),
+            credentials: 'include',
             signal,
         },
     );
@@ -111,9 +107,22 @@ async function doFetch<T>(path: string, options: RequestOptions = {}, signal?: A
         return undefined as T;
     }
 
-    const body = await response.json().catch(() => null);
+    // Read the body once. Plugin errors use {error}; Mattermost middleware errors use
+    // {message}; a proxy may return plain text. Expose whichever one is available so a
+    // failure is actionable instead of just "Request failed with status N".
+    const text = await response.text();
+    let body: unknown = null;
+    if (text) {
+        try {
+            body = JSON.parse(text);
+        } catch {
+            body = null;
+        }
+    }
     if (!response.ok) {
-        throw new ApiError(body?.error ?? `Request failed with status ${response.status}`, response.status);
+        const errorBody = body as {error?: string; message?: string} | null;
+        const message = errorBody?.error ?? errorBody?.message ?? (text.trim() || `Request failed with status ${response.status}`);
+        throw new ApiError(message, response.status);
     }
     return body as T;
 }
@@ -146,7 +155,7 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
 }
 
 export async function updateTask(id: string, patch: UpdateTaskInput): Promise<Task> {
-    return doFetch<Task>(`/tasks/${encodeURIComponent(id)}`, {method: 'patch', body: JSON.stringify(patch)});
+    return doFetch<Task>(`/tasks/${encodeURIComponent(id)}`, {method: 'post', body: JSON.stringify(patch)});
 }
 
 export async function deleteTask(id: string): Promise<void> {
@@ -163,38 +172,6 @@ export async function fetchAssignees(teamId: string | undefined, channelId: stri
         {},
         signal,
     );
-}
-
-export async function fetchBookmarks(query: BookmarkQuery, signal?: AbortSignal): Promise<ListResult<BookmarkSummary>> {
-    return doFetch<ListResult<BookmarkSummary>>(
-        withQuery('/bookmarks', {
-            scope: query.scope,
-            team_id: query.teamId,
-            channel_id: query.channelId,
-            q: query.search,
-            tag: query.tag,
-            page: query.page,
-            per_page: query.perPage,
-        }),
-        {},
-        signal,
-    );
-}
-
-export async function getBookmark(id: string, signal?: AbortSignal): Promise<Bookmark> {
-    return doFetch<Bookmark>(`/bookmarks/${encodeURIComponent(id)}`, {}, signal);
-}
-
-export async function createBookmark(input: CreateBookmarkInput): Promise<Bookmark> {
-    return doFetch<Bookmark>('/bookmarks', {method: 'post', body: JSON.stringify(input)});
-}
-
-export async function updateBookmark(id: string, patch: UpdateBookmarkInput): Promise<Bookmark> {
-    return doFetch<Bookmark>(`/bookmarks/${encodeURIComponent(id)}`, {method: 'patch', body: JSON.stringify(patch)});
-}
-
-export async function deleteBookmark(id: string): Promise<void> {
-    await doFetch<void>(`/bookmarks/${encodeURIComponent(id)}`, {method: 'delete'});
 }
 
 export type Profile = {

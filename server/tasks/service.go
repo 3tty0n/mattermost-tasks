@@ -107,6 +107,9 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 	if input.DueAt < 0 || input.DueAt > maxDueAt {
 		return nil, fmt.Errorf("%w: invalid due date", model.ErrInvalid)
 	}
+	if input.DueHasTime && input.DueAt == 0 {
+		return nil, fmt.Errorf("%w: a due time requires a due date", model.ErrInvalid)
+	}
 	assigneeIDs, err := model.NormalizeIDs(input.AssigneeIDs, "assignees", model.MaxAssignees)
 	if err != nil {
 		return nil, err
@@ -159,6 +162,7 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 		Status:       status,
 		Priority:     priority,
 		DueAt:        input.DueAt,
+		DueHasTime:   input.DueHasTime && input.DueAt != 0,
 		SourcePostID: input.SourcePostID,
 		ParentTaskID: input.ParentTaskID,
 		CreatedAt:    now,
@@ -395,6 +399,18 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 		}
 		if normalized.dueAt != nil {
 			current.DueAt = *normalized.dueAt
+			if current.DueAt == 0 {
+				current.DueHasTime = false
+			}
+		}
+		if normalized.dueHasTime != nil {
+			if *normalized.dueHasTime && current.DueAt == 0 {
+				return nil, fmt.Errorf("%w: a due time requires a due date", model.ErrInvalid)
+			}
+			current.DueHasTime = *normalized.dueHasTime
+		}
+		if current.DueAt == 0 {
+			current.DueHasTime = false
 		}
 		if normalized.assignees != nil {
 			current.AssigneeIDs = *normalized.assignees
@@ -474,6 +490,7 @@ type normalizedPatch struct {
 	status       *string
 	priority     *string
 	dueAt        *int64
+	dueHasTime   *bool
 	assignees    *[]string
 	sourcePostID *string
 	parentTaskID *string
@@ -515,6 +532,10 @@ func normalizePatch(patch model.TaskPatch) (*normalizedPatch, error) {
 		}
 		value := *patch.DueAt
 		out.dueAt = &value
+	}
+	if patch.DueHasTime != nil {
+		value := *patch.DueHasTime
+		out.dueHasTime = &value
 	}
 	if patch.AssigneeIDs != nil {
 		value, err := model.NormalizeIDs(*patch.AssigneeIDs, "assignees", model.MaxAssignees)
@@ -650,9 +671,12 @@ func (s *Service) Now() int64 {
 }
 
 // FormatDue renders a due date for notifications and slash commands.
-func FormatDue(dueAt int64) string {
+func FormatDue(dueAt int64, hasTime bool) string {
 	if dueAt == 0 {
 		return ""
+	}
+	if !hasTime {
+		return time.UnixMilli(dueAt).UTC().Format("Jan 2, 2006")
 	}
 	return time.UnixMilli(dueAt).UTC().Format("Jan 2, 2006 15:04 MST")
 }

@@ -10,7 +10,7 @@ import manifest from 'manifest';
 import {FormattedMessage} from 'react-intl';
 import type {Store} from 'redux';
 import {openComposer, openTask, reconnected, reducer, remoteEvent} from 'state';
-import {extractUrls, postTitle} from 'utils';
+import {postTitle} from 'utils';
 
 import CheckboxMarkedCircleOutlineIcon from '@mattermost/compass-icons/components/checkbox-marked-circle-outline';
 import type {Channel} from '@mattermost/types/channels';
@@ -29,8 +29,6 @@ import en from '../i18n/en.json';
 const translations: Record<string, Record<string, string>> = {en};
 
 const TASK_HASH = /^#task-([a-z0-9]{26})$/;
-
-type WebSocketPayload = {entity: 'task' | 'bookmark'};
 
 function usablePost(state: GlobalState, postID: string): {post: Post; channel: Channel} | undefined {
     if (!postID) {
@@ -58,16 +56,16 @@ export default class Plugin {
         registry.registerTranslations((locale) => translations[locale] ?? {});
         registry.registerReducer(reducer);
 
-        registry.registerWebSocketEventHandler<WebSocketPayload>(
+        registry.registerWebSocketEventHandler(
             `custom_${manifest.id}_changed`,
-            (msg) => store.dispatch(remoteEvent(msg.data.entity)),
+            () => store.dispatch(remoteEvent()),
         );
         registry.registerReconnectHandler(() => store.dispatch(reconnected()));
 
         const title = (
             <FormattedMessage
                 id='tasks.title'
-                defaultMessage='Tasks & Bookmarks'
+                defaultMessage='Tasks'
             />
         );
         const {showRHSPlugin, toggleRHSPlugin} = registry.registerRightHandSidebarComponent(TasksSidebar, title);
@@ -106,27 +104,6 @@ export default class Plugin {
             store.dispatch(showRHSPlugin);
         };
 
-        const saveBookmarkFromPost = (postID: string) => {
-            const target = usablePost(store.getState(), postID);
-            if (!target) {
-                return;
-            }
-            const urls = extractUrls(target.post.message);
-            if (urls.length === 0) {
-                return;
-            }
-            const request: ComposerRequest = {
-                kind: 'bookmark',
-                postId: postID,
-                channelId: target.post.channel_id,
-                title: postTitle(target.post.message),
-                description: target.post.message,
-                urls,
-            };
-            store.dispatch(openComposer(request));
-            store.dispatch(showRHSPlugin);
-        };
-
         registry.registerPostDropdownMenuAction(
             <FormattedMessage
                 id='tasks.post.create'
@@ -134,18 +111,6 @@ export default class Plugin {
             />,
             createTaskFromPost,
             (postID: string) => Boolean(usablePost(store.getState(), postID)),
-        );
-
-        registry.registerPostDropdownMenuAction(
-            <FormattedMessage
-                id='tasks.post.bookmark'
-                defaultMessage='Save URL as bookmark'
-            />,
-            saveBookmarkFromPost,
-            (postID: string) => {
-                const target = usablePost(store.getState(), postID);
-                return Boolean(target && extractUrls(target.post.message).length > 0);
-            },
         );
     }
 

@@ -161,36 +161,6 @@ func TestPaginate(t *testing.T) {
 	assert.False(t, more)
 }
 
-func TestNormalizeURL(t *testing.T) {
-	tests := []struct {
-		name    string
-		input   string
-		want    string
-		wantErr bool
-	}{
-		{name: "https", input: "https://example.com/path?q=1", want: "https://example.com/path?q=1"},
-		{name: "http", input: "http://example.com", want: "http://example.com"},
-		{name: "empty", input: "", wantErr: true},
-		{name: "javascript", input: "javascript:alert(1)", wantErr: true},
-		{name: "file", input: "file:///etc/passwd", wantErr: true},
-		{name: "credentials", input: "https://user" + ":pass@example.com", wantErr: true}, //nolint:gosec // test fixture for the credential rejection path
-		{name: "no host", input: "https:///path", wantErr: true},
-		{name: "too long", input: "https://example.com/" + string(make([]byte, MaxURLBytes)), wantErr: true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := NormalizeURL(tt.input)
-			if tt.wantErr {
-				require.Error(t, err)
-				assert.ErrorIs(t, err, ErrInvalid)
-				return
-			}
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, got)
-		})
-	}
-}
-
 func TestNormalizeIDs(t *testing.T) {
 	valid := "0123456789abcdefghijklmnop"
 	got, err := NormalizeIDs([]string{valid, " " + valid + " "}, "assignees", 10)
@@ -209,36 +179,6 @@ func TestNormalizeIDs(t *testing.T) {
 	assert.ErrorIs(t, err, ErrInvalid)
 }
 
-func TestNormalizeTags(t *testing.T) {
-	tags, err := NormalizeTags([]string{"Work", " work ", "urgent"})
-	require.NoError(t, err)
-	assert.Equal(t, []string{"Work", "urgent"}, tags)
-
-	tags, err = NormalizeTags(nil)
-	require.NoError(t, err)
-	assert.NotNil(t, tags)
-	assert.Empty(t, tags)
-
-	_, err = NormalizeTags([]string{string(make([]rune, MaxTagRunes+1))})
-	assert.ErrorIs(t, err, ErrInvalid)
-}
-
-func TestBookmarkQueryMatchAndSort(t *testing.T) {
-	query := BookmarkQuery{Search: "docs", Tag: "work", PerPage: 10}
-	require.NoError(t, query.Normalize())
-	ref := BookmarkRef{Title: "Team docs", URL: "https://example.com", Tags: []string{"Work"}}
-	assert.True(t, query.Match(ref))
-	assert.False(t, query.Match(BookmarkRef{Title: "Team docs", URL: "https://example.com", Tags: []string{"home"}}))
-
-	refs := []BookmarkRef{
-		{ID: "a", CreatedAt: 1, Title: "a"},
-		{ID: "b", CreatedAt: 3, Title: "b"},
-		{ID: "c", CreatedAt: 2, Title: "c"},
-	}
-	SortBookmarks(refs)
-	assert.Equal(t, []string{"b", "c", "a"}, []string{refs[0].ID, refs[1].ID, refs[2].ID})
-}
-
 func TestTaskRefSummaryDoesNotExposeVersion(t *testing.T) {
 	task := &Task{ID: "id", TeamID: "team", Title: "Title", Status: TaskStatusTodo, AssigneeIDs: []string{"u"}, Version: 7}
 	ref := task.Ref()
@@ -252,10 +192,6 @@ func TestSummariesUseEmptySlicesForMissingLists(t *testing.T) {
 	taskSummary := TaskRef{ID: "id"}.Summary()
 	assert.NotNil(t, taskSummary.AssigneeIDs)
 	assert.Empty(t, taskSummary.AssigneeIDs)
-
-	bookmarkSummary := BookmarkRef{ID: "id"}.Summary()
-	assert.NotNil(t, bookmarkSummary.Tags)
-	assert.Empty(t, bookmarkSummary.Tags)
 }
 
 func TestTruncateRunes(t *testing.T) {

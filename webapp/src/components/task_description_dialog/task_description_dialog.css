@@ -1,0 +1,20 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-TaskDescriptionDialog {
+    min-height: 80px;
+}
+
+.Tasks-TaskDescriptionDialog__centered {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+}
+
+.Tasks-TaskDescriptionDialog__empty {
+    margin: 0;
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-100);
+    line-height: var(--line-height-200);
+}

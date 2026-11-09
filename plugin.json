@@ -1,7 +1,7 @@
 {
     "id": "com.github.3tty0n.mattermost-tasks",
-    "name": "Tasks & Bookmarks",
-    "description": "Task management and URL bookmarks linked to Mattermost teams, channels and posts.",
+    "name": "Tasks",
+    "description": "Task management linked to Mattermost teams, channels, users and posts.",
     "homepage_url": "https://github.com/3tty0n/mattermost-tasks",
     "support_url": "https://github.com/3tty0n/mattermost-tasks/issues",
     "icon_path": "assets/tasks-icon.svg",
@@ -19,8 +19,8 @@
         "bundle_path": "webapp/dist/main.js"
     },
     "settings_schema": {
-        "header": "Tasks & Bookmarks",
-        "footer": "Tasks and bookmarks inherit Mattermost team and channel permissions. Task content is never sent to an external service.",
+        "header": "Tasks",
+        "footer": "Tasks inherit Mattermost team and channel permissions. Task content is never sent to an external service.",
         "settings": [
             {
                 "key": "EnableAssignmentNotifications",
@@ -31,5 +31,5 @@
             }
         ]
     },
-    "version": "0.1.0"
+    "version": "0.1.1"
 }

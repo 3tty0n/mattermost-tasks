@@ -1,28 +1,176 @@
 /* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
    See LICENSE.txt for license information. */
 
-.TasksBookmarks-TaskEditor {
+.Tasks-TaskEditor {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-m);
 }
 
-.TasksBookmarks-TaskEditor__row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--spacing-m);
+.Tasks-TaskEditor__srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    border: 0;
+    white-space: nowrap;
 }
 
-.TasksBookmarks-TaskEditor__label {
-    display: block;
-    margin-bottom: var(--spacing-xs);
-    color: rgba(var(--center-channel-color-rgb), 0.72);
-    font-size: var(--font-size-100);
+.Tasks-TaskEditor__headline {
+    display: flex;
+    flex-direction: column;
+}
+
+.Tasks-TaskEditor__titleInput {
+    width: 100%;
+    padding: var(--spacing-xs) 0;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--center-channel-color);
+    font-family: inherit;
+    font-size: var(--font-size-500);
     font-weight: var(--font-weight-semibold);
-    line-height: var(--line-height-100);
+    line-height: var(--line-height-500);
 }
 
-.TasksBookmarks-TaskEditor__dateInput {
+.Tasks-TaskEditor__titleInput::placeholder {
+    color: rgba(var(--center-channel-color-rgb), 0.40);
+}
+
+.Tasks-TaskEditor__titleInput:focus-visible {
+    border-bottom-color: var(--button-bg);
+    outline: none;
+}
+
+.Tasks-TaskEditor__description {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.Tasks-TaskEditor__descriptionInput {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 76px;
+    padding: var(--spacing-s);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-s);
+    background: transparent;
+    color: var(--center-channel-color);
+    font-family: inherit;
+    font-size: var(--font-size-100);
+    line-height: var(--line-height-200);
+    resize: vertical;
+}
+
+.Tasks-TaskEditor__descriptionInput::placeholder {
+    color: rgba(var(--center-channel-color-rgb), 0.48);
+}
+
+.Tasks-TaskEditor__descriptionInput:focus-visible {
+    border-color: var(--button-bg);
+    outline: 2px solid rgba(var(--button-bg-rgb), 0.16);
+    outline-offset: 0;
+}
+
+.Tasks-TaskEditor__descriptionBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-s);
+}
+
+.Tasks-TaskEditor__markdownTools {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xxxxs);
+}
+
+.Tasks-TaskEditor__descriptionMeta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-s);
+}
+
+.Tasks-TaskEditor__preview {
+    display: flex;
+    min-height: 76px;
+    flex-direction: column;
+    gap: var(--spacing-s);
+    padding: var(--spacing-s);
+    border: 1px dashed rgba(var(--center-channel-color-rgb), 0.20);
+    border-radius: var(--radius-s);
+}
+
+.Tasks-TaskEditor__properties {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.Tasks-TaskEditor__propertySummary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xxs);
+    padding: var(--spacing-xxxs) var(--spacing-s);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--font-size-75);
+    line-height: var(--line-height-75);
+}
+
+.Tasks-TaskEditor__propertySummary:hover {
+    border-color: rgba(var(--button-bg-rgb), 0.56);
+    color: var(--button-bg);
+}
+
+.Tasks-TaskEditor__propertySummary[aria-expanded='true'] {
+    border-color: var(--button-bg);
+    background: rgba(var(--button-bg-rgb), 0.08);
+    color: var(--button-bg);
+}
+
+.Tasks-TaskEditor__propertySummary--priority-high {
+    color: var(--away-indicator);
+}
+
+.Tasks-TaskEditor__propertySummary--priority-urgent {
+    border-color: rgba(var(--error-text-color-rgb, 210, 75, 78), 0.48);
+    color: var(--error-text);
+}
+
+.Tasks-TaskEditor__propertyPanel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-s);
+    padding: var(--spacing-s);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+    border-radius: var(--radius-s);
+    background: rgba(var(--center-channel-color-rgb), 0.03);
+}
+
+.Tasks-TaskEditor__propertyBody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-s);
+}
+
+.Tasks-TaskEditor__propertyLabel {
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: var(--font-size-75);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-75);
+}
+
+.Tasks-TaskEditor__dateInput {
     box-sizing: border-box;
     width: 100%;
     height: 32px;
@@ -35,26 +183,38 @@
     font-size: var(--font-size-100);
 }
 
-.TasksBookmarks-TaskEditor__dateInput:focus-visible {
+.Tasks-TaskEditor__dateInput:focus-visible {
     border-color: var(--button-bg);
     outline: 2px solid rgba(var(--button-bg-rgb), 0.24);
     outline-offset: 1px;
 }
 
-.TasksBookmarks-TaskEditor__assignees {
+.Tasks-TaskEditor__assignees {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
+    padding-top: var(--spacing-s);
+    border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
 }
 
-.TasksBookmarks-TaskEditor__chips {
+.Tasks-TaskEditor__sectionHeading {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xxs);
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: var(--font-size-75);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-75);
+}
+
+.Tasks-TaskEditor__chips {
     display: flex;
     flex-wrap: wrap;
     gap: var(--spacing-xs);
 }
 
-.TasksBookmarks-TaskEditor__results {
-    max-height: 180px;
+.Tasks-TaskEditor__results {
+    max-height: 160px;
     margin: 0;
     padding: var(--spacing-xs);
     overflow-y: auto;
@@ -63,17 +223,17 @@
     list-style: none;
 }
 
-.TasksBookmarks-TaskEditor__result {
+.Tasks-TaskEditor__result {
     padding: var(--spacing-xxs) var(--spacing-xs);
 }
 
-.TasksBookmarks-TaskEditor__hint {
+.Tasks-TaskEditor__hint {
     margin: 0;
     color: rgba(var(--center-channel-color-rgb), 0.56);
     font-size: var(--font-size-50);
     line-height: var(--line-height-50);
 }
 
-.TasksBookmarks-TaskEditor__hint--error {
+.Tasks-TaskEditor__hint--error {
     color: var(--error-text);
 }

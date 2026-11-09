@@ -10,7 +10,6 @@ import (
 
 	"github.com/3tty0n/mattermost-tasks/server/access"
 	"github.com/3tty0n/mattermost-tasks/server/api"
-	"github.com/3tty0n/mattermost-tasks/server/bookmarks"
 	"github.com/3tty0n/mattermost-tasks/server/command"
 	"github.com/3tty0n/mattermost-tasks/server/events"
 	"github.com/3tty0n/mattermost-tasks/server/notifications"
@@ -22,12 +21,11 @@ import (
 type Plugin struct {
 	plugin.MattermostPlugin
 
-	client    *pluginapi.Client
-	access    *access.Checker
-	store     kvstore.Store
-	tasks     *tasks.Service
-	bookmarks *bookmarks.Service
-	notifier  *notifications.Notifier
+	client   *pluginapi.Client
+	access   *access.Checker
+	store    kvstore.Store
+	tasks    *tasks.Service
+	notifier *notifications.Notifier
 
 	// commandClient is the slash-command fallback.
 	commandClient command.Command
@@ -61,16 +59,15 @@ func (p *Plugin) OnActivate() error {
 
 	publisher := events.New(p.client)
 	p.tasks = tasks.NewService(p.client, p.store, p.access, publisher, p.notifier)
-	p.bookmarks = bookmarks.NewService(p.client, p.store, p.access, publisher)
 
-	commandClient, err := command.NewCommandHandler(p.client, p.tasks, p.bookmarks)
+	commandClient, err := command.NewCommandHandler(p.client, p.tasks)
 	if err != nil {
 		p.notifier.Close()
 		return err
 	}
 	p.commandClient = commandClient
 
-	p.httpHandler = api.NewHandler(p.API, p.client, p.access, p.tasks, p.bookmarks)
+	p.httpHandler = api.NewHandler(p.API, p.client, p.access, p.tasks)
 	return nil
 }
 
@@ -86,9 +83,9 @@ func (p *Plugin) OnDeactivate() error {
 // prevent tasks from working, so the error is logged and notifications are simply skipped.
 func (p *Plugin) ensureBot() string {
 	botUserID, err := p.client.Bot.EnsureBot(&model.Bot{
-		Username:    "tasks-bookmarks-bot",
+		Username:    "tasks-bot",
 		DisplayName: "Tasks",
-		Description: "Sends task assignment notifications for the Tasks & Bookmarks plugin.",
+		Description: "Sends task assignment notifications for the Tasks plugin.",
 	})
 	if err != nil {
 		p.client.Log.Error("Failed to ensure the task notification bot; assignment notifications are disabled", "error", err.Error())
