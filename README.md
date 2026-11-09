@@ -101,8 +101,9 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   uses compact per-day dots and counts, with the selected day's cards below the grid. Cards show
   the task name, priority, time and assignees. Use the arrows or **Today** to move, and
   **Week / Month** to switch the period; arrow keys move between days. Double-click a day in the
-  month grid (or a week day header) to open **New task** with that date prefilled. Repeating tasks
-  appear on every occurrence, not just their next due date.
+  month grid (or a week day header) to open **New task** with that date prefilled. The calendar's
+  **New task** button defaults the due date to today; double-clicking a day overrides it with that
+  day. Repeating tasks appear on every occurrence, not just their next due date.
 - **Manual order:** the default sort is **Manual**. Drag a list row or board card to reorder it;
   drop on the upper/lower half to place before/after the target. Positions are saved on the server.
 - **Quick add:** the **+** at the top right of each board column creates a task in that column

@@ -297,13 +297,17 @@ export default function TasksSidebar() {
     };
 
     const openCreate = () => {
-        setTaskEditor({
-            defaults: {
-                teamId: teamID ?? myTeams[0]?.id,
-                visibility: isDM ? 'private' : 'team',
-                assigneeIds: currentUserId ? [currentUserId] : [],
-            },
-        });
+        const defaults: TaskEditorDefaults = {
+            teamId: teamID ?? myTeams[0]?.id,
+            visibility: isDM ? 'private' : 'team',
+            assigneeIds: currentUserId ? [currentUserId] : [],
+        };
+        if (view === 'calendar') {
+            const today = new Date();
+            defaults.dueAt = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+            defaults.dueHasTime = false;
+        }
+        setTaskEditor({defaults});
     };
 
     const openCreateForDay = useCallback((day: Date) => {

@@ -203,6 +203,26 @@ describe('TasksSidebar', () => {
         expect(screen.queryByRole('combobox', {name: 'Sort'})).not.toBeInTheDocument();
     });
 
+    it('defaults a calendar New task to today', async () => {
+        const user = userEvent.setup();
+        renderWithStore(<TasksSidebar/>);
+        await screen.findByRole('button', {name: 'Pick up mail'});
+        await user.click(screen.getByRole('button', {name: 'Calendar view'}));
+        await screen.findByRole('tab', {name: 'Month'});
+
+        const now = new Date();
+        await user.click(screen.getByRole('button', {name: 'New task'}));
+        await user.type(screen.getByLabelText('Title'), 'Plan today');
+        await user.click(screen.getByRole('button', {name: 'Add task'}));
+
+        await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'Plan today',
+            dueAt: Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()),
+            dueHasTime: false,
+        })));
+        expect(screen.getByRole('tab', {name: 'Month'})).toBeVisible();
+    });
+
     it('creates a task from a double-clicked calendar day', async () => {
         const user = userEvent.setup();
         renderWithStore(<TasksSidebar/>);
