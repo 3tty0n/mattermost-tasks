@@ -165,6 +165,28 @@ describe('EventEditor', () => {
         })));
     });
 
+    it('keeps weekly mode distinct from specific days', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <EventEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC'}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Weekly sync');
+        await user.click(screen.getByRole('button', {name: 'Repeat'}));
+        await user.click(screen.getByRole('combobox', {name: 'Repeat'}));
+        await user.click(await screen.findByRole('option', {name: 'Weekly'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
+
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'Weekly sync',
+            recurrence: {frequency: 'weekly', interval: 1, until: undefined},
+        })));
+    });
+
     it('creates a weekly event on selected weekdays', async () => {
         const user = userEvent.setup();
         renderWithStore(
@@ -229,6 +251,22 @@ describe('EventEditor', () => {
             startAt: Date.UTC(2026, 0, 5),
             endAt: Date.UTC(2026, 0, 6),
         })));
+    });
+
+    it('loads an existing weekly series as weekly', async () => {
+        getEventMock.mockResolvedValueOnce({
+            ...savedEvent,
+            recurrence: {frequency: 'weekly', interval: 1, weekdays: [1]},
+        });
+        renderWithStore(
+            <EventEditor
+                eventId='event-1'
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        expect(await screen.findByRole('button', {name: 'Weekly'})).toBeVisible();
     });
 
     it('edits and deletes an existing event', async () => {

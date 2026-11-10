@@ -183,4 +183,7 @@ func TestRecurringEventIsIncludedOutsideItsBaseRange(t *testing.T) {
 	result, err = env.service.List(creatorID, query)
 	require.NoError(t, err)
 	assert.Equal(t, 1, result.Total)
+	require.Len(t, result.Items, 1)
+	require.NotNil(t, result.Items[0].Recurrence)
+	assert.Equal(t, []int{1, 3}, result.Items[0].Recurrence.Weekdays)
 }

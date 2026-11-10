@@ -134,13 +134,14 @@ func (r EventRef) Summary() EventSummary {
 			}
 			return ids
 		}(),
-		Title:     r.Title,
-		StartAt:   r.StartAt,
-		EndAt:     r.EndAt,
-		AllDay:    r.AllDay,
-		TimeZone:  r.TimeZone,
-		CreatedAt: r.CreatedAt,
-		UpdatedAt: r.UpdatedAt,
+		Title:      r.Title,
+		StartAt:    r.StartAt,
+		EndAt:      r.EndAt,
+		AllDay:     r.AllDay,
+		TimeZone:   r.TimeZone,
+		Recurrence: r.Recurrence.Clone(),
+		CreatedAt:  r.CreatedAt,
+		UpdatedAt:  r.UpdatedAt,
 	}
 }
 

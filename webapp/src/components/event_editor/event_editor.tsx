@@ -133,14 +133,23 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                 setVisibility(loaded.visibility);
                 setAssigneeIds(loaded.assigneeIds ?? []);
                 const recurrence = loaded.recurrence;
+                const loadedUTCDate = new Date(loaded.startAt);
+                const loadedWeekdayDate = loaded.allDay ? {
+                    year: loadedUTCDate.getUTCFullYear(),
+                    month: loadedUTCDate.getUTCMonth() + 1,
+                    day: loadedUTCDate.getUTCDate(),
+                } : startParts;
+                const loadedWeekday = new Date(Date.UTC(loadedWeekdayDate.year, loadedWeekdayDate.month - 1, loadedWeekdayDate.day)).getUTCDay();
                 if (recurrence && recurrence.frequency !== 'none') {
                     if (recurrence.frequency === 'weekly' && (recurrence.interval ?? 1) > 1) {
                         setRepeatMode('custom');
                         setRepeatUnit('week');
                         setRepeatInterval(recurrence.interval ?? 1);
-                    } else if (recurrence.frequency === 'weekly') {
+                    } else if (recurrence.frequency === 'weekly' && recurrence.weekdays && recurrence.weekdays.length > 0 && !(recurrence.weekdays.length === 1 && recurrence.weekdays[0] === loadedWeekday)) {
                         setRepeatMode('weekdays');
-                        setRepeatWeekdays(recurrence.weekdays ?? []);
+                        setRepeatWeekdays(recurrence.weekdays);
+                    } else if (recurrence.frequency === 'weekly') {
+                        setRepeatMode('weekly');
                     } else if (recurrence.frequency === 'daily' && (recurrence.interval ?? 1) > 1) {
                         setRepeatMode('custom');
                         setRepeatUnit('day');
@@ -418,16 +427,18 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
         if (repeatMode === 'daily') {
             return {frequency: 'daily', interval: 1, until};
         }
-        if (repeatMode === 'weekdays' || repeatMode === 'weekly') {
-            const weekdays = repeatMode === 'weekdays' && repeatWeekdays.length > 0 ? [...repeatWeekdays].sort((a, b) => a - b) : [startWeekday];
+        if (repeatMode === 'weekdays') {
+            const weekdays = repeatWeekdays.length > 0 ? [...repeatWeekdays].sort((a, b) => a - b) : [startWeekday];
             return {frequency: 'weekly', interval: 1, weekdays, until};
+        }
+        if (repeatMode === 'weekly') {
+            return {frequency: 'weekly', interval: 1, until};
         }
         const units: Record<typeof repeatUnit, RecurrenceFrequency> = {day: 'daily', week: 'weekly', month: 'monthly', year: 'yearly'};
         const frequency = units[repeatUnit];
         return {
             frequency,
             interval: Math.min(99, Math.max(1, repeatInterval)),
-            ...(frequency === 'weekly' ? {weekdays: [startWeekday]} : {}),
             until,
         };
     };

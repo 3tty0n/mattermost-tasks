@@ -23,6 +23,11 @@ func TestNormalizeEventRecurrence(t *testing.T) {
 	assert.Equal(t, []int{1, 5}, recurrence.Weekdays)
 	assert.Equal(t, "2026-02-01", recurrence.Until)
 
+	weekly, err := NormalizeEventRecurrence(&EventRecurrence{Frequency: EventRecurrenceWeekly}, start, "UTC")
+	require.NoError(t, err)
+	require.NotNil(t, weekly)
+	assert.Empty(t, weekly.Weekdays)
+
 	daily, err := NormalizeEventRecurrence(&EventRecurrence{Frequency: EventRecurrenceDaily, Interval: 2}, start, "UTC")
 	require.NoError(t, err)
 	require.NotNil(t, daily)

@@ -78,9 +78,6 @@ func NormalizeEventRecurrence(input *EventRecurrence, startAt int64, timeZone st
 			}
 		}
 		slices.Sort(weekdays)
-		if len(weekdays) == 0 {
-			weekdays = []int{int(eventStartDate(startAt, timeZone).Weekday())}
-		}
 	}
 
 	until := strings.TrimSpace(input.Until)

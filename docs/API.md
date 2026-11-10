@@ -240,7 +240,8 @@ Create body:
   `channel` is channel-readable. A channel is required for channel visibility.
 - Only the creator or a system administrator may update or delete an event.
 - `recurrence` is optional. Frequencies are `daily`, `weekly`, `monthly` and `yearly`;
-  `weekdays` (0=Sunday … 6=Saturday) applies to weekly series, and `until` is an inclusive
+  `weekdays` (0=Sunday … 6=Saturday) applies to weekly series; omit it to repeat on the
+  start weekday, or list several days for a specific-days series. `until` is an inclusive
   `YYYY-MM-DD` end date. Omit `recurrence` or send `{"frequency":"none"}` to clear it.
 
 The response summary omits `description`; `GET /events/{id}` returns the full record.
