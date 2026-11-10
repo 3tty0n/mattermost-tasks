@@ -92,6 +92,9 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     const [description, setDescription] = useState('');
     const [location, setLocation] = useState('');
     const [allDay, setAllDay] = useState(Boolean(defaults?.allDay));
+
+    // True once the user chose an all-day end other than the start day; until then the end follows the start.
+    const [endPinned, setEndPinned] = useState(false);
     const initialStartParts = epochToZonedParts(initialStart, initialTimeZone);
     const initialEndDateParts = epochToZonedParts(initialEnd - (allDay ? DAY_IN_MS : 0), initialTimeZone);
     const initialEndClockParts = epochToZonedParts(initialEnd, initialTimeZone);
@@ -139,6 +142,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                 setPreview(Boolean(loaded.description?.trim()));
                 setLocation(loaded.location ?? '');
                 setAllDay(Boolean(loaded.allDay));
+                setEndPinned(Boolean(loaded.allDay) && loaded.endAt - loaded.startAt > DAY_IN_MS);
                 const loadedZone = loaded.timezone || machineTimeZone();
                 const startParts = epochToZonedParts(loaded.startAt, loadedZone);
                 const endDateParts = epochToZonedParts(loaded.allDay ? loaded.endAt - DAY_IN_MS : loaded.endAt, loadedZone);
@@ -323,7 +327,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
             return '';
         }
         const date = new Date(value);
-        const dateLabel = intl.formatDate(date, {timeZone: displayZone, weekday: 'short', month: 'short', day: 'numeric'});
+        const dateLabel = intl.formatDate(date, {timeZone: allDay ? 'UTC' : displayZone, weekday: 'short', month: 'short', day: 'numeric'});
         if (!withTime) {
             return dateLabel;
         }
@@ -379,9 +383,15 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
             const text = formatDateInput({year: picked.getUTCFullYear(), month: picked.getUTCMonth() + 1, day: picked.getUTCDate()});
             if (which === 'start') {
                 setStartDate(text);
-                setEndDate(text); // an all-day event defaults to that single day
+                const pinnedEnd = parseDateInput(endDate, intl.locale);
+                const keepEnd = allDay && endPinned && pinnedEnd && Date.UTC(pinnedEnd.year, pinnedEnd.month - 1, pinnedEnd.day) >= value;
+                if (!keepEnd) {
+                    setEndDate(text); // the end follows the start until the user sets it
+                    setEndPinned(false);
+                }
             } else {
                 setEndDate(text);
+                setEndPinned(text !== startDate);
             }
             if (!hasTime) {
                 setAllDay(true);
@@ -406,7 +416,10 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
 
     const currentInstants = currentWallTimes();
     const startLabel = formatEventWhen(currentInstants?.startAt ?? undefined, !allDay);
-    const endLabel = formatEventWhen(currentInstants?.endAt ?? undefined, !allDay);
+
+    // An all-day end is stored exclusive (the next midnight); the user sees and picks the last day.
+    const lastDayEnd = currentInstants?.endAt && allDay ? currentInstants.endAt - DAY_IN_MS : currentInstants?.endAt;
+    const endLabel = formatEventWhen(lastDayEnd ?? undefined, !allDay);
 
     const toggleAllDay = (next: boolean) => {
         if (next) {
@@ -414,9 +427,9 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
             if (instants?.startAt) {
                 const zone = isValidTimeZone(timeZone) ? timeZone : machineTimeZone();
                 const startParts = epochToZonedParts(instants.startAt, zone);
-                const endParts = epochToZonedParts(Math.max(instants.startAt, (instants.endAt ?? instants.startAt + 3600000) - 1), zone);
                 setStartDate(formatDateInput({year: startParts.year, month: startParts.month, day: startParts.day}));
-                setEndDate(formatDateInput({year: endParts.year, month: endParts.month, day: endParts.day}));
+                setEndDate(formatDateInput({year: startParts.year, month: startParts.month, day: startParts.day}));
+                setEndPinned(false);
             }
         } else {
             setStartTime(formatTimeInput(9, 0, Boolean(hour12)));
@@ -955,7 +968,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                             }}
                         />
                         <EventDatePicker
-                            value={currentInstants?.endAt ?? undefined}
+                            value={lastDayEnd ?? undefined}
                             hasTime={!allDay}
                             timeZone={timeZone}
                             hour12={Boolean(hour12)}

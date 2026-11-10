@@ -320,6 +320,38 @@ describe('EventEditor', () => {
         })));
     });
 
+    it('keeps an all-day end on the start day until the user sets it', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <EventEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC', allDay: true}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+        const pick = async (which: 'start' | 'end', day: number) => {
+            await user.click(screen.getByRole('button', {name: `Pick ${which} date and time`}));
+            await user.click(screen.getByRole('button', {name: new RegExp(`January ${day}, 2026`)}));
+            await user.click(screen.getByRole('button', {name: 'OK'}));
+        };
+
+        await user.type(screen.getByLabelText('Title'), 'Offsite');
+        await pick('start', 20);
+        expect(screen.getByRole('button', {name: 'Pick end date and time'})).toHaveTextContent('Jan 20');
+        await pick('end', 22);
+        await pick('start', 21);
+        expect(screen.getByRole('button', {name: 'Pick end date and time'})).toHaveTextContent('Jan 22');
+        await pick('start', 25);
+        expect(screen.getByRole('button', {name: 'Pick end date and time'})).toHaveTextContent('Jan 25');
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
+
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
+            allDay: true,
+            startAt: Date.UTC(2026, 0, 25),
+            endAt: Date.UTC(2026, 0, 26),
+        })));
+    });
+
     it('loads an existing weekly series as weekly', async () => {
         getEventMock.mockResolvedValueOnce({
             ...savedEvent,
