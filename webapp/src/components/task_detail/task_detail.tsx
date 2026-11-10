@@ -11,6 +11,7 @@ import {machineTimeZone} from 'timezone_utils';
 import {
     PRIORITY_TAG_TYPE,
     STATUS_MESSAGES,
+    byLabel,
     formatDue,
     isOverdue,
     priorityLabel,
@@ -153,7 +154,7 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
     ));
     const channelOptions = [
         {value: '', label: intl.formatMessage({id: 'tasks.detail.team_level', defaultMessage: 'Team-level task'})},
-        ...teamChannels.map((memberChannel) => ({value: memberChannel.id, label: memberChannel.display_name})),
+        ...teamChannels.map((memberChannel) => ({value: memberChannel.id, label: memberChannel.display_name})).sort(byLabel),
     ];
     if (task.channelId && !channelOptions.some((option) => option.value === task.channelId)) {
         channelOptions.push({value: task.channelId, label: channel?.display_name ?? task.channelId});

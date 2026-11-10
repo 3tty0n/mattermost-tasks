@@ -1,165 +1,99 @@
 # Tasks for Mattermost
 
-Todoist-style tasks that live inside Mattermost teams, channels and posts. No separate identity
-system, no external service, no second database.
+Tasks and a calendar that live inside Mattermost teams, channels and posts. No separate accounts, no
+external service, no second database.
 
 **Mattermost 11.7+** · Go server · React/TypeScript webapp
 
-[Features](#features) · [UI previews](#ui-previews) · [Install](#install) · [Usage](#usage) · [Permissions](#permissions) · [Development](#development)
+[Features](#features) · [Install](#install) · [Usage](#usage) · [Permissions](#permissions) · [Development](#development)
 
 ![Tasks board in the right-hand sidebar](docs/images/tasks-board.png)
 
-<sub>UI preview (illustrative mockup): list/board views in the channel right-hand sidebar.</sub>
-
 ## Features
 
-| Plan and see work | Capture it quickly |
-| --- | --- |
-| Team / Mine switch, context-aware default | Create from any public/private channel post |
-| Private, team-wide or channel-only visibility | Name-only quick add in each board column |
-| List, board and calendar views | Assignment autocomplete with avatars and usernames |
-| Drag-and-drop manual ordering | Position persisted across reloads |
-| Todo / In progress / Done with drag-and-drop | Assignment notifications from a plugin bot |
-| Filters, sorting and pagination | `/task` slash commands for keyboard and mobile |
-| Markdown descriptions and source backlinks | Click-to-edit name and description |
-| Repeating tasks and events: daily, weekly, selected weekdays, monthly, yearly or custom | Optional end date or endless series |
-| Calendar events, separate from tasks | Timed or all-day, with task/event visual distinction |
-| Due/start reminders | At time, 5/10/15 minutes, 1 day or 1 week before; choose several |
+- **Tasks:** list, board (drag between Todo / In progress / Done) and calendar views; manual
+  ordering; priorities; Markdown descriptions; filters and sorting.
+- **Events:** calendar appointments, separate from tasks (no checkbox or priority). Timed or all-day,
+  with participants, an optional **location** (a Zoom/Meet URL becomes a link on the card) and a
+  time zone.
+- **Repeating:** daily, weekly (chosen weekdays), monthly, yearly or custom, with an optional end
+  date. Completing a repeating task moves it to its next date.
+- **Reminders:** a direct message from the plugin bot before a task's due time or an event's start;
+  pick any of *at the time, 5 / 10 / 15 minutes, 1 day, 1 week* before.
+- **Visibility:** *Only me*, *Team* or *Channel*; the server re-checks it on every request.
+- **Quick capture:** **Create task** on any post, quick add in each board column, assignee
+  autocomplete, assignment notifications, and `/task` slash commands.
 
-**Due dates the way you expect:** a date is date-only by default. Open the calendar, choose a day,
-and press **OK**. Enable **Set time** only when you need a time. Timed tasks and events store their
-own IANA **time zone** (default: the machine's region) so the entered wall time is unambiguous;
-every viewer sees the resulting instant in their own machine's time zone. Clock display follows
-the Mattermost 12/24-hour preference. Set **Repeat** to daily,
-weekly, monthly, yearly or a custom interval; choose when the series ends, or leave it endless.
-Completing a repeating task moves it to its next occurrence.
-
-**Team and Mine in one sidebar:** switch between them at the top. The sidebar opens on **Team**
-in a channel and **Mine** in a DM. **Team** shows the current team's tasks and events plus your own
-**Only me** items; **Mine** collects tasks assigned to you and events you created or are assigned to. New tasks default
-to **Team** in channels and **Only me** in DMs; you can also choose **Only me** explicitly in the
-editor.
-Private-channel tasks are filtered from lists and return 404 to non-members. Every route re-checks
-this on the server, and the plugin never fetches URLs or stores data outside the plugin KV store.
-
-## UI previews
-
-### Board view
-
-Drag cards between Todo, In progress and Done (shown in the hero image above). Each column has a
-**+** for GitHub-Projects-style quick capture; card names are headlines and clicking a card opens
-the inline name/description editor.
-
-### List view
-
-Hover a card to highlight it, then click anywhere on the card to open the inline editor. Checkboxes,
-status pills and filters keep routine updates to one click.
-
-![Task list with filters, status pills and hover selection](docs/images/tasks-list.png)
-
-### Due date
-
-The calendar commits only when you press **OK**. **Clear** removes the due date. Time is optional:
-leave **Set time** off for a date-only due date.
-
-![Task editor with the due-date calendar](docs/images/due-date.png)
-
-<sub>UI previews are generated illustrative mockups, not screenshots of a running server. The
-generator is in [`docs/images/generate_mockups.py`](docs/images/generate_mockups.py).</sub>
+![Calendar with events and due tasks](docs/images/calendar.png)
 
 ## Install
 
 1. Download `com.github.3tty0n.mattermost-tasks-*.tar.gz` from a release.
-2. In Mattermost, open **System Console → Plugins → Plugin Management**.
-3. Upload the bundle and enable **Tasks**.
-4. Optional: disable assignment notifications in the plugin settings.
+2. In **System Console → Plugins → Plugin Management**, upload it and enable **Tasks**.
 
-Release bundles are **linux-amd64** by default (about 8 MB). Maintainers can explicitly publish a
-bundle that also contains **darwin-amd64** and **darwin-arm64** macOS binaries by running the
-release workflow with `macos=true`; that bundle is larger. Build from source for any other
-platform.
+Requires Mattermost 11.7.0+ (web or desktop; mobile does not load plugin UIs, use `/task` there).
+Release bundles are linux-amd64; maintainers can publish a macOS-inclusive one with
+`gh workflow run release.yml --ref main -f macos=true`. Everything is stored in the plugin KV store.
 
-The plugin has no external service or separate database. Task data lives in the Mattermost
-database's plugin KV store.
+**Settings** (System Console → Plugins → Tasks):
 
-**Requirements:** Mattermost 11.7.0+ (web or desktop client). Mobile clients do not load plugin
-webapps; use the `/task` slash command there.
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| Send task assignment notifications | on | The bot DMs users newly assigned to a task |
+| Default event duration (minutes) | 60 | Length of a new event, and the end time set when you pick a start (5–1440) |
 
 ## Usage
 
-### Tasks sidebar
+Click the check-circle icon in the channel header to open the sidebar.
 
-Click the check-circle icon in the channel header to open the Tasks sidebar.
+- **Team / Mine:** *Team* (default in channels) shows the team's tasks and events you can read plus
+  your *Only me* items. *Mine* (default in DMs) shows tasks assigned to you and events you created
+  or are in.
+- **Views:** List, Board and Calendar. Board and calendar load up to 100 items; narrow the filters
+  for more.
 
-- **Team / Mine:** switch scopes with the tabs at the top. A channel starts on **Team**, which
-  shows the current team's readable tasks and events plus your own **Only me** items. A DM starts
-  on **Mine**, which collects tasks assigned to you and events you created or are assigned to across teams.
-- **Visibility:** new tasks default to **Team** in channels and **Only me** in DMs. Choose
-  **Only me** explicitly in the editor to keep a task private; it is always assigned to you.
-  Channel visibility is still available for channel-specific work. **Only me** tasks appear in the
-  Team view, but only for you.
-- **Views:** switch between List, Board and Calendar with the header icons. The board and calendar
-  fetch up to 100 tasks; narrow the filters to see more. Creating a task closes the dialog and
-  returns to the current view instead of opening the task detail.
-- **Calendar:** only tasks with a due date appear. Week view lists each day's cards; month view
-  uses compact per-day dots and counts, with the selected day's cards below the grid. Cards show
-  the task name, priority, time and assignees. Use the arrows or **Today** to move, and
-  **Week / Month** to switch the period; arrow keys move between days. Double-click a day in the
-  month grid (or a week day header) to open **New task** with that date prefilled. The calendar's
-  **New task** button defaults the due date to today; double-clicking a day overrides it with that
-  day. Repeating tasks appear on every occurrence, not just their next due date.
-- **Events:** in calendar view the sidebar **+**, a day-header **+**, or a double-clicked day
-  opens **New event**. The editor follows the New task layout: large title, Markdown description
-  with preview, property chips, and an assignee section. Start/end are chosen from the calendar
-  and the Compass clock face (with typed time inside the picker); they are not free-form date
-  fields. Each event has a selectable/typeahead IANA **time zone**, an optional all-day flag,
-  visibility, assignees and an optional description. They are deliberately separate
-  from tasks: no checkbox or priority. Events appear as accent-colored cards with a calendar icon
-  and time range plus assignee avatars; tasks keep their priority dots and assignee avatars, and
-  month cells show tasks as dots and events as bars. Click an event to edit it; creators and
-  administrators can delete it.
-- **Manual order:** the default sort is **Manual**. Drag a list row or board card to reorder it;
-  drop on the upper/lower half to place before/after the target. Positions are saved on the server.
-- **Quick add:** the **+** at the top right of each board column creates a task in that column
-  using only its name. It follows the context: team-visible in channels, Only me in DMs.
-- **Assignees:** focusing the assignee box immediately opens a dropdown of eligible team/channel
-  members. Results show the user's avatar, display name and `@username`; typing filters them and
-  the server enforces the same scope permissions. Select one to add it as a chip.
-- **Open and edit:** click a card. List cards open the interactive task view in the sidebar;
-  board cards open the same view in a popup. Name and description start as previews (description
-  is rendered Markdown). Click either field to edit; click outside to save, or press **Esc** to
-  cancel. In the task facts, **Visible to**, **Team**, **Channel** and **Assignees** are inline
-  editable by clicking the value. The due-date pill opens the same calendar picker as
-  **New task**, with a **Time zone** selector. The optional time uses a manual field plus a Compass
-  clock-face picker. Status is a dropdown in the detail header.
-- **Due date:** click the due-date pill in the task detail (or the due property while creating),
-  pick a day, then **OK**. Turn on **Set time** to include a time; leave it off for a date-only
-  task. In Calendar view, **New task** starts with today as the due date.
-- **Repeat:** with a due date set, open the **Repeat** property. Pick **Daily**, **Weekly**,
-  **Monthly**, **Yearly** or **Custom**; custom uses an interval and unit such as every 2 weeks.
-  **Ends** can stay **Never** for an endless series or use an end date. Completing a repeating task
-  advances it to its next due date; once the end date is passed it completes normally.
-- **Filters:** status (list view), priority, assignee and due date; sort manually, by due date,
-  creation date or priority. Dragging switches to a persistent manual order only in Manual sort.
-  The calendar always orders by due date and keeps the priority and assignee filters.
+![Task list with filters and status pills](docs/images/tasks-list.png)
 
-### Tasks from posts
+### Tasks
 
-Every post in a public or private channel has **Create task** in its **⋯** menu. The editor is
-prefilled with the post's first line and body; a channel post creates a channel-visible task with
-a source backlink. On **your own DM message**, the same action creates an **Only me** task using
-the message text; the DM view shows it under **Mine**. The server re-checks the post's channel
-and the user's read permission.
+- Create from the sidebar, from a board column's **+** (name only), or from a post's **⋯ → Create
+  task** (prefilled with the post; on your own DM message it creates an *Only me* task).
+- Click a card to open it. Name and description show as a preview; click to edit, click outside to
+  save (**Esc** cancels). Visibility, team, channel, assignees, due date and status are editable inline.
+- **Due date:** pick a day and press **OK**. Turn on **Set time** only if you need one; timed
+  items keep an IANA time zone, and everyone sees the resulting instant in their own zone.
+- **Repeat** and **Reminders** appear once a due date is set.
 
-### Creating an Only-me task
+![New task with the due-date calendar](docs/images/task-editor.png)
 
-There are two ways:
+### Calendar and events
 
-1. In the task detail view, click **Visible to** and choose **Only me**.
-2. While creating a task, choose **Only me** under **Who can see this task?**.
-3. In a DM, use **Create task** on one of your own messages.
+- Month view shows dots and bars per day with the selected day's agenda below; Week view lists every
+  day. Arrow keys move between days. Repeating items appear on every occurrence.
+- The agenda has **+** buttons in its **Events** and **Due tasks** sections (and each week day has
+  both): the first adds an event on that day, the second a task due that day. Double-clicking a day
+  also opens **New event**.
+- A new event starts **now** and lasts the default duration; picking a start moves the end to
+  start + that duration. Start and end come from a calendar and clock picker.
+- Event cards show the time range, title, location (links open in a new tab) and up to nine
+  overlapped participant avatars (more become “…”; hover for all names). On narrow sidebars the
+  participants move to their own row so the time range is never cut off.
+- Click an event to open it; the creator or an administrator can edit and delete it.
 
-In a team channel, normal creation and Name-only quick add create team-visible tasks.
+![Week view on a wide sidebar](docs/images/calendar-week.png)
+
+![Event editor with location and reminders](docs/images/event-editor.png)
+
+### Reminders
+
+Set **Reminders** on a task (with a due date) or an event. At each chosen offset the plugin bot sends
+a DM to the assignees, or to the creator if nobody is assigned; Mattermost then notifies per each
+user's own settings. Repeating events remind for every occurrence.
+
+![Reminder from the Tasks bot](docs/images/reminder-dm.png)
+
+Notes: reminders are sent once, checked every minute, and catch up at most 24 hours after downtime.
+Date-only due dates and all-day events count from UTC midnight.
 
 ### Slash commands
 
@@ -174,45 +108,33 @@ In a team channel, normal creation and Name-only quick add create team-visible t
 
 | Operation | Who |
 | --- | --- |
-| View | Private: creator only. Team: team members. Channel: channel members. The single sidebar view shows all of these that you can access. |
-| Create | Members who can read the scope; post tasks require channel read access |
-| Edit metadata | Creator or system administrator, with current scope access |
-| Change status | Creator, assignee or system administrator |
-| Delete | Creator or system administrator |
+| View | Private: creator only. Team: team members. Channel: channel members |
+| Create | Anyone who can read the scope (post tasks need channel read access) |
+| Edit | Creator or system administrator, with current scope access |
+| Change status | Creator, assignee or administrator |
+| Delete | Creator or administrator |
 
-A private task is visible only to its creator, even to a system administrator. Team tasks are
-indexed per team; channel tasks additionally require channel read permission. Assignment never
-grants access to a private channel, and hiding UI is not a permission check; the server enforces
-each rule on every request.
+Private items are visible only to their creator, even to administrators. Assignment never grants
+access to a private channel, and hiding UI is not a permission check: the server enforces every rule.
+The plugin makes no outbound requests.
 
 ## Development
 
-Requirements: Go 1.26+, Node.js 22+, npm, Docker for integration tests.
+Requires Go 1.26+, Node.js 22+ and Docker (integration tests).
 
 ```bash
-make apply                  # generate manifests from plugin.json
-make test                   # server + webapp tests and the bundle
-gh workflow run release.yml --ref main -f macos=true   # opt-in macOS release bundle
+make apply                          # generate manifests from plugin.json
+make test                           # server + webapp tests and the bundle
 SKIP_DOCKER_TESTS=1 go test ./server/...
 cd webapp && npx jest --runInBand
 ```
 
 The bundle is written to `dist/com.github.3tty0n.mattermost-tasks-<version>.tar.gz`.
 
-## Architecture and storage
-
-- Full records: `task:<id>` and `event:<id>` with `visibility` (`private`, `team`, `channel`).
-- Compact indexes: `task_team:`, `task_channel:`, `task_user:` for tasks; `event_team:`,
-  `event_channel:`, `event_user:` for events. Each has four shards.
-- No full KV scans: a list reads at most four shards per scope and index.
-- Events are additive and use the same visibility and permission rules; reading a calendar range
-  makes one scoped task query and one scoped event query.
-- No outbound HTTP; the webapp uses the host's Compass components and local selectors.
+**Storage:** full records `task:<id>` / `event:<id>`; compact, four-shard indexes per team, channel
+and user; no full KV scans. Reminders are queued in per-hour buckets (`reminder:<hour>`) and fired
+by a once-a-minute cluster job.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/API.md](docs/API.md) and
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
-## Related app
-
-Bookmarks is a separate plugin with its own repository, RHS panel and link icon:
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Bookmarks is a separate plugin:
 [mattermost-bookmarks](https://github.com/3tty0n/mattermost-bookmarks).

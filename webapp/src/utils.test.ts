@@ -1,9 +1,14 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {extractUrls, postTitle, profileName, positionBetween, positionOf} from './utils';
+import {byLabel, extractUrls, postTitle, profileName, positionBetween, positionOf} from './utils';
 
 describe('utils', () => {
+    it('orders options by label, ignoring case and sorting numbers naturally', () => {
+        const labels = ['town-square', 'Off-Topic', 'dev 10', 'dev 2', 'alpha'].map((label) => ({label}));
+        expect(labels.sort(byLabel).map((option) => option.label)).toEqual(['alpha', 'dev 2', 'dev 10', 'Off-Topic', 'town-square']);
+    });
+
     it('extracts unique http(s) URLs and strips trailing punctuation', () => {
         const message = 'Read https://example.com/a, and https://example.com/b. Again https://example.com/a';
         expect(extractUrls(message)).toEqual(['https://example.com/a', 'https://example.com/b']);

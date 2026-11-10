@@ -317,6 +317,11 @@ describe('TaskEditor', () => {
         expect(description).toHaveValue('Old **description**');
 
         await user.type(description, '!');
+
+        // The editor stays until the click completes, so the layout can't shift under the pointer.
+        fireEvent.mouseDown(screen.getByLabelText('Title'));
+        expect(screen.getByLabelText('Description')).toBeVisible();
+        fireEvent.mouseUp(screen.getByLabelText('Title'));
         await user.click(screen.getByLabelText('Title'));
         expect(screen.queryByLabelText('Description')).not.toBeInTheDocument();
         expect(screen.getByRole('button', {name: 'Edit description'})).toBeVisible();
@@ -367,7 +372,7 @@ describe('TaskEditor', () => {
             />,
         );
         await user.click(screen.getByRole('button', {name: 'At the time'}));
-        await user.click(screen.getByRole('checkbox', {name: '1 week before'}));
+        await user.click(screen.getByRole('option', {name: '1 week before'}));
         await user.click(screen.getByRole('button', {name: 'Save'}));
 
         await waitFor(() => expect(updateTaskMock).toHaveBeenCalledWith('task-1', expect.objectContaining({reminders: [0, 10080]})));

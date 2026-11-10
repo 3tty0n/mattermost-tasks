@@ -4,12 +4,13 @@
 import {DAY_IN_MS} from 'calendar_utils';
 import {createEvent, deleteEvent, getEvent, updateEvent} from 'client';
 import {formatDateInput, formatTimeInput, parseDateInput, parseTimeInput, wallDateTime} from 'datetime_input_utils';
-import {FALLBACK_EVENT_DURATION_MINUTES, useHour12} from 'hooks';
+import {FALLBACK_EVENT_DURATION_MINUTES, useHour12, useLeaveToPreview} from 'hooks';
 import {type ReactNode, useEffect, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {toDateInput} from 'recurrence_utils';
 import {epochToZonedParts, isValidTimeZone, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
+import {byLabel} from 'utils';
 
 import AccountMultipleOutlineIcon from '@mattermost/compass-icons/components/account-multiple-outline';
 import CalendarOutlineIcon from '@mattermost/compass-icons/components/calendar-outline';
@@ -107,6 +108,13 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [error, setError] = useState<string>();
     const [preview, setPreview] = useState(false);
+
+    // An empty description stays editable so its placeholder remains visible.
+    const descriptionArea = useLeaveToPreview(!preview, () => {
+        if (description.trim()) {
+            setPreview(true);
+        }
+    });
     const [openProperty, setOpenProperty] = useState<'timezone'|'scope'|'repeat'>();
     const [repeatMode, setRepeatMode] = useState<'never'|'daily'|'weekdays'|'weekly'|'custom'>('never');
     const [repeatWeekdays, setRepeatWeekdays] = useState<number[]>([]);
@@ -206,7 +214,8 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     }
     const channelOptions = myChannels.
         filter((memberChannel) => memberChannel.team_id === teamID && (memberChannel.type === 'O' || memberChannel.type === 'P')).
-        map((memberChannel) => ({value: memberChannel.id, label: memberChannel.display_name}));
+        map((memberChannel) => ({value: memberChannel.id, label: memberChannel.display_name})).
+        sort(byLabel);
     if (channelID && !channelOptions.some((option) => option.value === channelID)) {
         channelOptions.push({value: channelID, label: channelID});
     }
@@ -744,13 +753,8 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
 
                     <div
                         className='Tasks-TaskEditor__description'
-                        onBlur={(blurEvent) => {
-                            // Leaving the whole editing area (textarea and toolbar) returns to the preview;
-                            // an empty description stays editable so its placeholder remains visible.
-                            if (!preview && description.trim() && !blurEvent.currentTarget.contains(blurEvent.relatedTarget)) {
-                                setPreview(true);
-                            }
-                        }}
+                        ref={descriptionArea.ref}
+                        onBlur={descriptionArea.onBlur}
                     >
                         {!preview && (
                             <>

@@ -20,7 +20,7 @@ describe('ReminderPicker', () => {
         );
 
         await user.click(screen.getByRole('button', {name: '1 day before'}));
-        await user.click(screen.getByRole('checkbox', {name: '5 minutes before'}));
+        await user.click(screen.getByRole('option', {name: '5 minutes before'}));
 
         expect(onChange).toHaveBeenCalledWith([5, 1440]);
     });
@@ -35,9 +35,9 @@ describe('ReminderPicker', () => {
         );
         const trigger = screen.getByRole('button', {name: 'No reminder'});
         await user.click(trigger);
-        expect(screen.getByRole('group', {name: 'Reminders'})).toBeVisible();
+        expect(screen.getByRole('listbox', {name: 'Reminders'})).toBeVisible();
         await user.keyboard('{Escape}');
-        expect(screen.queryByRole('group')).not.toBeInTheDocument();
+        expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
         expect(trigger).toHaveFocus();
     });
 

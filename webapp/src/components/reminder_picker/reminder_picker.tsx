@@ -4,6 +4,9 @@
 import {useEffect, useId, useRef, useState} from 'react';
 import {useIntl} from 'react-intl';
 
+import CheckIcon from '@mattermost/compass-icons/components/check';
+import {Icon} from '@mattermost/compass-ui/components/icon';
+
 import './reminder_picker.css';
 
 type Props = {
@@ -86,23 +89,36 @@ export default function ReminderPicker({value, onChange, disabled}: Props) {
             {open && !disabled && (
                 <div
                     id={listID}
-                    role='group'
+                    role='listbox'
+                    aria-multiselectable={true}
                     className='Tasks-ReminderPicker__dropdown'
+
+                    // Safari/Firefox on macOS don't focus a pressed button; without this the wrapper's blur
+                    // would close the list on mousedown and swallow the click.
+                    onMouseDown={(mouseEvent) => mouseEvent.preventDefault()}
                     aria-label={intl.formatMessage({id: 'tasks.reminders', defaultMessage: 'Reminders'})}
                 >
-                    {OPTIONS.map((option) => (
-                        <label
-                            key={option.value}
-                            className='Tasks-ReminderPicker__option'
-                        >
-                            <input
-                                type='checkbox'
-                                checked={value.includes(option.value)}
-                                onChange={() => toggle(option.value)}
-                            />
-                            <span>{intl.formatMessage(option)}</span>
-                        </label>
-                    ))}
+                    {OPTIONS.map((option) => {
+                        const selected = value.includes(option.value);
+                        return (
+                            <button
+                                key={option.value}
+                                type='button'
+                                role='option'
+                                aria-selected={selected}
+                                className={`Tasks-ReminderPicker__option${selected ? ' Tasks-ReminderPicker__option--selected' : ''}`}
+                                onClick={() => toggle(option.value)}
+                            >
+                                <span>{intl.formatMessage(option)}</span>
+                                {selected && (
+                                    <Icon
+                                        size='16'
+                                        glyph={<CheckIcon/>}
+                                    />
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
             )}
         </div>

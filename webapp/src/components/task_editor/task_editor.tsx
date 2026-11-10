@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {createTask, updateTask} from 'client';
-import {useHour12} from 'hooks';
+import {useHour12, useLeaveToPreview} from 'hooks';
 import {useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
@@ -11,6 +11,7 @@ import {epochToZonedDateTimeInput, isValidTimeZone, machineTimeZone, zonedDateTi
 import {
     PRIORITY_MESSAGES,
     STATUS_MESSAGES,
+    byLabel,
     formatDue,
     fromDateTimeInput,
     priorityLabel,
@@ -128,6 +129,13 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
 
     // An existing task opens its description as a rendered preview; clicking it edits.
     const [preview, setPreview] = useState(Boolean(task?.description?.trim()));
+
+    // An empty description stays editable so its placeholder remains visible.
+    const descriptionArea = useLeaveToPreview(!preview, () => {
+        if (description.trim()) {
+            setPreview(true);
+        }
+    });
     const [openProperty, setOpenProperty] = useState<'due' | 'priority' | 'status' | 'scope' | 'repeat'>();
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string>();
@@ -141,7 +149,8 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
 
     const channelOptions = myChannels.
         filter((channel) => channel.team_id === teamID && (channel.type === 'O' || channel.type === 'P')).
-        map((channel) => ({value: channel.id, label: channel.display_name}));
+        map((channel) => ({value: channel.id, label: channel.display_name})).
+        sort(byLabel);
     channelOptions.unshift({value: '', label: intl.formatMessage({id: 'tasks.editor.team_level', defaultMessage: 'Team-level (no channel)'})});
     if (channelID && !channelOptions.some((option) => option.value === channelID)) {
         channelOptions.push({value: channelID, label: intl.formatMessage({id: 'tasks.editor.current_channel', defaultMessage: 'Current channel'})});
@@ -447,13 +456,8 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
 
                 <div
                     className='Tasks-TaskEditor__description'
-                    onBlur={(blurEvent) => {
-                        // Leaving the whole editing area (textarea and toolbar) returns to the preview;
-                        // an empty description stays editable so its placeholder remains visible.
-                        if (!preview && description.trim() && !blurEvent.currentTarget.contains(blurEvent.relatedTarget)) {
-                            setPreview(true);
-                        }
-                    }}
+                    ref={descriptionArea.ref}
+                    onBlur={descriptionArea.onBlur}
                 >
                     {!preview && (
                         <>

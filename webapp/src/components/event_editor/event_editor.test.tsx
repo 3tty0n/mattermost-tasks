@@ -415,8 +415,8 @@ describe('EventEditor', () => {
 
         await user.type(screen.getByLabelText('Title'), 'Reminded');
         await user.click(screen.getByRole('button', {name: 'No reminder'}));
-        await user.click(screen.getByRole('checkbox', {name: '1 day before'}));
-        await user.click(screen.getByRole('checkbox', {name: '10 minutes before'}));
+        await user.click(screen.getByRole('option', {name: '1 day before'}));
+        await user.click(screen.getByRole('option', {name: '10 minutes before'}));
         await user.click(screen.getByRole('button', {name: 'Add event'}));
 
         await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({reminders: [10, 1440]})));
@@ -434,7 +434,7 @@ describe('EventEditor', () => {
         );
 
         await user.click(await screen.findByRole('button', {name: '15 minutes before'}));
-        await user.click(screen.getByRole('checkbox', {name: '15 minutes before'}));
+        await user.click(screen.getByRole('option', {name: '15 minutes before'}));
         await user.click(screen.getByRole('button', {name: 'Save'}));
 
         await waitFor(() => expect(updateEventMock).toHaveBeenCalledWith('event-1', expect.objectContaining({reminders: []})));

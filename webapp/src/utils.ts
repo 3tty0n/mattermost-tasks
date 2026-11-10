@@ -42,6 +42,11 @@ export function httpUrl(text: string | undefined): URL | undefined {
     }
 }
 
+// byLabel orders select options alphabetically (case-insensitive, digits in natural order).
+export function byLabel(a: {label: string}, b: {label: string}): number {
+    return a.label.localeCompare(b.label, undefined, {sensitivity: 'base', numeric: true});
+}
+
 export function statusLabel(intl: IntlShape, status: TaskStatus): string {
     return intl.formatMessage(STATUS_MESSAGES[status] ?? STATUS_MESSAGES.todo);
 }

@@ -149,7 +149,9 @@ export default function DueDatePicker({value, hasTime = false, timeZone, hour12 
                     onChange={(event) => {
                         setTimeEnabled(event.target.checked);
                         if (event.target.checked && time === '') {
-                            setTime('09:00');
+                            // Start from the current time in the picker's zone.
+                            const now = epochToZonedParts(Date.now(), zone);
+                            setTime(`${pad(now.hour)}:${pad(now.minute)}`);
                         }
                     }}
                 >

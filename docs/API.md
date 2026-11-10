@@ -238,8 +238,10 @@ Create body:
 - `assigneeIds` are users who can see the event through its scope; they are shown on event cards
   and are included in the `scope=my` event list.
 - `reminders` is an array of minutes before the start: `0`, `5`, `10`, `15`, `1440` or `10080`.
-  Multiple values are allowed; an empty array disables reminders. All-day events have no start
-  time and should not set reminders.
+  Multiple values are allowed; an empty array disables reminders. All-day events count from UTC
+  midnight.
+- `location` is optional free text (up to 2048 characters), typically a meeting URL. The webapp
+  links it only when it is an `http(s)` URL. Send `""` on update to clear it.
 - `visibility` follows task rules: `private` is creator-only, `team` is team-readable and
   `channel` is channel-readable. A channel is required for channel visibility.
 - Only the creator or a system administrator may update or delete an event.
@@ -249,6 +251,11 @@ Create body:
   `YYYY-MM-DD` end date. Omit `recurrence` or send `{"frequency":"none"}` to clear it.
 
 The response summary omits `description`; `GET /events/{id}` returns the full record.
+
+## Config
+
+`GET /config` returns the settings every signed-in user may read:
+`{"defaultEventDurationMinutes": 60}` (the plugin setting, 5–1440, default 60).
 
 ## Assignees
 

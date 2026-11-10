@@ -69,10 +69,20 @@ describe('DueDatePicker', () => {
         renderPicker(value, onChange, 'Asia/Tokyo');
 
         fireEvent.click(screen.getByRole('checkbox', {name: 'Set time'}));
-        expect(screen.getByLabelText('Time')).toHaveValue('09:00');
+        fireEvent.change(screen.getByLabelText('Time'), {target: {value: '09:00'}});
         await user.click(screen.getByRole('button', {name: 'OK'}));
 
         expect(onChange).toHaveBeenCalledWith(value, true);
+    });
+
+    it('fills the current time in the picker zone when Set time is turned on', async () => {
+        const user = userEvent.setup({advanceTimers: jest.advanceTimersByTime});
+        jest.setSystemTime(new Date(Date.UTC(2026, 0, 15, 3, 7))); // 12:07 Asia/Tokyo
+        renderPicker(undefined, jest.fn(), 'Asia/Tokyo');
+
+        await user.click(screen.getByRole('checkbox', {name: 'Set time'}));
+
+        expect(screen.getByLabelText('Time')).toHaveValue('12:07');
     });
 
     it('navigates between months', async () => {

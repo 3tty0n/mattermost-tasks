@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {fetchAssignees, fetchConfig, fetchEvents, fetchTasks, getProfiles, type Profile} from 'client';
-import {useEffect, useRef, useState} from 'react';
+import {type FocusEvent, useEffect, useRef, useState} from 'react';
 import {useSelector} from 'react-redux';
 
 import {selectUseMilitaryTime} from 'selectors';
@@ -14,6 +14,44 @@ type AsyncState<T> = {
     loading: boolean;
     error?: string;
 };
+
+// useLeaveToPreview calls onLeave when the user leaves an editing area (a Tab to another control, or a
+// click outside it). Mouse leaves run on click, after the clicked control has acted: swapping the
+// editor for a shorter preview on mousedown would shift the layout and send the click elsewhere.
+export function useLeaveToPreview(active: boolean, onLeave: () => void) {
+    const ref = useRef<HTMLDivElement>(null);
+    const pointerDown = useRef(false);
+    useEffect(() => {
+        if (!active) {
+            return undefined;
+        }
+        const down = () => {
+            pointerDown.current = true;
+        };
+        const up = () => {
+            pointerDown.current = false;
+        };
+        const click = (event: MouseEvent) => {
+            if (ref.current && !ref.current.contains(event.target as Node)) {
+                onLeave();
+            }
+        };
+        document.addEventListener('mousedown', down, true);
+        document.addEventListener('mouseup', up, true);
+        document.addEventListener('click', click);
+        return () => {
+            document.removeEventListener('mousedown', down, true);
+            document.removeEventListener('mouseup', up, true);
+            document.removeEventListener('click', click);
+        };
+    }, [active, onLeave]);
+    const onBlur = (event: FocusEvent<HTMLElement>) => {
+        if (active && !pointerDown.current && event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) {
+            onLeave();
+        }
+    };
+    return {ref, onBlur};
+}
 
 export const FALLBACK_EVENT_DURATION_MINUTES = 60;
 
