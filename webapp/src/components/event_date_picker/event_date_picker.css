@@ -12,6 +12,14 @@
     z-index: 3000;
     top: -9999px;
     left: -9999px;
+    box-sizing: border-box;
+    width: 280px;
     max-height: calc(100vh - 16px);
+    padding: var(--spacing-s);
     overflow-y: auto;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-m);
+    background: var(--center-channel-bg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    color: var(--center-channel-color);
 }
