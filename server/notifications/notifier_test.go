@@ -91,12 +91,17 @@ func TestNotifyAssignmentDropsWhenDisabled(t *testing.T) {
 
 func TestFormatReminder(t *testing.T) {
 	start := time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC).UnixMilli()
-	message := formatReminder(Reminder{Kind: "event", Title: "Standup", Start: start, HasTime: true, TimeZone: "Asia/Tokyo", Offset: 15},
+	message := formatReminder(Reminder{Kind: "event", Title: "Standup", Location: " https://zoom.us/j/1\n", Start: start, HasTime: true, TimeZone: "Asia/Tokyo", Offset: 15},
 		"engineering", "town-square", "https://mm.example/engineering#event-id")
 	assert.Contains(t, message, "Event starting in 15 minutes")
 	assert.Contains(t, message, "Jan 5, 2026 09:00 JST")
+	assert.Contains(t, message, "town-square")
+	assert.NotContains(t, message, "**Team:**")
+	assert.Contains(t, message, "- **Location:** https://zoom.us/j/1\n")
 
 	message = formatReminder(Reminder{Kind: "task", Title: "Report", Start: start, Offset: 7 * 24 * 60}, "engineering", "", "link")
 	assert.Contains(t, message, "Task due in 1 week")
+	assert.NotContains(t, message, "Location")
+	assert.Contains(t, message, "engineering") // no channel: fall back to the team
 	assert.Contains(t, message, "Jan 5, 2026")
 }

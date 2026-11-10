@@ -378,6 +378,18 @@ func NormalizeDescription(value string) (string, error) {
 	return value, nil
 }
 
+// MaxLocationRunes bounds an event location; it may be a meeting URL with a long query string.
+const MaxLocationRunes = 2048
+
+// NormalizeLocation trims an event location (free text or a URL) and enforces its size limit.
+func NormalizeLocation(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if utf8.RuneCountInString(value) > MaxLocationRunes {
+		return "", fmt.Errorf("%w: location is longer than %d characters", ErrInvalid, MaxLocationRunes)
+	}
+	return value, nil
+}
+
 // NormalizeIDs validates, trims and de-duplicates a list of Mattermost IDs, preserving order.
 func NormalizeIDs(ids []string, field string, max int) ([]string, error) {
 	if len(ids) > max {

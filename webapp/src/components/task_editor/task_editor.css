@@ -358,3 +358,11 @@
     font-size: var(--font-size-50);
     font-weight: var(--font-weight-regular);
 }
+
+.Tasks-TaskEditor__preview--editable {
+    cursor: text;
+}
+
+.Tasks-TaskEditor__preview--editable:hover {
+    border-color: rgba(var(--center-channel-color-rgb), 0.32);
+}

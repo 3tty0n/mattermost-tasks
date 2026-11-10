@@ -215,6 +215,7 @@ type Reminder struct {
 	Kind      string // "task" or "event"
 	ID        string
 	Title     string
+	Location  string // events only; free text or a meeting URL
 	TeamID    string
 	ChannelID string
 	Start     int64 // due or start time, Unix ms
@@ -267,11 +268,17 @@ func formatReminder(r Reminder, teamName, channelName, link string) string {
 		when = fmt.Sprintf("in %d minutes", r.Offset)
 	}
 	var builder strings.Builder
-	fmt.Fprintf(&builder, "**%s %s %s:** %s\n\n- **Team:** %s", strings.ToUpper(r.Kind[:1])+r.Kind[1:], what, when, r.Title, teamName)
+	fmt.Fprintf(&builder, "**%s %s %s:** %s\n", strings.ToUpper(r.Kind[:1])+r.Kind[1:], what, when, r.Title)
+	// The team name is only shown for team-level items; a channel already implies its team.
 	if channelName != "" {
 		builder.WriteString("\n- **Channel:** " + channelName)
+	} else {
+		builder.WriteString("\n- **Team:** " + teamName)
 	}
 	builder.WriteString("\n- **When:** " + formatWhen(r))
+	if location := strings.Join(strings.Fields(r.Location), " "); location != "" {
+		builder.WriteString("\n- **Location:** " + location) // Mattermost links a bare URL itself
+	}
 	builder.WriteString("\n\n[Open in Mattermost](" + link + ")")
 	return builder.String()
 }

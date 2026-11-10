@@ -5,7 +5,7 @@ import {DAY_IN_MS} from 'calendar_utils';
 import {createEvent, deleteEvent, getEvent, updateEvent} from 'client';
 import {formatDateInput, formatTimeInput, parseDateInput, parseTimeInput, wallDateTime} from 'datetime_input_utils';
 import {useHour12} from 'hooks';
-import {useEffect, useRef, useState} from 'react';
+import {type ReactNode, useEffect, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {toDateInput} from 'recurrence_utils';
@@ -83,6 +83,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     const [event, setEvent] = useState<Event>();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    const [location, setLocation] = useState('');
     const [allDay, setAllDay] = useState(Boolean(defaults?.allDay));
     const initialStartParts = epochToZonedParts(initialStart, initialTimeZone);
     const initialEndDateParts = epochToZonedParts(initialEnd - (allDay ? DAY_IN_MS : 0), initialTimeZone);
@@ -120,6 +121,8 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                 setEvent(loaded);
                 setTitle(loaded.title);
                 setDescription(loaded.description ?? '');
+                setPreview(Boolean(loaded.description?.trim()));
+                setLocation(loaded.location ?? '');
                 setAllDay(Boolean(loaded.allDay));
                 const loadedZone = loaded.timezone || machineTimeZone();
                 const startParts = epochToZonedParts(loaded.startAt, loadedZone);
@@ -280,6 +283,11 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                 textarea.setSelectionRange(lineStart, lineStart + prefixed.length);
             });
         }
+    };
+
+    const editDescription = () => {
+        setPreview(false);
+        requestAnimationFrame(() => descriptionRef.current?.focus());
     };
 
     const selectedTeam = myTeams.find((team) => team.id === teamID);
@@ -522,6 +530,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                 const updated = await updateEvent(event.id, {
                     title: trimmed,
                     description,
+                    location: location.trim(),
                     teamId: teamID,
                     channelId: visibility === 'channel' ? channelID : '',
                     visibility,
@@ -538,6 +547,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                 const created = await createEvent({
                     title: trimmed,
                     description,
+                    location: location.trim() || undefined,
                     teamId: teamID,
                     channelId: visibility === 'channel' ? channelID : undefined,
                     visibility,
@@ -572,6 +582,38 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
         }
     };
 
+    // Delete lives at the end of the form, not in the footer: the narrow dialog has no room for three
+    // footer buttons.
+    let deleteAction: ReactNode = null;
+    if (canModify && canDelete) {
+        deleteAction = confirmDelete ? (
+            <Button
+                emphasis='primary'
+                size='small'
+                destructive={true}
+                loading={deleting}
+                onClick={remove}
+            >
+                <FormattedMessage
+                    id='tasks.event.confirm_delete'
+                    defaultMessage='Confirm delete'
+                />
+            </Button>
+        ) : (
+            <Button
+                emphasis='tertiary'
+                size='small'
+                destructive={true}
+                onClick={() => setConfirmDelete(true)}
+            >
+                <FormattedMessage
+                    id='tasks.event.delete'
+                    defaultMessage='Delete event'
+                />
+            </Button>
+        );
+    }
+
     const closeFooter = (
         <Button
             emphasis='tertiary'
@@ -585,34 +627,6 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     );
     const footer = canModify ? (
         <>
-            {canDelete && (
-                confirmDelete ? (
-                    <Button
-                        emphasis='primary'
-                        size='small'
-                        destructive={true}
-                        loading={deleting}
-                        onClick={remove}
-                    >
-                        <FormattedMessage
-                            id='tasks.event.confirm_delete'
-                            defaultMessage='Confirm delete'
-                        />
-                    </Button>
-                ) : (
-                    <Button
-                        emphasis='tertiary'
-                        size='small'
-                        destructive={true}
-                        onClick={() => setConfirmDelete(true)}
-                    >
-                        <FormattedMessage
-                            id='tasks.event.delete'
-                            defaultMessage='Delete event'
-                        />
-                    </Button>
-                )
-            )}
             <Button
                 emphasis='tertiary'
                 onClick={onClose}
@@ -718,7 +732,16 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                         />
                     </div>
 
-                    <div className='Tasks-TaskEditor__description'>
+                    <div
+                        className='Tasks-TaskEditor__description'
+                        onBlur={(blurEvent) => {
+                            // Leaving the whole editing area (textarea and toolbar) returns to the preview;
+                            // an empty description stays editable so its placeholder remains visible.
+                            if (!preview && description.trim() && !blurEvent.currentTarget.contains(blurEvent.relatedTarget)) {
+                                setPreview(true);
+                            }
+                        }}
+                    >
                         {!preview && (
                             <>
                                 <label
@@ -741,7 +764,14 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                     placeholder={intl.formatMessage({id: 'tasks.event.description_placeholder', defaultMessage: 'Description'})}
                                     onChange={(changeEvent) => setDescription(changeEvent.target.value)}
                                 />
-                                <div className='Tasks-TaskEditor__descriptionBar'>
+                                <div
+                                    className='Tasks-TaskEditor__descriptionBar'
+                                    onMouseDown={(mouseEvent) => {
+                                        // Keep focus in the textarea while a toolbar button is pressed, so the
+                                        // blur above does not swap the toolbar out before the click lands.
+                                        mouseEvent.preventDefault();
+                                    }}
+                                >
                                     <div
                                         className='Tasks-TaskEditor__markdownTools'
                                         role='toolbar'
@@ -802,7 +832,15 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                             </>
                         )}
                         {preview && (
-                            <div className='Tasks-TaskEditor__preview'>
+                            <div
+                                className={`Tasks-TaskEditor__preview${canModify ? ' Tasks-EventEditor__preview--editable' : ''}`}
+                                onClick={(clickEvent) => {
+                                    // Links inside the rendered Markdown must stay clickable.
+                                    if (canModify && !(clickEvent.target as HTMLElement).closest('a')) {
+                                        editDescription();
+                                    }
+                                }}
+                            >
                                 {description.trim() ? (
                                     <MarkdownText text={description}/>
                                 ) : (
@@ -816,7 +854,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                 <Button
                                     emphasis='link'
                                     size='small'
-                                    onClick={() => setPreview(false)}
+                                    onClick={editDescription}
                                 >
                                     <FormattedMessage
                                         id='tasks.editor.edit_description'
@@ -825,6 +863,27 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                 </Button>
                             </div>
                         )}
+                    </div>
+
+                    <div className='Tasks-EventEditor__field'>
+                        <label
+                            className='Tasks-TaskEditor__srOnly'
+                            htmlFor='tasks-event-location'
+                        >
+                            <FormattedMessage
+                                id='tasks.event.location'
+                                defaultMessage='Location'
+                            />
+                        </label>
+                        <input
+                            id='tasks-event-location'
+                            className='Tasks-EventEditor__input'
+                            value={location}
+                            maxLength={2048}
+                            disabled={!canModify}
+                            placeholder={intl.formatMessage({id: 'tasks.event.location_placeholder', defaultMessage: 'Location or meeting link (Zoom, Meet…)'})}
+                            onChange={(changeEvent) => setLocation(changeEvent.target.value)}
+                        />
                     </div>
 
                     <Checkbox
@@ -928,7 +987,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                         </button>
                         <button
                             type='button'
-                            className='Tasks-TaskEditor__propertySummary'
+                            className='Tasks-TaskEditor__propertySummary Tasks-EventEditor__scopeSummary'
                             aria-expanded={openProperty === 'scope'}
                             disabled={!canModify}
                             onClick={() => setOpenProperty(openProperty === 'scope' ? undefined : 'scope')}
@@ -937,7 +996,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                 size='16'
                                 glyph={<FolderOutlineIcon/>}
                             />
-                            <span>{scopeLabel}</span>
+                            <span className='Tasks-EventEditor__scopeLabel'>{scopeLabel}</span>
                         </button>
                     </div>
 
@@ -1162,6 +1221,12 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                             disabled={!canModify}
                         />
                     </div>
+
+                    {deleteAction && (
+                        <div className='Tasks-EventEditor__danger'>
+                            {deleteAction}
+                        </div>
+                    )}
                 </div>
             )}
         </Dialog>

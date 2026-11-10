@@ -129,3 +129,32 @@
     flex: 1;
     min-width: 0;
 }
+
+.Tasks-EventEditor__danger {
+    display: flex;
+    justify-content: flex-start;
+    padding-top: var(--spacing-s);
+    border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.08);
+}
+
+/* A long team or channel name is truncated instead of widening the dialog. */
+.Tasks-EventEditor__scopeSummary {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.Tasks-EventEditor__scopeLabel {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* An existing event opens its description as a rendered preview; clicking the box edits it. */
+.Tasks-EventEditor__preview--editable {
+    cursor: text;
+}
+
+.Tasks-EventEditor__preview--editable:hover {
+    border-color: rgba(var(--center-channel-color-rgb), 0.32);
+}

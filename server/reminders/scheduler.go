@@ -140,7 +140,7 @@ func (s *Scheduler) fire(entry kvstore.ReminderEntry) {
 		}
 		if next, ok := event.NextStart(start - 1); ok && next == start {
 			s.sender.SendReminder(notifications.Reminder{
-				Kind: "event", ID: event.ID, Title: event.Title, TeamID: event.TeamID, ChannelID: event.ChannelID,
+				Kind: "event", ID: event.ID, Title: event.Title, Location: event.Location, TeamID: event.TeamID, ChannelID: event.ChannelID,
 				Start: start, HasTime: !event.AllDay, TimeZone: event.TimeZone, Offset: entry.Offset,
 				UserIDs: recipients(event.AssigneeIDs, event.CreatorID),
 			})

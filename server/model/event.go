@@ -22,6 +22,7 @@ type Event struct {
 	AssigneeIDs []string         `json:"assigneeIds"`
 	Title       string           `json:"title"`
 	Description string           `json:"description,omitempty"`
+	Location    string           `json:"location,omitempty"`
 	StartAt     int64            `json:"startAt"`
 	EndAt       int64            `json:"endAt"`
 	AllDay      bool             `json:"allDay,omitempty"`
@@ -64,6 +65,7 @@ type EventRef struct {
 	CreatorID   string           `json:"o"`
 	AssigneeIDs []string         `json:"a,omitempty"`
 	Title       string           `json:"n"`
+	Location    string           `json:"l,omitempty"`
 	StartAt     int64            `json:"s"`
 	EndAt       int64            `json:"e"`
 	AllDay      bool             `json:"d,omitempty"`
@@ -93,6 +95,7 @@ func (e *Event) Ref() EventRef {
 		CreatorID:   e.CreatorID,
 		AssigneeIDs: slices.Clone(e.AssigneeIDs),
 		Title:       truncateRunes(e.Title, MaxTitleRunes),
+		Location:    e.Location,
 		StartAt:     e.StartAt,
 		EndAt:       e.EndAt,
 		AllDay:      e.AllDay,
@@ -114,6 +117,7 @@ type EventSummary struct {
 	CreatorID   string           `json:"creatorId"`
 	AssigneeIDs []string         `json:"assigneeIds"`
 	Title       string           `json:"title"`
+	Location    string           `json:"location,omitempty"`
 	StartAt     int64            `json:"startAt"`
 	EndAt       int64            `json:"endAt"`
 	AllDay      bool             `json:"allDay,omitempty"`
@@ -140,6 +144,7 @@ func (r EventRef) Summary() EventSummary {
 			return ids
 		}(),
 		Title:      r.Title,
+		Location:   r.Location,
 		StartAt:    r.StartAt,
 		EndAt:      r.EndAt,
 		AllDay:     r.AllDay,
@@ -158,6 +163,7 @@ type CreateEventInput struct {
 	Visibility  string
 	Title       string
 	Description string
+	Location    string
 	AssigneeIDs []string
 	StartAt     int64
 	EndAt       int64
@@ -174,6 +180,7 @@ type EventPatch struct {
 	Visibility  *string
 	Title       *string
 	Description *string
+	Location    *string
 	AssigneeIDs *[]string
 	StartAt     *int64
 	EndAt       *int64
@@ -186,7 +193,7 @@ type EventPatch struct {
 // IsZero reports whether the patch changes nothing.
 func (p EventPatch) IsZero() bool {
 	return p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
-		p.Description == nil && p.AssigneeIDs == nil && p.StartAt == nil && p.EndAt == nil && p.AllDay == nil && p.TimeZone == nil && p.Recurrence == nil && p.Reminders == nil
+		p.Description == nil && p.Location == nil && p.AssigneeIDs == nil && p.StartAt == nil && p.EndAt == nil && p.AllDay == nil && p.TimeZone == nil && p.Recurrence == nil && p.Reminders == nil
 }
 
 // EventQuery is a validated event list query. Events are fetched for a time range.

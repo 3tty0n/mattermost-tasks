@@ -321,6 +321,49 @@ describe('EventEditor', () => {
         expect(onDeleted).toHaveBeenCalled();
     });
 
+    it('opens a described event as a preview and edits it on click', async () => {
+        const user = userEvent.setup();
+        getEventMock.mockResolvedValue({...savedEvent, description: 'Agenda **notes**', location: 'https://zoom.us/j/1'});
+        renderWithStore(
+            <EventEditor
+                eventId='event-1'
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        expect(await screen.findByText('Edit description')).toBeVisible();
+        expect(screen.queryByRole('textbox', {name: 'Description'})).not.toBeInTheDocument();
+        await user.click(screen.getByText('Edit description').closest('div')!);
+        expect(await screen.findByRole('textbox', {name: 'Description'})).toHaveValue('Agenda **notes**');
+
+        // Clicking outside the description returns to the preview with the edited text.
+        await user.type(screen.getByRole('textbox', {name: 'Description'}), '!');
+        await user.click(screen.getByLabelText('Location'));
+        expect(screen.queryByRole('textbox', {name: 'Description'})).not.toBeInTheDocument();
+        expect(screen.getByText('Edit description')).toBeVisible();
+
+        await user.clear(screen.getByLabelText('Location'));
+        await user.click(screen.getByRole('button', {name: 'Save'}));
+        await waitFor(() => expect(updateEventMock).toHaveBeenCalledWith('event-1', expect.objectContaining({location: '', description: 'Agenda **notes**!'})));
+    });
+
+    it('sends the location when creating an event', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <EventEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC'}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Call');
+        await user.type(screen.getByLabelText('Location'), ' https://zoom.us/j/1 ');
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({location: 'https://zoom.us/j/1'})));
+    });
+
     it('sends selected reminders when creating an event', async () => {
         const user = userEvent.setup();
         renderWithStore(

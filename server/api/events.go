@@ -16,6 +16,7 @@ type createEventRequest struct {
 	Visibility  string                     `json:"visibility"`
 	Title       string                     `json:"title"`
 	Description string                     `json:"description"`
+	Location    string                     `json:"location"`
 	AssigneeIDs []string                   `json:"assigneeIds"`
 	StartAt     int64                      `json:"startAt"`
 	EndAt       int64                      `json:"endAt"`
@@ -32,6 +33,7 @@ func (req createEventRequest) input() taskmodel.CreateEventInput {
 		Visibility:  req.Visibility,
 		Title:       req.Title,
 		Description: req.Description,
+		Location:    req.Location,
 		AssigneeIDs: req.AssigneeIDs,
 		StartAt:     req.StartAt,
 		EndAt:       req.EndAt,
@@ -48,6 +50,7 @@ type updateEventRequest struct {
 	Visibility  *string                    `json:"visibility"`
 	Title       *string                    `json:"title"`
 	Description *string                    `json:"description"`
+	Location    *string                    `json:"location"`
 	AssigneeIDs *[]string                  `json:"assigneeIds"`
 	StartAt     *int64                     `json:"startAt"`
 	EndAt       *int64                     `json:"endAt"`
@@ -64,6 +67,7 @@ func (req updateEventRequest) patch() taskmodel.EventPatch {
 		Visibility:  req.Visibility,
 		Title:       req.Title,
 		Description: req.Description,
+		Location:    req.Location,
 		AssigneeIDs: req.AssigneeIDs,
 		StartAt:     req.StartAt,
 		EndAt:       req.EndAt,

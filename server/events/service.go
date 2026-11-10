@@ -92,6 +92,10 @@ func (s *EventService) Create(c *plugin.Context, path, actorID string, input mod
 	if err != nil {
 		return nil, err
 	}
+	location, err := model.NormalizeLocation(input.Location)
+	if err != nil {
+		return nil, err
+	}
 	visibility := input.Visibility
 	if visibility == "" {
 		visibility = model.DefaultTaskVisibility(input.ChannelID)
@@ -158,6 +162,7 @@ func (s *EventService) Create(c *plugin.Context, path, actorID string, input mod
 		AssigneeIDs: assigneeIDs,
 		Title:       title,
 		Description: description,
+		Location:    location,
 		StartAt:     startAt,
 		EndAt:       endAt,
 		AllDay:      input.AllDay,
@@ -394,6 +399,13 @@ func (s *EventService) Update(c *plugin.Context, path, actorID, eventID string, 
 				return nil, descriptionErr
 			}
 			current.Description = description
+		}
+		if patch.Location != nil {
+			location, locationErr := model.NormalizeLocation(*patch.Location)
+			if locationErr != nil {
+				return nil, locationErr
+			}
+			current.Location = location
 		}
 		current.Visibility = newVisibility
 		current.TeamID = newTeam

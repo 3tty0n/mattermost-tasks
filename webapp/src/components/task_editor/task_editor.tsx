@@ -125,7 +125,9 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     }
     const [assigneeIds, setAssigneeIds] = useState<string[]>(initialAssigneeIds);
     const [reminders, setReminders] = useState<number[]>(task?.reminders ?? []);
-    const [preview, setPreview] = useState(false);
+
+    // An existing task opens its description as a rendered preview; clicking it edits.
+    const [preview, setPreview] = useState(Boolean(task?.description?.trim()));
     const [openProperty, setOpenProperty] = useState<'due' | 'priority' | 'status' | 'scope' | 'repeat'>();
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string>();
@@ -247,6 +249,11 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
             const fallback = myChannels.find((channel) => channel.id === defaultChannelID) ?? myChannels.find((channel) => channel.team_id === teamID && (channel.type === 'O' || channel.type === 'P'));
             setChannelID(fallback?.id ?? '');
         }
+    };
+
+    const editDescription = () => {
+        setPreview(false);
+        requestAnimationFrame(() => descriptionRef.current?.focus());
     };
 
     const replaceSelection = (before: string, after: string, placeholder: {id: string; defaultMessage: string}) => {
@@ -438,7 +445,16 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                     />
                 </div>
 
-                <div className='Tasks-TaskEditor__description'>
+                <div
+                    className='Tasks-TaskEditor__description'
+                    onBlur={(blurEvent) => {
+                        // Leaving the whole editing area (textarea and toolbar) returns to the preview;
+                        // an empty description stays editable so its placeholder remains visible.
+                        if (!preview && description.trim() && !blurEvent.currentTarget.contains(blurEvent.relatedTarget)) {
+                            setPreview(true);
+                        }
+                    }}
+                >
                     {!preview && (
                         <>
                             <label
@@ -460,7 +476,14 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                                 placeholder={intl.formatMessage({id: 'tasks.editor.description_placeholder', defaultMessage: 'Description'})}
                                 onChange={(event) => setDescription(event.target.value)}
                             />
-                            <div className='Tasks-TaskEditor__descriptionBar'>
+                            <div
+                                className='Tasks-TaskEditor__descriptionBar'
+                                onMouseDown={(mouseEvent) => {
+                                    // Keep focus in the textarea while a toolbar button is pressed, so the
+                                    // blur above does not swap the toolbar out before the click lands.
+                                    mouseEvent.preventDefault();
+                                }}
+                            >
                                 <div
                                     className='Tasks-TaskEditor__markdownTools'
                                     role='toolbar'
@@ -517,7 +540,15 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                         </>
                     )}
                     {preview && (
-                        <div className='Tasks-TaskEditor__preview'>
+                        <div
+                            className='Tasks-TaskEditor__preview Tasks-TaskEditor__preview--editable'
+                            onClick={(clickEvent) => {
+                                // Links inside the rendered Markdown must stay clickable.
+                                if (!(clickEvent.target as HTMLElement).closest('a')) {
+                                    editDescription();
+                                }
+                            }}
+                        >
                             {description.trim() ? (
                                 <MarkdownText text={description}/>
                             ) : (
@@ -531,7 +562,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                             <Button
                                 emphasis='link'
                                 size='small'
-                                onClick={() => setPreview(false)}
+                                onClick={editDescription}
                             >
                                 <FormattedMessage
                                     id='tasks.editor.edit_description'

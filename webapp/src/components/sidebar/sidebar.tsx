@@ -318,6 +318,19 @@ export default function TasksSidebar() {
         });
     }, [scope, isDM, canUseChannel, currentChannel, teamID, myTeams]);
 
+    // Date-only due dates are stored as UTC midnight of the chosen calendar day.
+    const openCreateTask = useCallback((day: Date) => {
+        setTaskEditor({
+            defaults: {
+                teamId: teamID ?? myTeams[0]?.id,
+                visibility: isDM ? 'private' : 'team',
+                assigneeIds: currentUserId ? [currentUserId] : [],
+                dueAt: Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()),
+                dueHasTime: false,
+            },
+        });
+    }, [isDM, teamID, myTeams, currentUserId]);
+
     const openCreate = () => {
         if (view === 'calendar') {
             openCreateEvent(new Date());
@@ -802,6 +815,7 @@ export default function TasksSidebar() {
                         onOpenTask={openCalendarTask}
                         onOpenEvent={(eventID) => setEventEditor({eventId: eventID})}
                         onCreateEvent={openCreateEvent}
+                        onCreateTask={openCreateTask}
                     />
                 )}
             </div>

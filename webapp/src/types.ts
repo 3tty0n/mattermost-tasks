@@ -61,6 +61,7 @@ export type Event = {
     assigneeIds: string[];
     title: string;
     description?: string;
+    location?: string;
     startAt: number;
     endAt: number;
     allDay?: boolean;
@@ -91,6 +92,7 @@ export type CreateEventInput = {
     assigneeIds?: string[];
     title: string;
     description?: string;
+    location?: string;
     startAt: number;
     endAt: number;
     allDay?: boolean;
@@ -106,6 +108,7 @@ export type UpdateEventInput = {
     assigneeIds?: string[];
     title?: string;
     description?: string;
+    location?: string;
     startAt?: number;
     endAt?: number;
     allDay?: boolean;

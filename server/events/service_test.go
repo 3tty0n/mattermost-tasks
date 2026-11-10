@@ -1,6 +1,7 @@
 package events
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -186,4 +187,30 @@ func TestRecurringEventIsIncludedOutsideItsBaseRange(t *testing.T) {
 	require.Len(t, result.Items, 1)
 	require.NotNil(t, result.Items[0].Recurrence)
 	assert.Equal(t, []int{1, 3}, result.Items[0].Recurrence.Weekdays)
+}
+
+func TestEventLocationIsTrimmedLimitedAndClearable(t *testing.T) {
+	env := newTestEnv(t)
+	teamID, channelID := mmodel.NewId(), mmodel.NewId()
+	creatorID := mmodel.NewId()
+	allowChannel(env.api, creatorID, channelID, teamID)
+	denyAdmin(env.api, creatorID)
+
+	start := time.Date(2026, time.January, 5, 14, 0, 0, 0, time.UTC).UnixMilli()
+	input := taskmodel.CreateEventInput{
+		ChannelID: channelID, Visibility: taskmodel.TaskVisibilityChannel, Title: "Sync",
+		StartAt: start, EndAt: start + 3600_000, TimeZone: "UTC", Location: "  https://zoom.us/j/123  ",
+	}
+	event, err := env.service.Create(nil, "/events", creatorID, input)
+	require.NoError(t, err)
+	assert.Equal(t, "https://zoom.us/j/123", event.Location)
+
+	input.Location = strings.Repeat("x", taskmodel.MaxLocationRunes+1)
+	_, err = env.service.Create(nil, "/events", creatorID, input)
+	assert.ErrorIs(t, err, taskmodel.ErrInvalid)
+
+	empty := ""
+	updated, err := env.service.Update(nil, "/events", creatorID, event.ID, taskmodel.EventPatch{Location: &empty})
+	require.NoError(t, err)
+	assert.Empty(t, updated.Location)
 }

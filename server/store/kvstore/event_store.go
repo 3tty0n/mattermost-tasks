@@ -332,6 +332,7 @@ func eventRefFieldsEqual(a, b *taskmodel.EventRef) bool {
 		a.CreatorID == b.CreatorID &&
 		slices.Equal(a.AssigneeIDs, b.AssigneeIDs) &&
 		a.Title == b.Title &&
+		a.Location == b.Location &&
 		a.StartAt == b.StartAt &&
 		a.EndAt == b.EndAt &&
 		a.AllDay == b.AllDay &&

@@ -27,6 +27,21 @@ export const PRIORITY_TAG_TYPE: Record<TaskPriority, 'default' | 'info' | 'warni
     urgent: 'danger',
 };
 
+// httpUrl returns the URL when text is a single http(s) link and undefined otherwise, so user text
+// never reaches an href unless it is a web link (no javascript: or data: URLs).
+export function httpUrl(text: string | undefined): URL | undefined {
+    const value = text?.trim();
+    if (!value || (/\s/).test(value)) {
+        return undefined;
+    }
+    try {
+        const url = new URL(value);
+        return url.protocol === 'https:' || url.protocol === 'http:' ? url : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 export function statusLabel(intl: IntlShape, status: TaskStatus): string {
     return intl.formatMessage(STATUS_MESSAGES[status] ?? STATUS_MESSAGES.todo);
 }

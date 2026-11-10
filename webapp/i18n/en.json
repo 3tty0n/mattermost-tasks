@@ -1,4 +1,5 @@
 {
+  "tasks.task.add_on_day": "Add task due {date}",
   "tasks.calendar.add_hint": "Double-click to add a task",
   "tasks.calendar.count": "{count, plural, =0 {No tasks} one {# task} other {# tasks}}",
   "tasks.calendar.day_label": "{date}, {tasks, plural, =0 {no tasks} one {# task} other {# tasks}}, {events, plural, =0 {no events} one {# event} other {# events}}",
@@ -97,6 +98,8 @@
   "tasks.event.delete": "Delete event",
   "tasks.event.confirm_delete": "Confirm delete",
   "tasks.event.description": "Description",
+  "tasks.event.location": "Location",
+  "tasks.event.location_placeholder": "Location or meeting link (Zoom, Meet…)",
   "tasks.event.edit_title": "Edit event",
   "tasks.event.end": "End",
   "tasks.event.end_before_start": "The end must be on or after the start.",

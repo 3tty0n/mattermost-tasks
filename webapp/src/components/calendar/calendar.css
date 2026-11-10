@@ -222,9 +222,10 @@
     white-space: nowrap;
 }
 
-.Tasks-Calendar__agendaAdd {
-    flex: none;
-    margin-left: auto;
+.Tasks-Calendar__sectionHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
 }
 
 .Tasks-Calendar__agendaSection {
@@ -241,6 +242,8 @@
 
 .Tasks-Calendar__sectionTitle {
     display: flex;
+    flex: 1;
+    min-width: 0;
     align-items: center;
     gap: var(--spacing-xs);
     margin: 0;

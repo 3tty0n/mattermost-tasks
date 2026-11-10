@@ -301,6 +301,27 @@ describe('TaskEditor', () => {
         expect(screen.getByRole('button', {name: 'Edit description'})).toBeVisible();
     });
 
+    it('opens a described task as a preview, edits on click and returns to the preview on blur', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <TaskEditor
+                task={{...savedTask, description: 'Old **description**'}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        expect(screen.queryByLabelText('Description')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', {name: 'Edit description'}));
+        const description = await screen.findByLabelText('Description');
+        expect(description).toHaveValue('Old **description**');
+
+        await user.type(description, '!');
+        await user.click(screen.getByLabelText('Title'));
+        expect(screen.queryByLabelText('Description')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', {name: 'Edit description'})).toBeVisible();
+    });
+
     it('updates an existing task', async () => {
         const user = userEvent.setup();
         const onSaved = jest.fn();

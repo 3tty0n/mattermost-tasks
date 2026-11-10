@@ -5,9 +5,11 @@ import {getProfilePictureUrl, type Profile} from 'client';
 import {formatEventTime} from 'event_utils';
 import {useHour12} from 'hooks';
 import {useIntl} from 'react-intl';
-import {profileName} from 'utils';
+import {httpUrl, profileName} from 'utils';
 
 import CalendarOutlineIcon from '@mattermost/compass-icons/components/calendar-outline';
+import LinkVariantIcon from '@mattermost/compass-icons/components/link-variant';
+import MapMarkerOutlineIcon from '@mattermost/compass-icons/components/map-marker-outline';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 import {UserAvatar} from '@mattermost/compass-ui/components/user-avatar';
 
@@ -32,6 +34,8 @@ export default function EventCalendarCard({event, profiles, onOpen}: Props) {
     const hour12 = useHour12();
     const visibleAssignees = event.assigneeIds.slice(0, MAX_AVATARS);
     const hasMore = event.assigneeIds.length > MAX_AVATARS;
+    const location = event.location?.trim();
+    const locationUrl = httpUrl(location);
     const names = event.assigneeIds.map((userID) => profileName(profiles[userID], userID));
     return (
         <article
@@ -56,6 +60,34 @@ export default function EventCalendarCard({event, profiles, onOpen}: Props) {
                 >
                     {event.title}
                 </button>
+                {location && (locationUrl ? (
+                    // eslint-disable-next-line @mattermost/use-external-link -- plugin bundles cannot import host internals
+                    <a
+                        className='Tasks-EventCard__location'
+                        href={locationUrl.href}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        title={locationUrl.href}
+                        onClick={(clickEvent) => clickEvent.stopPropagation()}
+                    >
+                        <Icon
+                            size='12'
+                            glyph={<LinkVariantIcon/>}
+                        />
+                        <span className='Tasks-EventCard__locationText'>{locationUrl.host}</span>
+                    </a>
+                ) : (
+                    <span
+                        className='Tasks-EventCard__location'
+                        title={location}
+                    >
+                        <Icon
+                            size='12'
+                            glyph={<MapMarkerOutlineIcon/>}
+                        />
+                        <span className='Tasks-EventCard__locationText'>{location}</span>
+                    </span>
+                ))}
                 {names.length > 0 && (
                     <div
                         className='Tasks-EventCard__assignees'

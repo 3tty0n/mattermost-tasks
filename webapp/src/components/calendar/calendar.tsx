@@ -40,6 +40,7 @@ type Props = {
     onOpenTask: (taskID: string) => void;
     onOpenEvent: (eventID: string) => void;
     onCreateEvent: (day: Date) => void;
+    onCreateTask: (day: Date) => void;
 };
 
 function defaultSelectedKey(mode: CalendarMode, cursor: Date, weekStart: number): string {
@@ -54,7 +55,7 @@ function defaultSelectedKey(mode: CalendarMode, cursor: Date, weekStart: number)
     return range.startKey;
 }
 
-export default function Calendar({scope, teamId, priority, assigneeId, revision, onOpenTask, onOpenEvent, onCreateEvent}: Props) {
+export default function Calendar({scope, teamId, priority, assigneeId, revision, onOpenTask, onOpenEvent, onCreateEvent, onCreateTask}: Props) {
     const intl = useIntl();
     const [mode, setMode] = useState<CalendarMode>('month');
     const [cursor, setCursor] = useState(() => startOfLocalDay(new Date()));
@@ -280,6 +281,23 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                 />
             ))}
         </div>
+    );
+
+    const addEventButton = (day: Date) => (
+        <IconButton
+            size='x-small'
+            icon={<Icon glyph={<PlusIcon/>}/>}
+            aria-label={intl.formatMessage({id: 'tasks.event.add_on_day', defaultMessage: 'Add event on {date}'}, {date: intl.formatDate(day, {month: 'long', day: 'numeric'})})}
+            onClick={() => onCreateEvent(day)}
+        />
+    );
+    const addTaskButton = (day: Date) => (
+        <IconButton
+            size='x-small'
+            icon={<Icon glyph={<PlusIcon/>}/>}
+            aria-label={intl.formatMessage({id: 'tasks.task.add_on_day', defaultMessage: 'Add task due {date}'}, {date: intl.formatDate(day, {month: 'long', day: 'numeric'})})}
+            onClick={() => onCreateTask(day)}
+        />
     );
 
     return (
@@ -518,22 +536,18 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                         size='x-small'
                                     />
                                 )}
-                                <IconButton
-                                    className='Tasks-Calendar__agendaAdd'
-                                    size='x-small'
-                                    icon={<Icon glyph={<PlusIcon/>}/>}
-                                    aria-label={intl.formatMessage({id: 'tasks.event.add_on_day', defaultMessage: 'Add event on {date}'}, {date: intl.formatDate(selectedDate, {month: 'long', day: 'numeric'})})}
-                                    onClick={() => onCreateEvent(selectedDate)}
-                                />
                             </header>
                             <div className='Tasks-Calendar__agendaSection'>
-                                <h5 className='Tasks-Calendar__sectionTitle'>
-                                    <FormattedMessage
-                                        id='tasks.calendar.events'
-                                        defaultMessage='Events'
-                                    />
-                                    <span className='Tasks-Calendar__sectionCount'>{eventCountLabel(selectedEvents.length)}</span>
-                                </h5>
+                                <div className='Tasks-Calendar__sectionHeader'>
+                                    <h5 className='Tasks-Calendar__sectionTitle'>
+                                        <FormattedMessage
+                                            id='tasks.calendar.events'
+                                            defaultMessage='Events'
+                                        />
+                                        <span className='Tasks-Calendar__sectionCount'>{eventCountLabel(selectedEvents.length)}</span>
+                                    </h5>
+                                    {addEventButton(selectedDate)}
+                                </div>
                                 {selectedEvents.length > 0 ? (
                                     renderEventCards(selectedEvents)
                                 ) : (
@@ -546,13 +560,16 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                 )}
                             </div>
                             <div className='Tasks-Calendar__agendaSection'>
-                                <h5 className='Tasks-Calendar__sectionTitle'>
-                                    <FormattedMessage
-                                        id='tasks.calendar.due_tasks'
-                                        defaultMessage='Due tasks'
-                                    />
-                                    <span className='Tasks-Calendar__sectionCount'>{countLabel(selectedTasks.length)}</span>
-                                </h5>
+                                <div className='Tasks-Calendar__sectionHeader'>
+                                    <h5 className='Tasks-Calendar__sectionTitle'>
+                                        <FormattedMessage
+                                            id='tasks.calendar.due_tasks'
+                                            defaultMessage='Due tasks'
+                                        />
+                                        <span className='Tasks-Calendar__sectionCount'>{countLabel(selectedTasks.length)}</span>
+                                    </h5>
+                                    {addTaskButton(selectedDate)}
+                                </div>
                                 {selectedTasks.length > 0 ? (
                                     renderCards(selectedTasks)
                                 ) : (
@@ -602,16 +619,12 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                             {dayEvents.length > 0 && (
                                                 <span className='Tasks-Calendar__weekDayCount'>{eventCountLabel(dayEvents.length)}</span>
                                             )}
+                                            {addEventButton(day)}
                                             {dayTasks.length > 0 && (
                                                 <span className='Tasks-Calendar__weekDayCount'>{countLabel(dayTasks.length)}</span>
                                             )}
+                                            {addTaskButton(day)}
                                         </span>
-                                        <IconButton
-                                            size='x-small'
-                                            icon={<Icon glyph={<PlusIcon/>}/>}
-                                            aria-label={intl.formatMessage({id: 'tasks.event.add_on_day', defaultMessage: 'Add event on {date}'}, {date: intl.formatDate(day, {month: 'long', day: 'numeric'})})}
-                                            onClick={() => onCreateEvent(day)}
-                                        />
                                     </header>
                                     {dayEvents.length > 0 && renderEventCards(dayEvents)}
                                     {dayTasks.length > 0 && renderCards(dayTasks)}
