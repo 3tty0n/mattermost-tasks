@@ -1,4 +1,4 @@
-// Package command implements the /task slash command. It is the fallback surface for mobile
+// Package command implements the /task and /event slash commands. It is the fallback surface for mobile
 // clients and keyboard users; it calls the same services as the REST API.
 package command
 
@@ -11,6 +11,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
 
+	"github.com/3tty0n/mattermost-tasks/server/events"
 	"github.com/3tty0n/mattermost-tasks/server/model"
 	"github.com/3tty0n/mattermost-tasks/server/tasks"
 )
@@ -26,10 +27,22 @@ type Command interface {
 type Handler struct {
 	client *pluginapi.Client
 	tasks  *tasks.Service
+	events *events.EventService
+
+	// defaultMinutes returns the plugin's default event length; nil means 60.
+	defaultMinutes func() int
+}
+
+// Option customizes a Handler.
+type Option func(*Handler)
+
+// WithDefaultEventMinutes sets the source of the default length for /event create.
+func WithDefaultEventMinutes(minutes func() int) Option {
+	return func(h *Handler) { h.defaultMinutes = minutes }
 }
 
 // NewCommandHandler registers the /task command and returns its handler.
-func NewCommandHandler(client *pluginapi.Client, tasksService *tasks.Service) (Command, error) {
+func NewCommandHandler(client *pluginapi.Client, tasksService *tasks.Service, eventsService *events.EventService, opts ...Option) (Command, error) {
 	autocomplete := mmodel.NewAutocompleteData(trigger, "[subcommand]", "Manage tasks")
 	autocomplete.AddStaticListArgument("Subcommand", false, []mmodel.AutocompleteListItem{
 		{Item: "list", HelpText: "Show tasks assigned to you"},
@@ -48,7 +61,14 @@ func NewCommandHandler(client *pluginapi.Client, tasksService *tasks.Service) (C
 	if err != nil {
 		return nil, fmt.Errorf("failed to register /%s command: %w", trigger, err)
 	}
-	return &Handler{client: client, tasks: tasksService}, nil
+	if err = registerEventCommand(&client.SlashCommand); err != nil {
+		return nil, err
+	}
+	h := &Handler{client: client, tasks: tasksService, events: eventsService}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h, nil
 }
 
 // Handle is called from the ExecuteCommand hook for every command registered above.
@@ -56,6 +76,9 @@ func (h *Handler) Handle(c *plugin.Context, args *mmodel.CommandArgs) (*mmodel.C
 	fields := strings.Fields(args.Command)
 	if len(fields) == 0 {
 		return ephemeral(helpText()), nil
+	}
+	if strings.TrimPrefix(fields[0], "/") == eventTrigger {
+		return h.handleEvent(args, fields[1:])
 	}
 	if strings.TrimPrefix(fields[0], "/") != trigger {
 		return ephemeral("Unknown command."), nil

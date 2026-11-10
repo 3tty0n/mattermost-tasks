@@ -1,7 +1,9 @@
 package command
 
 import (
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
@@ -10,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/3tty0n/mattermost-tasks/server/access"
+	"github.com/3tty0n/mattermost-tasks/server/events"
 	taskmodel "github.com/3tty0n/mattermost-tasks/server/model"
 	"github.com/3tty0n/mattermost-tasks/server/store/kvstore"
 	"github.com/3tty0n/mattermost-tasks/server/tasks"
@@ -19,7 +22,7 @@ import (
 type commandEnv struct {
 	handler *Handler
 	api     *testutil.API
-	store   kvstore.Store
+	store   *kvstore.KVStore
 }
 
 func newCommandEnv(t *testing.T) *commandEnv {
@@ -31,7 +34,7 @@ func newCommandEnv(t *testing.T) *commandEnv {
 	store := kvstore.NewStoreWithKV(kvstore.NewMemoryKV())
 	taskService := tasks.NewService(client, store, checker, nil, nil, tasks.WithClock(func() int64 { return 1000 }))
 	return &commandEnv{
-		handler: &Handler{client: client, tasks: taskService},
+		handler: &Handler{client: client, tasks: taskService, events: events.NewEventService(client, store, checker, nil)},
 		api:     api,
 		store:   store,
 	}
@@ -129,4 +132,72 @@ func TestCommandErrorsAreEphemeral(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, model.CommandResponseTypeEphemeral, response.ResponseType)
 	assert.Contains(t, response.Text, "permission")
+}
+
+func TestEventCommandCreateListShowDelete(t *testing.T) {
+	env := newCommandEnv(t)
+	userID := model.NewId()
+	teamID, channelID := model.NewId(), model.NewId()
+	allowChannel(env.api, userID, channelID, teamID)
+	env.api.On("HasPermissionTo", userID, model.PermissionManageSystem).Return(false).Maybe()
+	env.api.On("GetUser", userID).Return(&model.User{Id: userID, Timezone: map[string]string{"useAutomaticTimezone": "false", "manualTimezone": "Asia/Tokyo"}}, nil).Maybe()
+
+	tomorrow := time.Now().In(time.FixedZone("JST", 9*3600)).AddDate(0, 0, 1).Format("2006-01-02")
+	response, err := env.handler.Handle(nil, args(userID, teamID, channelID, "/event create "+tomorrow+" 15:30 45m Design review"))
+	require.NoError(t, err)
+	assert.Contains(t, response.Text, "Created event **Design review**")
+	assert.Contains(t, response.Text, "15:30–16:15")
+
+	response, err = env.handler.Handle(nil, args(userID, teamID, channelID, "/event create tomorrow Offsite day"))
+	require.NoError(t, err)
+	assert.Contains(t, response.Text, "(all day)")
+
+	refs, err := env.store.ListEventRefsByChannel(channelID)
+	require.NoError(t, err)
+	require.Len(t, refs, 2)
+	var timed *taskmodel.EventRef
+	for i := range refs {
+		if refs[i].Title == "Design review" {
+			timed = &refs[i]
+		}
+	}
+	require.NotNil(t, timed)
+	assert.Equal(t, "Asia/Tokyo", timed.TimeZone)
+	assert.Equal(t, 45*time.Minute.Milliseconds(), timed.EndAt-timed.StartAt)
+
+	response, err = env.handler.Handle(nil, args(userID, teamID, channelID, "/event list"))
+	require.NoError(t, err)
+	assert.Contains(t, response.Text, "Design review")
+	assert.Contains(t, response.Text, "Offsite day")
+
+	response, err = env.handler.Handle(nil, args(userID, teamID, channelID, "/event show "+timed.ID))
+	require.NoError(t, err)
+	assert.Contains(t, response.Text, "Design review")
+
+	response, err = env.handler.Handle(nil, args(userID, teamID, channelID, "/event delete "+timed.ID))
+	require.NoError(t, err)
+	assert.Contains(t, response.Text, "Deleted")
+	refs, err = env.store.ListEventRefsByChannel(channelID)
+	require.NoError(t, err)
+	assert.Len(t, refs, 1)
+}
+
+func TestEventCommandUsageAndHelp(t *testing.T) {
+	env := newCommandEnv(t)
+	userID := model.NewId()
+	env.api.On("GetUser", userID).Return(&model.User{Id: userID}, nil).Maybe()
+
+	response, err := env.handler.Handle(nil, args(userID, "", "", "/event"))
+	require.NoError(t, err)
+	assert.Contains(t, response.Text, "**Events**")
+
+	for _, text := range []string{"/event create", "/event create 2026-13-45 Oops", "/event create 2026-01-05 10:00", "/event delete"} {
+		response, err = env.handler.Handle(nil, args(userID, "", "", text))
+		require.NoError(t, err)
+		assert.True(t, strings.Contains(response.Text, "Usage"), text)
+	}
+
+	response, err = env.handler.Handle(nil, args(userID, "", "", "/event nonsense"))
+	require.NoError(t, err)
+	assert.Contains(t, response.Text, "Unknown subcommand")
 }

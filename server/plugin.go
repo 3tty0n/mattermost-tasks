@@ -67,7 +67,9 @@ func (p *Plugin) OnActivate() error {
 	p.tasks = tasks.NewService(p.client, p.store, p.access, publisher, p.notifier, tasks.WithReminders(scheduler))
 	p.events = events.NewEventService(p.client, p.store, p.access, publisher, events.WithEventReminders(scheduler))
 
-	commandClient, err := command.NewCommandHandler(p.client, p.tasks)
+	commandClient, err := command.NewCommandHandler(p.client, p.tasks, p.events, command.WithDefaultEventMinutes(func() int {
+		return p.getConfiguration().eventDurationMinutes()
+	}))
 	if err != nil {
 		p.notifier.Close()
 		return err

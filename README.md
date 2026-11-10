@@ -24,7 +24,7 @@ external service, no second database.
   pick any of *at the time, 5 / 10 / 15 minutes, 1 day, 1 week* before.
 - **Visibility:** *Only me*, *Team* or *Channel*; the server re-checks it on every request.
 - **Quick capture:** **Create task** on any post, quick add in each board column, assignee
-  autocomplete, assignment notifications, and `/task` slash commands.
+  autocomplete, assignment notifications, and `/task` / `/event` slash commands.
 
 <div align="center">
 
@@ -118,7 +118,15 @@ Date-only due dates and all-day events count from UTC midnight.
 /task show <id>
 /task create <title>
 /task done <id>
+
+/event list                 # your events, next 7 days
+/event show <id>
+/event create <today|tomorrow|YYYY-MM-DD> [HH:MM] [30m|1h] <title>
+/event delete <id>
 ```
+
+`/event create` uses your Mattermost time zone and the default event duration; without a time the event
+is all-day. It is created in the current channel with you as the participant.
 
 ## Permissions
 
