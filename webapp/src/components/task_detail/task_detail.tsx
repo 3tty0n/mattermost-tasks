@@ -505,6 +505,7 @@ export default function TaskDetail({taskId, revision, onClose, onChanged, onDele
                         value={task.dueAt}
                         hasTime={task.dueHasTime}
                         timeZone={dueTimeZone}
+                        hour12={hour12}
                         onChange={(value, hasTime) => {
                             saveField('due', {dueAt: value ?? 0, dueHasTime: hasTime, timezone: dueTimeZone});
                         }}

@@ -110,8 +110,10 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
 - **Events:** create an event with the **+** in a day header (week view) or in the selected day's
   agenda (month view). Start/end are manual text fields accepting `mm/dd/yyyy`, `dd/mm/yyyy` or
   `yyyy/mm/dd` (auto-detected; the locale decides ambiguous values) and a time in the Mattermost
-  clock format. Each event has a selectable/typeahead IANA **time zone**, an optional all-day
-  flag, visibility, assignees and an optional description. They are deliberately separate
+  clock format. The calendar button opens the same date picker as tasks and the clock button opens
+  a Compass clock face, so the fields can be filled visually or typed. Each event has a
+  selectable/typeahead IANA **time zone**, an optional all-day flag, visibility, assignees and an
+  optional description. They are deliberately separate
   from tasks: no checkbox or priority. Events appear as accent-colored cards with a calendar icon
   and time range plus assignee avatars; tasks keep their priority dots and assignee avatars, and
   month cells show tasks as dots and events as bars. Click an event to edit it; creators and
@@ -128,7 +130,8 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   is rendered Markdown). Click either field to edit; click outside to save, or press **Esc** to
   cancel. In the task facts, **Visible to**, **Team**, **Channel** and **Assignees** are inline
   editable by clicking the value. The due-date pill opens the same calendar picker as
-  **New task**, with a **Time zone** selector. Status is a dropdown in the detail header.
+  **New task**, with a **Time zone** selector. The optional time uses a manual field plus a Compass
+  clock-face picker. Status is a dropdown in the detail header.
 - **Due date:** click the due-date pill in the task detail (or the due property while creating),
   pick a day, then **OK**. Turn on **Set time** to include a time; leave it off for a date-only
   task. In Calendar view, **New task** starts with today as the due date.

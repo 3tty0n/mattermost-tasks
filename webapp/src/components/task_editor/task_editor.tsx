@@ -612,6 +612,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                                     value={dueValue}
                                     hasTime={dueHasTime}
                                     timeZone={timeZone}
+                                    hour12={hour12}
                                     onChange={(value, hasTime) => {
                                         setDue(value && hasTime ? epochToZonedDateTimeInput(value, timeZone) : toDateTimeInput(value, false));
                                         setDueHasTime(hasTime);

@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {useState} from 'react';
+import {useId, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {epochToZonedParts, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
 
@@ -12,12 +12,15 @@ import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
 import {Icon} from '@mattermost/compass-ui/components/icon';
 import {IconButton} from '@mattermost/compass-ui/components/icon-button';
 
+import TimeField from 'components/time_field/time_field';
+
 import './due_date_picker.css';
 
 type Props = {
     value?: number;
     hasTime?: boolean;
     timeZone?: string;
+    hour12?: boolean;
     onChange: (value: number | undefined, hasTime: boolean) => void;
 };
 
@@ -29,8 +32,9 @@ function sameDay(a: Date, b: Date): boolean {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-export default function DueDatePicker({value, hasTime = false, timeZone, onChange}: Props) {
+export default function DueDatePicker({value, hasTime = false, timeZone, hour12 = false, onChange}: Props) {
     const intl = useIntl();
+    const timeFieldID = useId();
     const zone = timeZone || machineTimeZone();
     const initial = value ? new Date(value) : new Date();
     const zoned = value && hasTime ? epochToZonedParts(value, zone) : undefined;
@@ -154,24 +158,13 @@ export default function DueDatePicker({value, hasTime = false, timeZone, onChang
                     />
                 </Checkbox>
                 {timeEnabled && (
-                    <>
-                        <label
-                            className='Tasks-DueDatePicker__timeLabel'
-                            htmlFor='tasks-due-time'
-                        >
-                            <FormattedMessage
-                                id='tasks.due.time'
-                                defaultMessage='Time'
-                            />
-                        </label>
-                        <input
-                            id='tasks-due-time'
-                            className='Tasks-DueDatePicker__timeInput'
-                            type='time'
-                            value={time}
-                            onChange={(event) => setTime(event.target.value)}
-                        />
-                    </>
+                    <TimeField
+                        id={timeFieldID}
+                        label={intl.formatMessage({id: 'tasks.due.time', defaultMessage: 'Time'})}
+                        value={time}
+                        hour12={hour12}
+                        onChange={setTime}
+                    />
                 )}
             </div>
 

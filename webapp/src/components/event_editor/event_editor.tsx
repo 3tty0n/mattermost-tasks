@@ -21,6 +21,8 @@ import {selectCurrentTeam, selectCurrentUserId, selectIsSystemAdmin, selectMyCha
 
 import AssigneePicker from 'components/assignee_picker/assignee_picker';
 import Dialog from 'components/dialog/dialog';
+import EventDatePicker from 'components/event_date_picker/event_date_picker';
+import TimeField from 'components/time_field/time_field';
 import TimeZoneInput from 'components/timezone_input/timezone_input';
 
 import type {Event, TaskVisibility} from 'types';
@@ -207,6 +209,31 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
         setStartTime(formatTimeInput(startParts.hour, startParts.minute, Boolean(hour12)));
         setEndTime(formatTimeInput(endClockParts.hour, endClockParts.minute, Boolean(hour12)));
     };
+
+    const setFromPickedEpoch = (which: 'start'|'end', value: number) => {
+        if (allDay) {
+            const picked = new Date(value);
+            const text = formatDateInput({year: picked.getUTCFullYear(), month: picked.getUTCMonth() + 1, day: picked.getUTCDate()});
+            if (which === 'start') {
+                setStartDate(text);
+            } else {
+                setEndDate(text);
+            }
+            return;
+        }
+        const parts = epochToZonedParts(value, timeZone);
+        const dateText = formatDateInput({year: parts.year, month: parts.month, day: parts.day});
+        const clockText = formatTimeInput(parts.hour, parts.minute, Boolean(hour12));
+        if (which === 'start') {
+            setStartDate(dateText);
+            setStartTime(clockText);
+        } else {
+            setEndDate(dateText);
+            setEndTime(clockText);
+        }
+    };
+
+    const currentInstants = currentWallTimes();
 
     const toggleAllDay = (next: boolean) => {
         if (next) {
@@ -492,16 +519,31 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                 />
                             </span>
                             {allDay ? (
-                                <input
-                                    type='text'
-                                    className='Tasks-EventEditor__input'
-                                    value={startDate}
-                                    placeholder='YYYY/MM/DD'
-                                    autoComplete='off'
-                                    aria-label={intl.formatMessage({id: 'tasks.event.start_date', defaultMessage: 'Start date'})}
-                                    disabled={!canModify}
-                                    onChange={(changeEvent) => setStartDate(changeEvent.target.value)}
-                                />
+                                <div className='Tasks-EventEditor__dateTimeInputs'>
+                                    <input
+                                        type='text'
+                                        className='Tasks-EventEditor__input'
+                                        value={startDate}
+                                        placeholder='YYYY/MM/DD'
+                                        autoComplete='off'
+                                        aria-label={intl.formatMessage({id: 'tasks.event.start_date', defaultMessage: 'Start date'})}
+                                        disabled={!canModify}
+                                        onChange={(changeEvent) => setStartDate(changeEvent.target.value)}
+                                    />
+                                    <EventDatePicker
+                                        value={currentInstants?.startAt ?? undefined}
+                                        hasTime={false}
+                                        timeZone={timeZone}
+                                        hour12={Boolean(hour12)}
+                                        label={intl.formatMessage({id: 'tasks.event.pick_start', defaultMessage: 'Pick start date and time'})}
+                                        disabled={!canModify}
+                                        onChange={(next) => {
+                                            if (next !== undefined) {
+                                                setFromPickedEpoch('start', next);
+                                            }
+                                        }}
+                                    />
+                                </div>
                             ) : (
                                 <div className='Tasks-EventEditor__dateTimeInputs'>
                                     <input
@@ -514,15 +556,25 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                         disabled={!canModify}
                                         onChange={(changeEvent) => setStartDate(changeEvent.target.value)}
                                     />
-                                    <input
-                                        type='text'
-                                        className='Tasks-EventEditor__input Tasks-EventEditor__timeInput'
+                                    <TimeField
                                         value={startTime}
-                                        placeholder={hour12 ? '9:00 AM' : '09:00'}
-                                        autoComplete='off'
-                                        aria-label={intl.formatMessage({id: 'tasks.event.start_time', defaultMessage: 'Start time'})}
+                                        hour12={Boolean(hour12)}
+                                        inputLabel={intl.formatMessage({id: 'tasks.event.start_time', defaultMessage: 'Start time'})}
                                         disabled={!canModify}
-                                        onChange={(changeEvent) => setStartTime(changeEvent.target.value)}
+                                        onChange={setStartTime}
+                                    />
+                                    <EventDatePicker
+                                        value={currentInstants?.startAt ?? undefined}
+                                        hasTime={true}
+                                        timeZone={timeZone}
+                                        hour12={Boolean(hour12)}
+                                        label={intl.formatMessage({id: 'tasks.event.pick_start', defaultMessage: 'Pick start date and time'})}
+                                        disabled={!canModify}
+                                        onChange={(next) => {
+                                            if (next !== undefined) {
+                                                setFromPickedEpoch('start', next);
+                                            }
+                                        }}
                                     />
                                 </div>
                             )}
@@ -535,16 +587,32 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                 />
                             </span>
                             {allDay ? (
-                                <input
-                                    type='text'
-                                    className='Tasks-EventEditor__input'
-                                    value={endDate}
-                                    placeholder='YYYY/MM/DD'
-                                    autoComplete='off'
-                                    aria-label={intl.formatMessage({id: 'tasks.event.end_date', defaultMessage: 'End date'})}
-                                    disabled={!canModify}
-                                    onChange={(changeEvent) => setEndDate(changeEvent.target.value)}
-                                />
+                                <div className='Tasks-EventEditor__dateTimeInputs'>
+                                    <input
+                                        type='text'
+                                        className='Tasks-EventEditor__input'
+                                        value={endDate}
+                                        placeholder='YYYY/MM/DD'
+                                        autoComplete='off'
+                                        aria-label={intl.formatMessage({id: 'tasks.event.end_date', defaultMessage: 'End date'})}
+                                        disabled={!canModify}
+                                        onChange={(changeEvent) => setEndDate(changeEvent.target.value)}
+                                    />
+                                    <EventDatePicker
+                                        value={currentInstants?.endAt ?? undefined}
+                                        hasTime={false}
+                                        timeZone={timeZone}
+                                        hour12={Boolean(hour12)}
+                                        label={intl.formatMessage({id: 'tasks.event.pick_end', defaultMessage: 'Pick end date and time'})}
+                                        align='right'
+                                        disabled={!canModify}
+                                        onChange={(next) => {
+                                            if (next !== undefined) {
+                                                setFromPickedEpoch('end', next);
+                                            }
+                                        }}
+                                    />
+                                </div>
                             ) : (
                                 <div className='Tasks-EventEditor__dateTimeInputs'>
                                     <input
@@ -557,15 +625,26 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                         disabled={!canModify}
                                         onChange={(changeEvent) => setEndDate(changeEvent.target.value)}
                                     />
-                                    <input
-                                        type='text'
-                                        className='Tasks-EventEditor__input Tasks-EventEditor__timeInput'
+                                    <TimeField
                                         value={endTime}
-                                        placeholder={hour12 ? '10:00 AM' : '10:00'}
-                                        autoComplete='off'
-                                        aria-label={intl.formatMessage({id: 'tasks.event.end_time', defaultMessage: 'End time'})}
+                                        hour12={Boolean(hour12)}
+                                        inputLabel={intl.formatMessage({id: 'tasks.event.end_time', defaultMessage: 'End time'})}
                                         disabled={!canModify}
-                                        onChange={(changeEvent) => setEndTime(changeEvent.target.value)}
+                                        onChange={setEndTime}
+                                    />
+                                    <EventDatePicker
+                                        value={currentInstants?.endAt ?? undefined}
+                                        hasTime={true}
+                                        timeZone={timeZone}
+                                        hour12={Boolean(hour12)}
+                                        label={intl.formatMessage({id: 'tasks.event.pick_end', defaultMessage: 'Pick end date and time'})}
+                                        align='right'
+                                        disabled={!canModify}
+                                        onChange={(next) => {
+                                            if (next !== undefined) {
+                                                setFromPickedEpoch('end', next);
+                                            }
+                                        }}
                                     />
                                 </div>
                             )}

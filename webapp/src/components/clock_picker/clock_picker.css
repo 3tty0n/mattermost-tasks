@@ -1,0 +1,145 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-ClockPicker {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-s);
+    width: 244px;
+    padding: var(--spacing-s);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-m);
+    background: var(--center-channel-bg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.Tasks-ClockPicker__digital {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xxs);
+}
+
+.Tasks-ClockPicker__timeInput {
+    width: 48px;
+    height: 32px;
+    padding: 0 var(--spacing-xxs);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-s);
+    background: var(--center-channel-bg);
+    color: var(--center-channel-color);
+    font-family: inherit;
+    font-size: var(--font-size-200);
+    text-align: center;
+}
+
+.Tasks-ClockPicker__timeInput:focus {
+    border-color: var(--button-bg);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(var(--button-bg-rgb), 0.16);
+}
+
+.Tasks-ClockPicker__meridiem {
+    display: flex;
+    margin-left: auto;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-s);
+    overflow: hidden;
+}
+
+.Tasks-ClockPicker__meridiemButton,
+.Tasks-ClockPicker__modeButton {
+    padding: var(--spacing-xxs) var(--spacing-xs);
+    border: 0;
+    background: transparent;
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--font-size-50);
+}
+
+.Tasks-ClockPicker__meridiemButton--selected,
+.Tasks-ClockPicker__modeButton--selected {
+    background: var(--button-bg);
+    color: var(--button-color);
+}
+
+.Tasks-ClockPicker__mode {
+    display: flex;
+    align-self: center;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-s);
+    overflow: hidden;
+}
+
+.Tasks-ClockPicker__face {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    margin: 0 auto;
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: 50%;
+    background: rgba(var(--center-channel-color-rgb), 0.02);
+}
+
+.Tasks-ClockPicker__center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--button-bg);
+    transform: translate(-50%, -50%);
+}
+
+.Tasks-ClockPicker__faceButton {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--center-channel-color);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--font-size-100);
+    transform: translate(-50%, -50%);
+}
+
+.Tasks-ClockPicker__faceButton:hover {
+    background: rgba(var(--button-bg-rgb), 0.08);
+}
+
+.Tasks-ClockPicker__faceButton--selected {
+    background: var(--button-bg);
+    color: var(--button-color);
+}
+
+.Tasks-ClockPicker__position--0 { top: 8%; left: 50%; }
+.Tasks-ClockPicker__position--1 { top: 13.4%; left: 71%; }
+.Tasks-ClockPicker__position--2 { top: 29%; left: 87%; }
+.Tasks-ClockPicker__position--3 { top: 50%; left: 92%; }
+.Tasks-ClockPicker__position--4 { top: 71%; left: 87%; }
+.Tasks-ClockPicker__position--5 { top: 86.6%; left: 71%; }
+.Tasks-ClockPicker__position--6 { top: 92%; left: 50%; }
+.Tasks-ClockPicker__position--7 { top: 86.6%; left: 29%; }
+.Tasks-ClockPicker__position--8 { top: 71%; left: 13%; }
+.Tasks-ClockPicker__position--9 { top: 50%; left: 8%; }
+.Tasks-ClockPicker__position--10 { top: 29%; left: 13%; }
+.Tasks-ClockPicker__position--11 { top: 13.4%; left: 29%; }
+
+.Tasks-ClockPicker__preview {
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: var(--font-size-200);
+    font-weight: var(--font-weight-semibold);
+    text-align: center;
+}
+
+.Tasks-ClockPicker__actions {
+    display: flex;
+    justify-content: flex-end;
+}

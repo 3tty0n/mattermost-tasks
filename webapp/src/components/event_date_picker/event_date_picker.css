@@ -1,0 +1,22 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-EventDatePicker {
+    position: relative;
+    align-self: flex-end;
+    flex: none;
+}
+
+.Tasks-EventDatePicker__popover {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + var(--spacing-xxs));
+}
+
+.Tasks-EventDatePicker__popover--left {
+    left: 0;
+}
+
+.Tasks-EventDatePicker__popover--right {
+    right: 0;
+}

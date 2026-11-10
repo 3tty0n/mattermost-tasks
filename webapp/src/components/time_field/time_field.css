@@ -1,0 +1,56 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-TimeField {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xxxs);
+}
+
+.Tasks-TimeField__label {
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: var(--font-size-50);
+    line-height: var(--line-height-50);
+}
+
+.Tasks-TimeField__control {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xxs);
+}
+
+.Tasks-TimeField__input {
+    width: 104px;
+    height: 32px;
+    padding: 0 var(--spacing-xs);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-s);
+    background: var(--center-channel-bg);
+    color: var(--center-channel-color);
+    font-family: inherit;
+    font-size: var(--font-size-100);
+}
+
+.Tasks-TimeField__input:focus {
+    border-color: var(--button-bg);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(var(--button-bg-rgb), 0.16);
+}
+
+.Tasks-TimeField__clockButton {
+    flex: none;
+}
+
+.Tasks-TimeField__popover {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + var(--spacing-xxs));
+    right: 0;
+}
+
+.Tasks-TimeField__hint {
+    color: rgba(var(--center-channel-color-rgb), 0.56);
+    font-size: var(--font-size-50);
+    line-height: var(--line-height-50);
+}
