@@ -7,7 +7,9 @@ external service, no second database.
 
 [Features](#features) · [Install](#install) · [Usage](#usage) · [Permissions](#permissions) · [Development](#development)
 
-<img src="docs/images/tasks-board.png" alt="Tasks board in the right-hand sidebar" width="720">
+<p align="center">
+  <img src="docs/images/tasks-board.png" alt="Tasks board in the right-hand sidebar" width="720">
+</p>
 
 ## Features
 
@@ -24,9 +26,13 @@ external service, no second database.
 - **Quick capture:** **Create task** on any post, quick add in each board column, assignee
   autocomplete, assignment notifications, and `/task` slash commands.
 
+<div align="center">
+
 | Calendar (month) | List |
 | --- | --- |
 | <img src="docs/images/calendar.png" alt="Calendar with events and due tasks" width="320"> | <img src="docs/images/tasks-list.png" alt="Task list with filters and status pills" width="320"> |
+
+</div>
 
 ## Install
 
@@ -64,7 +70,9 @@ Click the check-circle icon in the channel header to open the sidebar.
   items keep an IANA time zone, and everyone sees the resulting instant in their own zone.
 - **Repeat** and **Reminders** appear once a due date is set.
 
-<img src="docs/images/task-editor.png" alt="New task with the due-date calendar" width="320">
+<p align="center">
+  <img src="docs/images/task-editor.png" alt="New task with the due-date calendar" width="320">
+</p>
 
 ### Calendar and events
 
@@ -82,9 +90,13 @@ Click the check-circle icon in the channel header to open the sidebar.
   delete it there). The view can copy the event to **Google Calendar** or **Outlook** (a prefilled
   new-event page opens) or download an **.ics** file for any calendar app.
 
-<img src="docs/images/calendar-week.png" alt="Week view on a wide sidebar" width="720">
+<p align="center">
+  <img src="docs/images/calendar-week.png" alt="Week view on a wide sidebar" width="720">
+</p>
 
-<img src="docs/images/event-editor.png" alt="Event editor with location and reminders" width="320">
+<p align="center">
+  <img src="docs/images/event-editor.png" alt="Event editor with location and reminders" width="320">
+</p>
 
 ### Reminders
 
@@ -92,7 +104,9 @@ Set **Reminders** on a task (with a due date) or an event. At each chosen offset
 a DM to the assignees, or to the creator if nobody is assigned; Mattermost then notifies per each
 user's own settings. Repeating events remind for every occurrence.
 
-<img src="docs/images/reminder-dm.png" alt="Reminder from the Tasks bot" width="520">
+<p align="center">
+  <img src="docs/images/reminder-dm.png" alt="Reminder from the Tasks bot" width="520">
+</p>
 
 Notes: reminders are sent once, checked every minute, and catch up at most 24 hours after downtime.
 Date-only due dates and all-day events count from UTC midnight.
