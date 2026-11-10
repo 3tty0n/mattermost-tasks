@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {fetchAssignees, fetchEvents, fetchTasks, getProfiles, type Profile} from 'client';
+import {fetchAssignees, fetchConfig, fetchEvents, fetchTasks, getProfiles, type Profile} from 'client';
 import {useEffect, useRef, useState} from 'react';
 import {useSelector} from 'react-redux';
 
@@ -14,6 +14,27 @@ type AsyncState<T> = {
     loading: boolean;
     error?: string;
 };
+
+export const FALLBACK_EVENT_DURATION_MINUTES = 60;
+
+// useDefaultEventDuration returns the admin-configured default event length in minutes. It starts at
+// the one-hour fallback, which is also what stays if the settings request fails.
+export function useDefaultEventDuration(): number {
+    const [minutes, setMinutes] = useState(FALLBACK_EVENT_DURATION_MINUTES);
+    useEffect(() => {
+        const controller = new AbortController();
+        Promise.resolve().
+            then(() => fetchConfig(controller.signal)).
+            then((config) => {
+                if (config.defaultEventDurationMinutes > 0) {
+                    setMinutes(config.defaultEventDurationMinutes);
+                }
+            }).
+            catch(() => undefined);
+        return () => controller.abort();
+    }, []);
+    return minutes;
+}
 
 function errorMessage(error: unknown): string {
     if (error instanceof Error) {

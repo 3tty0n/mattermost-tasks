@@ -4,7 +4,7 @@
 import {DAY_IN_MS} from 'calendar_utils';
 import {createEvent, deleteEvent, getEvent, updateEvent} from 'client';
 import {formatDateInput, formatTimeInput, parseDateInput, parseTimeInput, wallDateTime} from 'datetime_input_utils';
-import {useHour12} from 'hooks';
+import {FALLBACK_EVENT_DURATION_MINUTES, useHour12} from 'hooks';
 import {type ReactNode, useEffect, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
@@ -58,15 +58,19 @@ type Props = {
     onClose: () => void;
     onSaved: (event: Event) => void;
     onDeleted?: () => void;
+
+    // Length given to a new event and to the end time set when a start time is picked.
+    defaultDurationMinutes?: number;
 };
 
+// A new event starts now (to the minute) unless the caller picked a time.
 function defaultStartAt(): number {
     const date = new Date();
-    date.setHours(9, 0, 0, 0);
+    date.setSeconds(0, 0);
     return date.getTime();
 }
 
-export default function EventEditor({eventId, defaults, onClose, onSaved, onDeleted}: Props) {
+export default function EventEditor({eventId, defaults, onClose, onSaved, onDeleted, defaultDurationMinutes = FALLBACK_EVENT_DURATION_MINUTES}: Props) {
     const intl = useIntl();
     const currentTeam = useSelector(selectCurrentTeam);
     const myTeams = useSelector(selectMyTeams);
@@ -76,7 +80,8 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     const hour12 = useHour12();
 
     const initialStart = defaults?.startAt ?? defaultStartAt();
-    const initialEnd = initialStart + (60 * 60 * 1000);
+    const durationMs = defaultDurationMinutes * 60 * 1000;
+    const initialEnd = initialStart + durationMs;
     const initialTimeZone = defaults?.timeZone ?? machineTimeZone();
     const [timeZone, setTimeZone] = useState(initialTimeZone);
     const [loading, setLoading] = useState(Boolean(eventId));
@@ -362,6 +367,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
             const text = formatDateInput({year: picked.getUTCFullYear(), month: picked.getUTCMonth() + 1, day: picked.getUTCDate()});
             if (which === 'start') {
                 setStartDate(text);
+                setEndDate(text); // an all-day event defaults to that single day
             } else {
                 setEndDate(text);
             }
@@ -374,8 +380,12 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
         const dateText = formatDateInput({year: parts.year, month: parts.month, day: parts.day});
         const clockText = formatTimeInput(parts.hour, parts.minute, Boolean(hour12));
         if (which === 'start') {
+            // Picking a start moves the end to the default duration after it.
+            const endParts = epochToZonedParts(value + durationMs, zone);
             setStartDate(dateText);
             setStartTime(clockText);
+            setEndDate(formatDateInput({year: endParts.year, month: endParts.month, day: endParts.day}));
+            setEndTime(formatTimeInput(endParts.hour, endParts.minute, Boolean(hour12)));
         } else {
             setEndDate(dateText);
             setEndTime(clockText);

@@ -75,6 +75,9 @@ func (p *Plugin) OnActivate() error {
 	p.commandClient = commandClient
 
 	p.httpHandler = api.NewHandler(p.API, p.client, p.access, p.tasks, p.events)
+	p.httpHandler.SetClientConfig(func() api.ClientConfig {
+		return api.ClientConfig{DefaultEventDurationMinutes: p.getConfiguration().eventDurationMinutes()}
+	})
 
 	job, err := cluster.Schedule(p.API, "tasks-reminders", cluster.MakeWaitForInterval(time.Minute), scheduler.RunOnce)
 	if err != nil {

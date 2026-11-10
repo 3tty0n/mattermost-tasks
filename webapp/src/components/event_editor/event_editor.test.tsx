@@ -141,6 +141,45 @@ describe('EventEditor', () => {
         expect(new Date(picked.startAt).toISOString().slice(0, 10)).toBe('2026-01-20');
     });
 
+    it('uses the configured duration for the initial end and when a start is picked', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <EventEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC'}}
+                defaultDurationMinutes={90}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Long meeting');
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledTimes(1));
+        expect(createEventMock.mock.calls[0][0].endAt).toBe(start + (90 * 60 * 1000));
+    });
+
+    it('moves the end to the configured duration after a picked start', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <EventEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC'}}
+                defaultDurationMinutes={90}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Long meeting');
+        await user.click(screen.getByRole('button', {name: 'Pick start date and time'}));
+        await user.click(screen.getByRole('button', {name: /January 20, 2026/}));
+        await user.click(screen.getByRole('button', {name: 'OK'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledTimes(1));
+        const picked = createEventMock.mock.calls[0][0];
+        expect(new Date(picked.startAt).toISOString().slice(0, 10)).toBe('2026-01-20');
+        expect(picked.endAt - picked.startAt).toBe(90 * 60 * 1000);
+    });
+
     it('creates a daily recurring event until a date', async () => {
         const user = userEvent.setup();
         renderWithStore(

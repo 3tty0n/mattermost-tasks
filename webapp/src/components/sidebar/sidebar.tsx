@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {createTask, updateTask} from 'client';
-import {useAssignees, useProfiles, useTasks} from 'hooks';
+import {useAssignees, useDefaultEventDuration, useProfiles, useTasks} from 'hooks';
 import {type FormEvent, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useDispatch, useSelector} from 'react-redux';
@@ -98,6 +98,7 @@ export default function TasksSidebar() {
     const [actionError, setActionError] = useState<string>();
     const [taskEditor, setTaskEditor] = useState<TaskEditorState>();
     const [eventEditor, setEventEditor] = useState<EventEditorState>();
+    const eventDurationMinutes = useDefaultEventDuration();
     const [previewTaskID, setPreviewTaskID] = useState<string>();
     const [quickAddStatus, setQuickAddStatus] = useState<TaskStatus>();
     const [quickAddTitle, setQuickAddTitle] = useState('');
@@ -300,7 +301,9 @@ export default function TasksSidebar() {
     };
 
     const openCreateEvent = useCallback((day: Date) => {
-        const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 9, 0, 0, 0);
+        // The chosen day at the current time of day, so "today" starts right now.
+        const now = new Date();
+        const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), now.getHours(), now.getMinutes(), 0, 0);
         let visibility: TaskVisibility = 'team';
         if (scope === 'my' || isDM) {
             visibility = 'private';
@@ -834,6 +837,7 @@ export default function TasksSidebar() {
             {eventEditor && (
                 <EventEditor
                     eventId={eventEditor.eventId}
+                    defaultDurationMinutes={eventDurationMinutes}
                     defaults={eventEditor.defaults}
                     onClose={() => setEventEditor(undefined)}
                     onSaved={() => {

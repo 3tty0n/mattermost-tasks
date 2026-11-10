@@ -32,6 +32,7 @@ type Handler struct {
 	access    *access.Checker
 	tasks     *tasks.Service
 	events    *events.EventService
+	config    func() ClientConfig
 	router    *mux.Router
 }
 
@@ -72,6 +73,7 @@ func (h *Handler) initRouter() *mux.Router {
 	apiRouter.HandleFunc("/events/{event_id}", h.handleUpdateEvent).Methods(http.MethodPatch, http.MethodPost)
 	apiRouter.HandleFunc("/events/{event_id}", h.handleDeleteEvent).Methods(http.MethodDelete)
 
+	apiRouter.HandleFunc("/config", h.handleGetConfig).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/assignees", h.handleListAssignees).Methods(http.MethodGet)
 
 	return router

@@ -105,6 +105,7 @@ func TestAllRoutesRejectUnauthenticatedRequests(t *testing.T) {
 		{http.MethodPatch, "/api/v1/events/" + id},
 		{http.MethodDelete, "/api/v1/events/" + id},
 		{http.MethodGet, "/api/v1/assignees"},
+		{http.MethodGet, "/api/v1/config"},
 	}
 	for _, route := range routes {
 		t.Run(route.method+" "+route.path, func(t *testing.T) {
@@ -258,6 +259,18 @@ func TestAssigneesAPI(t *testing.T) {
 
 	w = env.serve(http.MethodGet, "/api/v1/assignees", "", actorID)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestConfigAPI(t *testing.T) {
+	env := newAPITestEnv(t)
+	actorID := model.NewId()
+
+	got := decodeResponse[ClientConfig](t, env.serve(http.MethodGet, "/api/v1/config", "", actorID))
+	assert.Equal(t, 60, got.DefaultEventDurationMinutes)
+
+	env.handler.SetClientConfig(func() ClientConfig { return ClientConfig{DefaultEventDurationMinutes: 30} })
+	got = decodeResponse[ClientConfig](t, env.serve(http.MethodGet, "/api/v1/config", "", actorID))
+	assert.Equal(t, 30, got.DefaultEventDurationMinutes)
 }
 
 func TestAPISetsNoStoreAndContentType(t *testing.T) {

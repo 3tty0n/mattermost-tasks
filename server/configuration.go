@@ -21,6 +21,24 @@ type configuration struct {
 	// EnableAssignmentNotifications controls the bot's direct-message notifications when a user
 	// is newly assigned to a task. It is a bool setting in plugin.json.
 	EnableAssignmentNotifications bool
+
+	// DefaultEventDurationMinutes is the length given to a new event. See eventDurationMinutes.
+	DefaultEventDurationMinutes int
+}
+
+const (
+	defaultEventDurationMinutes = 60
+	maxEventDurationMinutes     = 24 * 60
+	minEventDurationMinutes     = 5
+)
+
+// eventDurationMinutes returns the configured default event length, falling back to an hour for
+// an unset or out-of-range value.
+func (c *configuration) eventDurationMinutes() int {
+	if c.DefaultEventDurationMinutes < minEventDurationMinutes || c.DefaultEventDurationMinutes > maxEventDurationMinutes {
+		return defaultEventDurationMinutes
+	}
+	return c.DefaultEventDurationMinutes
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
@@ -38,7 +56,7 @@ func (p *Plugin) getConfiguration() *configuration {
 	defer p.configurationLock.RUnlock()
 
 	if p.configuration == nil {
-		return &configuration{EnableAssignmentNotifications: true}
+		return &configuration{EnableAssignmentNotifications: true, DefaultEventDurationMinutes: defaultEventDurationMinutes}
 	}
 
 	return p.configuration

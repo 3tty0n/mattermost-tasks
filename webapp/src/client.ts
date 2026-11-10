@@ -165,6 +165,14 @@ export async function fetchEvents(query: EventQuery, signal?: AbortSignal): Prom
     return doFetch<ListResult<EventSummary>>(withQuery('/events', params), {}, signal);
 }
 
+export type ClientConfig = {
+    defaultEventDurationMinutes: number;
+};
+
+export async function fetchConfig(signal?: AbortSignal): Promise<ClientConfig> {
+    return doFetch<ClientConfig>('/config', {}, signal);
+}
+
 export async function getEvent(id: string, signal?: AbortSignal): Promise<Event> {
     return doFetch<Event>(`/events/${encodeURIComponent(id)}`, {}, signal);
 }
