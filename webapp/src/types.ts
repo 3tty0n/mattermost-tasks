@@ -30,6 +30,7 @@ export type TaskSummary = {
     dueHasTime?: boolean;
     timezone?: string;
     recurrence?: Recurrence;
+    reminders?: number[];
     position?: number;
     createdAt: number;
     updatedAt: number;
@@ -65,6 +66,7 @@ export type Event = {
     allDay?: boolean;
     timezone?: string;
     recurrence?: EventRecurrence;
+    reminders?: number[];
     createdAt: number;
     updatedAt: number;
     version: number;
@@ -94,6 +96,7 @@ export type CreateEventInput = {
     allDay?: boolean;
     timezone?: string;
     recurrence?: EventRecurrence;
+    reminders?: number[];
 };
 
 export type UpdateEventInput = {
@@ -108,6 +111,7 @@ export type UpdateEventInput = {
     allDay?: boolean;
     timezone?: string;
     recurrence?: EventRecurrence;
+    reminders?: number[];
 };
 
 export type ListResult<T> = {
@@ -161,6 +165,7 @@ export type CreateTaskInput = {
     dueHasTime?: boolean;
     timezone?: string;
     recurrence?: Recurrence;
+    reminders?: number[];
     position?: number;
     sourcePostId?: string;
 };
@@ -178,6 +183,7 @@ export type UpdateTaskInput = {
     dueHasTime?: boolean;
     timezone?: string;
     recurrence?: Recurrence;
+    reminders?: number[];
     position?: number;
     sourcePostId?: string;
 };

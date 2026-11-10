@@ -671,3 +671,32 @@ func TestListIncludesRecurringTasksInRange(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, result.Total)
 }
+
+type fakeReminders struct{ scheduled []*taskmodel.Task }
+
+func (f *fakeReminders) ScheduleTask(task *taskmodel.Task) { f.scheduled = append(f.scheduled, task) }
+
+func TestTaskRemindersAreNormalizedSchedulingAndCleared(t *testing.T) {
+	env := newTestEnv(t)
+	fake := &fakeReminders{}
+	WithReminders(fake)(env.service)
+	teamID, channelID, actorID := model.NewId(), model.NewId(), model.NewId()
+	allowChannel(env.api, actorID, channelID, teamID)
+	denyAdmin(env.api, actorID)
+
+	_, err := env.service.Create(nil, "/tasks", actorID, taskmodel.CreateTaskInput{ChannelID: channelID, Title: "x", DueAt: 5000, Reminders: []int{7}})
+	assert.ErrorIs(t, err, taskmodel.ErrInvalid)
+
+	task, err := env.service.Create(nil, "/tasks", actorID, taskmodel.CreateTaskInput{
+		ChannelID: channelID, Title: "x", DueAt: 5000, DueHasTime: true, Reminders: []int{15, 0, 15},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []int{0, 15}, task.Reminders)
+	require.Len(t, fake.scheduled, 1)
+
+	none := []int{}
+	updated, err := env.service.Update(nil, "/tasks", actorID, task.ID, taskmodel.TaskPatch{Reminders: &none})
+	require.NoError(t, err)
+	assert.Empty(t, updated.Reminders)
+	assert.Len(t, fake.scheduled, 2)
+}

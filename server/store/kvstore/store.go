@@ -416,6 +416,7 @@ func taskRefFieldsEqual(a, b *taskmodel.TaskRef) bool {
 		a.DueHasTime == b.DueHasTime &&
 		a.TimeZone == b.TimeZone &&
 		recurrenceEqual(a.Recurrence, b.Recurrence) &&
+		slices.Equal(a.Reminders, b.Reminders) &&
 		a.Position == b.Position &&
 		a.CreatedAt == b.CreatedAt &&
 		slices.Equal(a.AssigneeIDs, b.AssigneeIDs)

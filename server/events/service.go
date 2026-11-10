@@ -19,6 +19,11 @@ type EventPublisher interface {
 	EventChanged(action string, event *model.Event)
 }
 
+// EventReminders schedules start-time reminders for a saved event.
+type EventReminders interface {
+	ScheduleEvent(event *model.Event)
+}
+
 // EventService implements event use cases. Events share visibility and access rules with tasks
 // but have no completion state, priority or assignees.
 type EventService struct {
@@ -26,6 +31,7 @@ type EventService struct {
 	store     kvstore.EventStore
 	access    *access.Checker
 	publisher EventPublisher
+	reminders EventReminders
 	now       func() int64
 }
 
@@ -36,6 +42,13 @@ type EventOption func(*EventService)
 func WithEventClock(now func() int64) EventOption {
 	return func(s *EventService) {
 		s.now = now
+	}
+}
+
+// WithEventReminders sets the reminder scheduler notified after every create and update.
+func WithEventReminders(r EventReminders) EventOption {
+	return func(s *EventService) {
+		s.reminders = r
 	}
 }
 
@@ -106,6 +119,10 @@ func (s *EventService) Create(c *plugin.Context, path, actorID string, input mod
 	if err != nil {
 		return nil, err
 	}
+	reminders, err := model.NormalizeReminders(input.Reminders)
+	if err != nil {
+		return nil, err
+	}
 
 	teamID, channelID := input.TeamID, input.ChannelID
 	if visibility != model.TaskVisibilityChannel {
@@ -146,6 +163,7 @@ func (s *EventService) Create(c *plugin.Context, path, actorID string, input mod
 		AllDay:      input.AllDay,
 		TimeZone:    timeZone,
 		Recurrence:  recurrence,
+		Reminders:   reminders,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 		Version:     1,
@@ -158,6 +176,7 @@ func (s *EventService) Create(c *plugin.Context, path, actorID string, input mod
 		return nil, err
 	}
 	rec.Success()
+	s.remind(event)
 	s.publish("created", event)
 	return event, nil
 }
@@ -384,6 +403,13 @@ func (s *EventService) Update(c *plugin.Context, path, actorID, eventID string, 
 		current.EndAt = endAt
 		current.AllDay = allDay
 		current.TimeZone = timeZone
+		if patch.Reminders != nil {
+			reminders, remindersErr := model.NormalizeReminders(*patch.Reminders)
+			if remindersErr != nil {
+				return nil, remindersErr
+			}
+			current.Reminders = reminders
+		}
 		if patch.Recurrence != nil || patch.StartAt != nil || patch.TimeZone != nil {
 			recurrenceInput := current.Recurrence
 			if patch.Recurrence != nil {
@@ -407,6 +433,7 @@ func (s *EventService) Update(c *plugin.Context, path, actorID, eventID string, 
 
 	addEventAuditIDs(rec, next)
 	rec.Success()
+	s.remind(next)
 	s.publish("updated", next)
 	return next, nil
 }
@@ -486,6 +513,12 @@ func addEventAuditIDs(rec *mmodel.AuditRecord, event *model.Event) {
 	mmodel.AddEventParameterToAuditRec(rec, "event_id", event.ID)
 	mmodel.AddEventParameterToAuditRec(rec, "team_id", event.TeamID)
 	mmodel.AddEventParameterToAuditRec(rec, "channel_id", event.ChannelID)
+}
+
+func (s *EventService) remind(event *model.Event) {
+	if s.reminders != nil {
+		s.reminders.ScheduleEvent(event)
+	}
 }
 
 func (s *EventService) publish(action string, event *model.Event) {

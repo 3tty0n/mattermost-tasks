@@ -22,6 +22,7 @@ type createEventRequest struct {
 	AllDay      bool                       `json:"allDay"`
 	TimeZone    string                     `json:"timezone"`
 	Recurrence  *taskmodel.EventRecurrence `json:"recurrence"`
+	Reminders   []int                      `json:"reminders"`
 }
 
 func (req createEventRequest) input() taskmodel.CreateEventInput {
@@ -37,6 +38,7 @@ func (req createEventRequest) input() taskmodel.CreateEventInput {
 		AllDay:      req.AllDay,
 		TimeZone:    req.TimeZone,
 		Recurrence:  req.Recurrence,
+		Reminders:   req.Reminders,
 	}
 }
 
@@ -52,6 +54,7 @@ type updateEventRequest struct {
 	AllDay      *bool                      `json:"allDay"`
 	TimeZone    *string                    `json:"timezone"`
 	Recurrence  *taskmodel.EventRecurrence `json:"recurrence"`
+	Reminders   *[]int                     `json:"reminders"`
 }
 
 func (req updateEventRequest) patch() taskmodel.EventPatch {
@@ -67,6 +70,7 @@ func (req updateEventRequest) patch() taskmodel.EventPatch {
 		AllDay:      req.AllDay,
 		TimeZone:    req.TimeZone,
 		Recurrence:  req.Recurrence,
+		Reminders:   req.Reminders,
 	}
 }
 

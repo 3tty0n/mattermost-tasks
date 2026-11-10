@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	mmodel "github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
@@ -20,6 +21,7 @@ import (
 const queueSize = 64
 
 type assignment struct {
+	kind       string // "event" for reminders about events; empty means a task
 	taskID     string
 	title      string
 	teamID     string
@@ -178,7 +180,11 @@ func (n *Notifier) link(item assignment, teamName, channelName string) string {
 	if channelName != "" {
 		path += "/channels/" + url.PathEscape(channelName)
 	}
-	return base + path + "#task-" + item.taskID
+	anchor := "#task-"
+	if item.kind == "event" {
+		anchor = "#event-"
+	}
+	return base + path + anchor + item.taskID
 }
 
 func formatMessage(item assignment, teamName, channelName, link string) string {
@@ -202,6 +208,83 @@ func formatMessage(item assignment, teamName, channelName, link string) string {
 	builder.WriteString(link)
 	builder.WriteString(")")
 	return builder.String()
+}
+
+// Reminder is a due/start-time reminder for one item, sent to each of UserIDs.
+type Reminder struct {
+	Kind      string // "task" or "event"
+	ID        string
+	Title     string
+	TeamID    string
+	ChannelID string
+	Start     int64 // due or start time, Unix ms
+	HasTime   bool  // false for date-only due dates and all-day events
+	TimeZone  string
+	Offset    int // minutes before Start
+	UserIDs   []string
+}
+
+// SendReminder sends the reminder DMs synchronously; call it from a background job, not a request.
+func (n *Notifier) SendReminder(r Reminder) {
+	n.mu.Lock()
+	botUserID := n.botUserID
+	n.mu.Unlock()
+	if botUserID == "" {
+		return
+	}
+	teamName, err := n.access.ResolveTeamName(r.TeamID)
+	if err != nil {
+		n.client.Log.Warn("Failed to resolve the team for a reminder", "id", r.ID, "error", err.Error())
+		return
+	}
+	channelName := ""
+	if r.ChannelID != "" {
+		if channelName, err = n.access.ResolveChannelName(r.ChannelID); err != nil {
+			n.client.Log.Warn("Failed to resolve the channel for a reminder", "id", r.ID, "error", err.Error())
+			return
+		}
+	}
+	message := formatReminder(r, teamName, channelName, n.link(assignment{kind: r.Kind, taskID: r.ID}, teamName, channelName))
+	for _, userID := range r.UserIDs {
+		if err := n.client.Post.DM(botUserID, userID, &mmodel.Post{Message: message}); err != nil {
+			n.client.Log.Warn("Failed to send a reminder", "id", r.ID, "user_id", userID, "error", err.Error())
+		}
+	}
+}
+
+func formatReminder(r Reminder, teamName, channelName, link string) string {
+	what := "due"
+	if r.Kind == "event" {
+		what = "starting"
+	}
+	when := "now"
+	switch {
+	case r.Offset == 24*60:
+		when = "in 1 day"
+	case r.Offset == 7*24*60:
+		when = "in 1 week"
+	case r.Offset > 0:
+		when = fmt.Sprintf("in %d minutes", r.Offset)
+	}
+	var builder strings.Builder
+	fmt.Fprintf(&builder, "**%s %s %s:** %s\n\n- **Team:** %s", strings.ToUpper(r.Kind[:1])+r.Kind[1:], what, when, r.Title, teamName)
+	if channelName != "" {
+		builder.WriteString("\n- **Channel:** " + channelName)
+	}
+	builder.WriteString("\n- **When:** " + formatWhen(r))
+	builder.WriteString("\n\n[Open in Mattermost](" + link + ")")
+	return builder.String()
+}
+
+func formatWhen(r Reminder) string {
+	t := time.UnixMilli(r.Start).UTC()
+	if !r.HasTime {
+		return t.Format("Jan 2, 2006")
+	}
+	if loc, err := time.LoadLocation(r.TimeZone); err == nil {
+		t = t.In(loc)
+	}
+	return t.Format("Jan 2, 2006 15:04 MST")
 }
 
 // Ensure the notifier satisfies the tasks interface.

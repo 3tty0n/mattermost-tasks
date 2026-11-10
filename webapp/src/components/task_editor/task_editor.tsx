@@ -22,6 +22,7 @@ import AccountMultipleOutlineIcon from '@mattermost/compass-icons/components/acc
 import CalendarOutlineIcon from '@mattermost/compass-icons/components/calendar-outline';
 import CheckIcon from '@mattermost/compass-icons/components/check';
 import CheckboxMarkedCircleOutlineIcon from '@mattermost/compass-icons/components/checkbox-marked-circle-outline';
+import ClockOutlineIcon from '@mattermost/compass-icons/components/clock-outline';
 import FlagOutlineIcon from '@mattermost/compass-icons/components/flag-outline';
 import FolderOutlineIcon from '@mattermost/compass-icons/components/folder-outline';
 import FormatBoldIcon from '@mattermost/compass-icons/components/format-bold';
@@ -41,6 +42,7 @@ import AssigneePicker from 'components/assignee_picker/assignee_picker';
 import Dialog from 'components/dialog/dialog';
 import DueDatePicker from 'components/due_date_picker/due_date_picker';
 import MarkdownText from 'components/markdown_text/markdown_text';
+import ReminderPicker from 'components/reminder_picker/reminder_picker';
 import TimeZoneInput from 'components/timezone_input/timezone_input';
 
 import type {Recurrence, RecurrenceFrequency, Task, TaskPriority, TaskStatus, TaskVisibility} from 'types';
@@ -122,6 +124,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
         initialAssigneeIds = currentUserId ? [currentUserId] : [];
     }
     const [assigneeIds, setAssigneeIds] = useState<string[]>(initialAssigneeIds);
+    const [reminders, setReminders] = useState<number[]>(task?.reminders ?? []);
     const [preview, setPreview] = useState(false);
     const [openProperty, setOpenProperty] = useState<'due' | 'priority' | 'status' | 'scope' | 'repeat'>();
     const [saving, setSaving] = useState(false);
@@ -329,6 +332,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                     dueHasTime,
                     timezone: timeZone,
                     recurrence,
+                    reminders: dueValue ? reminders : [],
                 });
                 onSaved(updated);
             } else {
@@ -345,6 +349,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                     dueHasTime,
                     timezone: timeZone,
                     recurrence,
+                    reminders: dueValue && reminders.length > 0 ? reminders : undefined,
                     sourcePostId: defaults?.sourcePostId,
                 });
                 onSaved(created);
@@ -897,6 +902,28 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                         privateTask={visibility === 'private'}
                     />
                 </div>
+
+                {dueValue && (
+                    <div className='Tasks-TaskEditor__assignees'>
+                        <div className='Tasks-TaskEditor__sectionHeading'>
+                            <Icon
+                                size='16'
+                                glyph={<ClockOutlineIcon/>}
+                            />
+                            <span>
+                                <FormattedMessage
+                                    id='tasks.reminders'
+                                    defaultMessage='Reminders'
+                                />
+                            </span>
+                        </div>
+                        <ReminderPicker
+                            value={reminders}
+                            onChange={setReminders}
+                            disabled={saving}
+                        />
+                    </div>
+                )}
 
                 <p className='Tasks-TaskEditor__hint'>
                     <FormattedMessage

@@ -34,6 +34,7 @@ import AssigneePicker from 'components/assignee_picker/assignee_picker';
 import Dialog from 'components/dialog/dialog';
 import EventDatePicker from 'components/event_date_picker/event_date_picker';
 import MarkdownText from 'components/markdown_text/markdown_text';
+import ReminderPicker from 'components/reminder_picker/reminder_picker';
 import TimeZoneInput from 'components/timezone_input/timezone_input';
 
 import type {Event, EventRecurrence, RecurrenceFrequency, TaskVisibility} from 'types';
@@ -94,6 +95,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     const [channelID, setChannelID] = useState(defaults?.channelId ?? '');
     const [visibility, setVisibility] = useState<TaskVisibility>(defaults?.visibility ?? 'private');
     const [assigneeIds, setAssigneeIds] = useState<string[]>(defaults?.assigneeIds ?? (currentUserId ? [currentUserId] : []));
+    const [reminders, setReminders] = useState<number[]>([]);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -132,6 +134,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                 setChannelID(loaded.channelId ?? '');
                 setVisibility(loaded.visibility);
                 setAssigneeIds(loaded.assigneeIds ?? []);
+                setReminders(loaded.reminders ?? []);
                 const recurrence = loaded.recurrence;
                 const loadedUTCDate = new Date(loaded.startAt);
                 const loadedWeekdayDate = loaded.allDay ? {
@@ -518,6 +521,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                     allDay,
                     timezone: timeZone,
                     recurrence: buildRecurrence() ?? {frequency: 'none'},
+                    reminders,
                 });
                 onSaved(updated);
             } else {
@@ -533,6 +537,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                     allDay,
                     timezone: timeZone,
                     recurrence: buildRecurrence(),
+                    reminders: reminders.length > 0 ? reminders : undefined,
                 });
                 onSaved(created);
             }
@@ -1125,6 +1130,26 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                             onChange={setAssigneeIds}
                             disabled={!canModify}
                             privateTask={visibility === 'private'}
+                        />
+                    </div>
+
+                    <div className='Tasks-TaskEditor__assignees'>
+                        <div className='Tasks-TaskEditor__sectionHeading'>
+                            <Icon
+                                size='16'
+                                glyph={<ClockOutlineIcon/>}
+                            />
+                            <span>
+                                <FormattedMessage
+                                    id='tasks.reminders'
+                                    defaultMessage='Reminders'
+                                />
+                            </span>
+                        </div>
+                        <ReminderPicker
+                            value={reminders}
+                            onChange={setReminders}
+                            disabled={!canModify}
                         />
                     </div>
                 </div>

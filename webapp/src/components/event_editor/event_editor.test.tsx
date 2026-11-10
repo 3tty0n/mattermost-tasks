@@ -292,4 +292,41 @@ describe('EventEditor', () => {
         await waitFor(() => expect(deleteEventMock).toHaveBeenCalledWith('event-1'));
         expect(onDeleted).toHaveBeenCalled();
     });
+
+    it('sends selected reminders when creating an event', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <EventEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC'}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Reminded');
+        await user.click(screen.getByRole('button', {name: 'No reminder'}));
+        await user.click(screen.getByRole('checkbox', {name: '1 day before'}));
+        await user.click(screen.getByRole('checkbox', {name: '10 minutes before'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
+
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({reminders: [10, 1440]})));
+    });
+
+    it('clears reminders on update by sending an empty array', async () => {
+        const user = userEvent.setup();
+        getEventMock.mockResolvedValue({...savedEvent, reminders: [15]});
+        renderWithStore(
+            <EventEditor
+                eventId='event-1'
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.click(await screen.findByRole('button', {name: '15 minutes before'}));
+        await user.click(screen.getByRole('checkbox', {name: '15 minutes before'}));
+        await user.click(screen.getByRole('button', {name: 'Save'}));
+
+        await waitFor(() => expect(updateEventMock).toHaveBeenCalledWith('event-1', expect.objectContaining({reminders: []})));
+    });
 });

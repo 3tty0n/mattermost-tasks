@@ -325,4 +325,30 @@ describe('TaskEditor', () => {
         })));
         await waitFor(() => expect(onSaved).toHaveBeenCalledWith(savedTask));
     });
+
+    it('only offers reminders with a due date and sends them on update', async () => {
+        const user = userEvent.setup();
+        const {unmount} = renderWithStore(
+            <TaskEditor
+                task={savedTask}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+        expect(screen.queryByRole('button', {name: 'No reminder'})).not.toBeInTheDocument();
+        unmount();
+
+        renderWithStore(
+            <TaskEditor
+                task={{...savedTask, dueAt: Date.UTC(2026, 0, 20), reminders: [0]}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+        await user.click(screen.getByRole('button', {name: 'At the time'}));
+        await user.click(screen.getByRole('checkbox', {name: '1 week before'}));
+        await user.click(screen.getByRole('button', {name: 'Save'}));
+
+        await waitFor(() => expect(updateTaskMock).toHaveBeenCalledWith('task-1', expect.objectContaining({reminders: [0, 10080]})));
+    });
 });

@@ -1,0 +1,58 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-ReminderPicker {
+    position: relative;
+}
+
+.Tasks-ReminderPicker__trigger {
+    box-sizing: border-box;
+    width: 100%;
+    padding: var(--spacing-xs) var(--spacing-s);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-s);
+    background: var(--center-channel-bg);
+    color: var(--center-channel-color);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--font-size-100);
+    line-height: var(--line-height-100);
+    text-align: left;
+}
+
+.Tasks-ReminderPicker__trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.56;
+}
+
+.Tasks-ReminderPicker__dropdown {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + var(--spacing-xxxs));
+    right: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xxxs);
+    padding: var(--spacing-xxs);
+    border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
+    border-radius: var(--radius-s);
+    background: var(--center-channel-bg);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+}
+
+.Tasks-ReminderPicker__option {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xxs) var(--spacing-xs);
+    border-radius: var(--radius-s);
+    color: var(--center-channel-color);
+    cursor: pointer;
+    font-size: var(--font-size-100);
+    line-height: var(--line-height-100);
+}
+
+.Tasks-ReminderPicker__option:hover {
+    background: rgba(var(--button-bg-rgb), 0.08);
+}

@@ -22,6 +22,7 @@ type createTaskRequest struct {
 	DueHasTime   bool                  `json:"dueHasTime"`
 	TimeZone     string                `json:"timezone"`
 	Recurrence   *taskmodel.Recurrence `json:"recurrence"`
+	Reminders    []int                 `json:"reminders"`
 	Position     float64               `json:"position"`
 	SourcePostID string                `json:"sourcePostId"`
 	ParentTaskID string                `json:"parentTaskId"`
@@ -41,6 +42,7 @@ func (req createTaskRequest) input() taskmodel.CreateTaskInput {
 		DueHasTime:   req.DueHasTime,
 		TimeZone:     req.TimeZone,
 		Recurrence:   req.Recurrence,
+		Reminders:    req.Reminders,
 		Position:     req.Position,
 		SourcePostID: req.SourcePostID,
 		ParentTaskID: req.ParentTaskID,
@@ -60,6 +62,7 @@ type updateTaskRequest struct {
 	DueHasTime   *bool                 `json:"dueHasTime"`
 	TimeZone     *string               `json:"timezone"`
 	Recurrence   *taskmodel.Recurrence `json:"recurrence"`
+	Reminders    *[]int                `json:"reminders"`
 	Position     *float64              `json:"position"`
 	SourcePostID *string               `json:"sourcePostId"`
 	ParentTaskID *string               `json:"parentTaskId"`
@@ -79,6 +82,7 @@ func (req updateTaskRequest) patch() taskmodel.TaskPatch {
 		DueHasTime:   req.DueHasTime,
 		TimeZone:     req.TimeZone,
 		Recurrence:   req.Recurrence,
+		Reminders:    req.Reminders,
 		Position:     req.Position,
 		SourcePostID: req.SourcePostID,
 		ParentTaskID: req.ParentTaskID,

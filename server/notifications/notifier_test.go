@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"testing"
+	"time"
 
 	mmodel "github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
@@ -86,4 +87,16 @@ func TestNotifyAssignmentDropsWhenDisabled(t *testing.T) {
 
 	notifier.NotifyAssignment(&taskmodel.Task{ID: "task"}, []string{"user"})
 	assert.Empty(t, notifier.queue)
+}
+
+func TestFormatReminder(t *testing.T) {
+	start := time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC).UnixMilli()
+	message := formatReminder(Reminder{Kind: "event", Title: "Standup", Start: start, HasTime: true, TimeZone: "Asia/Tokyo", Offset: 15},
+		"engineering", "town-square", "https://mm.example/engineering#event-id")
+	assert.Contains(t, message, "Event starting in 15 minutes")
+	assert.Contains(t, message, "Jan 5, 2026 09:00 JST")
+
+	message = formatReminder(Reminder{Kind: "task", Title: "Report", Start: start, Offset: 7 * 24 * 60}, "engineering", "", "link")
+	assert.Contains(t, message, "Task due in 1 week")
+	assert.Contains(t, message, "Jan 5, 2026")
 }

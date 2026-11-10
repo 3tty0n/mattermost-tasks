@@ -3,16 +3,19 @@ package main
 import (
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
+	"github.com/mattermost/mattermost/server/public/pluginapi/cluster"
 
 	"github.com/3tty0n/mattermost-tasks/server/access"
 	"github.com/3tty0n/mattermost-tasks/server/api"
 	"github.com/3tty0n/mattermost-tasks/server/command"
 	"github.com/3tty0n/mattermost-tasks/server/events"
 	"github.com/3tty0n/mattermost-tasks/server/notifications"
+	"github.com/3tty0n/mattermost-tasks/server/reminders"
 	"github.com/3tty0n/mattermost-tasks/server/store/kvstore"
 	"github.com/3tty0n/mattermost-tasks/server/tasks"
 )
@@ -28,6 +31,9 @@ type Plugin struct {
 	events   *events.EventService
 	notifier *notifications.Notifier
 
+	// reminderJob fires due reminders once a minute on a single cluster node.
+	reminderJob *cluster.Job
+
 	// commandClient is the slash-command fallback.
 	commandClient command.Command
 
@@ -40,9 +46,7 @@ type Plugin struct {
 
 // OnActivate wires the plugin. Failure here deactivates the plugin.
 func (p *Plugin) OnActivate() error {
-	if p.notifier != nil {
-		p.notifier.Close()
-	}
+	p.stopReminders()
 	p.client = pluginapi.NewClient(p.API, p.Driver)
 	p.access = access.NewChecker(p.client)
 	p.store = kvstore.NewStore(p.client)
@@ -59,8 +63,9 @@ func (p *Plugin) OnActivate() error {
 	p.notifier.Start()
 
 	publisher := events.New(p.client)
-	p.tasks = tasks.NewService(p.client, p.store, p.access, publisher, p.notifier)
-	p.events = events.NewEventService(p.client, p.store, p.access, publisher)
+	scheduler := reminders.New(p.client, p.store, p.notifier, model.GetMillis)
+	p.tasks = tasks.NewService(p.client, p.store, p.access, publisher, p.notifier, tasks.WithReminders(scheduler))
+	p.events = events.NewEventService(p.client, p.store, p.access, publisher, events.WithEventReminders(scheduler))
 
 	commandClient, err := command.NewCommandHandler(p.client, p.tasks)
 	if err != nil {
@@ -70,15 +75,32 @@ func (p *Plugin) OnActivate() error {
 	p.commandClient = commandClient
 
 	p.httpHandler = api.NewHandler(p.API, p.client, p.access, p.tasks, p.events)
+
+	job, err := cluster.Schedule(p.API, "tasks-reminders", cluster.MakeWaitForInterval(time.Minute), scheduler.RunOnce)
+	if err != nil {
+		p.notifier.Close()
+		return err
+	}
+	p.reminderJob = job
 	return nil
 }
 
-// OnDeactivate stops the notification worker. The KV store needs no close.
+// OnDeactivate stops the reminder job and the notification worker. The KV store needs no close.
 func (p *Plugin) OnDeactivate() error {
+	p.stopReminders()
+	return nil
+}
+
+func (p *Plugin) stopReminders() {
+	if p.reminderJob != nil {
+		if err := p.reminderJob.Close(); err != nil {
+			p.API.LogWarn("Failed to stop the reminder job", "error", err.Error())
+		}
+		p.reminderJob = nil
+	}
 	if p.notifier != nil {
 		p.notifier.Close()
 	}
-	return nil
 }
 
 // ensureBot creates (or finds) the account that authors assignment DMs. A missing bot must not

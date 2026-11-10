@@ -30,6 +30,11 @@ type Notifier interface {
 	NotifyAssignment(task *model.Task, assigneeIDs []string)
 }
 
+// Reminders schedules due-time reminders for a saved task. Implementations must return quickly.
+type Reminders interface {
+	ScheduleTask(task *model.Task)
+}
+
 // Service is the task application service.
 type Service struct {
 	client    *pluginapi.Client
@@ -37,6 +42,7 @@ type Service struct {
 	access    *access.Checker
 	publisher Publisher
 	notifier  Notifier
+	reminders Reminders
 	now       func() int64
 }
 
@@ -47,6 +53,13 @@ type Option func(*Service)
 func WithClock(now func() int64) Option {
 	return func(s *Service) {
 		s.now = now
+	}
+}
+
+// WithReminders sets the reminder scheduler notified after every create and update.
+func WithReminders(r Reminders) Option {
+	return func(s *Service) {
+		s.reminders = r
 	}
 }
 
@@ -126,6 +139,10 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 		recurrenceInput = &copied
 	}
 	recurrence, err := model.NormalizeRecurrence(recurrenceInput, input.DueAt, input.DueHasTime)
+	if err != nil {
+		return nil, err
+	}
+	reminders, err := model.NormalizeReminders(input.Reminders)
 	if err != nil {
 		return nil, err
 	}
@@ -212,6 +229,7 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 		DueHasTime:   input.DueHasTime && input.DueAt != 0,
 		TimeZone:     timeZone,
 		Recurrence:   recurrence,
+		Reminders:    reminders,
 		Position:     position,
 		SourcePostID: input.SourcePostID,
 		ParentTaskID: input.ParentTaskID,
@@ -233,6 +251,7 @@ func (s *Service) Create(c *plugin.Context, path, actorID string, input model.Cr
 	rec.Success()
 
 	s.notifyAssignees(task, task.AssigneeIDs, actorID)
+	s.remind(task)
 	s.publish("created", task)
 	return task, nil
 }
@@ -563,6 +582,9 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 		if normalized.position != nil {
 			current.Position = *normalized.position
 		}
+		if normalized.reminders != nil {
+			current.Reminders = *normalized.reminders
+		}
 		if normalized.assignees != nil {
 			current.AssigneeIDs = *normalized.assignees
 		}
@@ -618,6 +640,7 @@ func (s *Service) Update(c *plugin.Context, path, actorID, taskID string, patch 
 	if before != nil {
 		s.notifyAssignees(next, addedAssignees(before.AssigneeIDs, next.AssigneeIDs), actorID)
 	}
+	s.remind(next)
 	s.publish("updated", next)
 	return next, nil
 }
@@ -664,6 +687,7 @@ type normalizedPatch struct {
 	dueAt        *int64
 	dueHasTime   *bool
 	position     *float64
+	reminders    *[]int
 	visibility   *string
 	assignees    *[]string
 	sourcePostID *string
@@ -685,6 +709,13 @@ func normalizePatch(patch model.TaskPatch) (*normalizedPatch, error) {
 			return nil, err
 		}
 		out.description = &value
+	}
+	if patch.Reminders != nil {
+		value, err := model.NormalizeReminders(*patch.Reminders)
+		if err != nil {
+			return nil, err
+		}
+		out.reminders = &value
 	}
 	if patch.Status != nil {
 		if !model.IsValidTaskStatus(*patch.Status) {
@@ -815,6 +846,12 @@ func (s *Service) notifyAssignees(task *model.Task, assigneeIDs []string, actorI
 		return
 	}
 	s.notifier.NotifyAssignment(task, recipients)
+}
+
+func (s *Service) remind(task *model.Task) {
+	if s.reminders != nil {
+		s.reminders.ScheduleTask(task)
+	}
 }
 
 func (s *Service) publish(action string, task *model.Task) {
