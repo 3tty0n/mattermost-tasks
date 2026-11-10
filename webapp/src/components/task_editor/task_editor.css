@@ -25,6 +25,7 @@
 }
 
 .Tasks-TaskEditor__titleInput {
+    box-sizing: border-box;
     width: 100%;
     padding: var(--spacing-xs) 0;
     border: 0;
@@ -32,9 +33,12 @@
     background: transparent;
     color: var(--center-channel-color);
     font-family: inherit;
-    font-size: var(--font-size-500);
+    font-size: var(--font-size-400);
     font-weight: var(--font-weight-semibold);
-    line-height: var(--line-height-500);
+    line-height: var(--line-height-400);
+    overflow-wrap: anywhere;
+    resize: none;
+    field-sizing: content;
 }
 
 .Tasks-TaskEditor__titleInput::placeholder {
@@ -64,6 +68,7 @@
     font-family: inherit;
     font-size: var(--font-size-100);
     line-height: var(--line-height-200);
+    overflow-wrap: anywhere;
     resize: vertical;
 }
 
@@ -98,12 +103,14 @@
 
 .Tasks-TaskEditor__preview {
     display: flex;
+    min-width: 0;
     min-height: 76px;
     flex-direction: column;
     gap: var(--spacing-s);
     padding: var(--spacing-s);
     border: 1px dashed rgba(var(--center-channel-color-rgb), 0.20);
     border-radius: var(--radius-s);
+    overflow-wrap: anywhere;
 }
 
 .Tasks-TaskEditor__properties {

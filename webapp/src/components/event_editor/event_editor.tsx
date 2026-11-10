@@ -10,7 +10,7 @@ import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {toDateInput} from 'recurrence_utils';
 import {epochToZonedParts, isValidTimeZone, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
-import {byLabel} from 'utils';
+import {blockEnter, byLabel, singleLine} from 'utils';
 
 import AccountMultipleOutlineIcon from '@mattermost/compass-icons/components/account-multiple-outline';
 import CalendarOutlineIcon from '@mattermost/compass-icons/components/calendar-outline';
@@ -123,7 +123,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     const [repeatUnit, setRepeatUnit] = useState<'day'|'week'|'month'|'year'>('week');
     const [repeatUntil, setRepeatUntil] = useState('');
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
-    const titleRef = useRef<HTMLInputElement>(null);
+    const titleRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         if (!eventId) {
@@ -742,16 +742,18 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                 defaultMessage='Title'
                             />
                         </label>
-                        <input
+                        <textarea
                             id='tasks-event-title'
                             className='Tasks-TaskEditor__titleInput'
+                            rows={1}
                             value={title}
                             maxLength={200}
                             autoFocus={canModify}
                             ref={titleRef}
                             disabled={!canModify}
                             placeholder={intl.formatMessage({id: 'tasks.event.title_placeholder', defaultMessage: 'Event name'})}
-                            onChange={(changeEvent) => setTitle(changeEvent.target.value)}
+                            onChange={(changeEvent) => setTitle(singleLine(changeEvent.target.value))}
+                            onKeyDown={blockEnter}
                         />
                     </div>
 

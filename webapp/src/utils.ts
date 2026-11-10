@@ -42,6 +42,17 @@ export function httpUrl(text: string | undefined): URL | undefined {
     }
 }
 
+// singleLine and blockEnter keep a wrapping title textarea to one logical line.
+export function singleLine(value: string): string {
+    return value.replace(/\s*[\r\n]+\s*/g, ' ');
+}
+
+export function blockEnter(event: {key: string; preventDefault: () => void}) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+    }
+}
+
 // byLabel orders select options alphabetically (case-insensitive, digits in natural order).
 export function byLabel(a: {label: string}, b: {label: string}): number {
     return a.label.localeCompare(b.label, undefined, {sensitivity: 'base', numeric: true});

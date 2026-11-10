@@ -32,6 +32,7 @@ import {Tabs} from '@mattermost/compass-ui/components/tabs';
 import {selectAllChannels, selectCurrentChannel, selectCurrentTeam, selectCurrentUserId, selectMyTeams, selectTeams} from 'selectors';
 
 import Calendar from 'components/calendar/calendar';
+import EventDetail from 'components/event_detail/event_detail';
 import EventEditor, {type EventEditorDefaults} from 'components/event_editor/event_editor';
 import TaskCard from 'components/task_card/task_card';
 import TaskDescriptionDialog from 'components/task_description_dialog/task_description_dialog';
@@ -98,6 +99,7 @@ export default function TasksSidebar() {
     const [actionError, setActionError] = useState<string>();
     const [taskEditor, setTaskEditor] = useState<TaskEditorState>();
     const [eventEditor, setEventEditor] = useState<EventEditorState>();
+    const [viewEventID, setViewEventID] = useState<string>();
     const eventDurationMinutes = useDefaultEventDuration();
     const [previewTaskID, setPreviewTaskID] = useState<string>();
     const [quickAddStatus, setQuickAddStatus] = useState<TaskStatus>();
@@ -816,7 +818,7 @@ export default function TasksSidebar() {
                         assigneeId={filters.assigneeId || undefined}
                         revision={tasksRevision}
                         onOpenTask={openCalendarTask}
-                        onOpenEvent={(eventID) => setEventEditor({eventId: eventID})}
+                        onOpenEvent={setViewEventID}
                         onCreateEvent={openCreateEvent}
                         onCreateTask={openCreateTask}
                     />
@@ -831,6 +833,16 @@ export default function TasksSidebar() {
                     onSaved={() => {
                         setTaskEditor(undefined);
                         refreshTasks();
+                    }}
+                />
+            )}
+            {viewEventID && (
+                <EventDetail
+                    eventId={viewEventID}
+                    onClose={() => setViewEventID(undefined)}
+                    onEdit={() => {
+                        setEventEditor({eventId: viewEventID});
+                        setViewEventID(undefined);
                     }}
                 />
             )}

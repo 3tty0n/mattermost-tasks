@@ -78,7 +78,9 @@ Click the check-circle icon in the channel header to open the sidebar.
 - Event cards show the time range, title, location (links open in a new tab) and up to nine
   overlapped participant avatars (more become “…”; hover for all names). On narrow sidebars the
   participants move to their own row so the time range is never cut off.
-- Click an event to open it; the creator or an administrator can edit and delete it.
+- Click an event to open a read-only view; the creator or an administrator can press **Edit** (and
+  delete it there). The view can copy the event to **Google Calendar** or **Outlook** (a prefilled
+  new-event page opens) or download an **.ics** file for any calendar app.
 
 <img src="docs/images/calendar-week.png" alt="Week view on a wide sidebar" width="720">
 

@@ -1,0 +1,48 @@
+/* Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+   See LICENSE.txt for license information. */
+
+.Tasks-EventDetail {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--spacing-m);
+    overflow-wrap: anywhere;
+}
+
+.Tasks-EventDetail__loading {
+    display: flex;
+    justify-content: center;
+    padding: var(--spacing-xl);
+}
+
+.Tasks-EventDetail__row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-s);
+    color: var(--center-channel-color);
+    font-size: var(--font-size-100);
+    line-height: var(--line-height-200);
+}
+
+.Tasks-EventDetail__row > :first-child {
+    flex: none;
+    margin-top: var(--spacing-xxs);
+    color: rgba(var(--center-channel-color-rgb), 0.64);
+}
+
+.Tasks-EventDetail__export {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding-top: var(--spacing-s);
+    border-top: 1px solid rgba(var(--center-channel-color-rgb), 0.12);
+}
+
+.Tasks-EventDetail__exportLabel {
+    flex-basis: 100%;
+    color: rgba(var(--center-channel-color-rgb), 0.72);
+    font-size: var(--font-size-75);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-75);
+}

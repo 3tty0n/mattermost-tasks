@@ -11,10 +11,12 @@ import {epochToZonedDateTimeInput, isValidTimeZone, machineTimeZone, zonedDateTi
 import {
     PRIORITY_MESSAGES,
     STATUS_MESSAGES,
+    blockEnter,
     byLabel,
     formatDue,
     fromDateTimeInput,
     priorityLabel,
+    singleLine,
     statusLabel,
     toDateTimeInput,
 } from 'utils';
@@ -141,7 +143,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     const [error, setError] = useState<string>();
 
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
-    const titleRef = useRef<HTMLInputElement>(null);
+    const titleRef = useRef<HTMLTextAreaElement>(null);
     useFocusAfterOpen(titleRef, true);
 
     const teamOptions = myTeams.map((team) => ({value: team.id, label: team.display_name}));
@@ -445,13 +447,15 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                             defaultMessage='Title'
                         />
                     </label>
-                    <input
+                    <textarea
                         id='tasks-title'
                         className='Tasks-TaskEditor__titleInput'
+                        rows={1}
                         value={title}
                         maxLength={200}
                         placeholder={intl.formatMessage({id: 'tasks.editor.title_placeholder', defaultMessage: 'Task name'})}
-                        onChange={(event) => setTitle(event.target.value)}
+                        onChange={(event) => setTitle(singleLine(event.target.value))}
+                        onKeyDown={blockEnter}
                         autoFocus={true}
                         ref={titleRef}
                     />
