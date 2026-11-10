@@ -336,5 +336,16 @@ func eventRefFieldsEqual(a, b *taskmodel.EventRef) bool {
 		a.EndAt == b.EndAt &&
 		a.AllDay == b.AllDay &&
 		a.TimeZone == b.TimeZone &&
+		eventRecurrenceEqual(a.Recurrence, b.Recurrence) &&
 		a.CreatedAt == b.CreatedAt
+}
+
+func eventRecurrenceEqual(a, b *taskmodel.EventRecurrence) bool {
+	if a.IsZero() || b.IsZero() {
+		return a.IsZero() && b.IsZero()
+	}
+	return a.Frequency == b.Frequency &&
+		a.Interval == b.Interval &&
+		slices.Equal(a.Weekdays, b.Weekdays) &&
+		a.Until == b.Until
 }

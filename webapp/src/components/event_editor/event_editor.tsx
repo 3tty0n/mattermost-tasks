@@ -19,6 +19,7 @@ import FormatBoldIcon from '@mattermost/compass-icons/components/format-bold';
 import FormatItalicIcon from '@mattermost/compass-icons/components/format-italic';
 import FormatListBulletedIcon from '@mattermost/compass-icons/components/format-list-bulleted';
 import LinkVariantIcon from '@mattermost/compass-icons/components/link-variant';
+import RefreshIcon from '@mattermost/compass-icons/components/refresh';
 import {Button} from '@mattermost/compass-ui/components/button';
 import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
 import {Icon} from '@mattermost/compass-ui/components/icon';
@@ -35,7 +36,7 @@ import EventDatePicker from 'components/event_date_picker/event_date_picker';
 import MarkdownText from 'components/markdown_text/markdown_text';
 import TimeZoneInput from 'components/timezone_input/timezone_input';
 
-import type {Event, TaskVisibility} from 'types';
+import type {Event, EventRecurrence, RecurrenceFrequency, TaskVisibility} from 'types';
 
 import 'components/task_editor/task_editor.css';
 import './event_editor.css';
@@ -98,7 +99,12 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [error, setError] = useState<string>();
     const [preview, setPreview] = useState(false);
-    const [openProperty, setOpenProperty] = useState<'timezone'|'scope'>();
+    const [openProperty, setOpenProperty] = useState<'timezone'|'scope'|'repeat'>();
+    const [repeatMode, setRepeatMode] = useState<'never'|'daily'|'weekdays'|'weekly'|'custom'>('never');
+    const [repeatWeekdays, setRepeatWeekdays] = useState<number[]>([]);
+    const [repeatInterval, setRepeatInterval] = useState(1);
+    const [repeatUnit, setRepeatUnit] = useState<'day'|'week'|'month'|'year'>('week');
+    const [repeatUntil, setRepeatUntil] = useState('');
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
@@ -126,6 +132,32 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                 setChannelID(loaded.channelId ?? '');
                 setVisibility(loaded.visibility);
                 setAssigneeIds(loaded.assigneeIds ?? []);
+                const recurrence = loaded.recurrence;
+                if (recurrence && recurrence.frequency !== 'none') {
+                    if (recurrence.frequency === 'weekly' && (recurrence.interval ?? 1) > 1) {
+                        setRepeatMode('custom');
+                        setRepeatUnit('week');
+                        setRepeatInterval(recurrence.interval ?? 1);
+                    } else if (recurrence.frequency === 'weekly') {
+                        setRepeatMode('weekdays');
+                        setRepeatWeekdays(recurrence.weekdays ?? []);
+                    } else if (recurrence.frequency === 'daily' && (recurrence.interval ?? 1) > 1) {
+                        setRepeatMode('custom');
+                        setRepeatUnit('day');
+                        setRepeatInterval(recurrence.interval ?? 1);
+                    } else if (recurrence.frequency === 'monthly') {
+                        setRepeatMode('custom');
+                        setRepeatUnit('month');
+                        setRepeatInterval(recurrence.interval ?? 1);
+                    } else if (recurrence.frequency === 'yearly') {
+                        setRepeatMode('custom');
+                        setRepeatUnit('year');
+                        setRepeatInterval(recurrence.interval ?? 1);
+                    } else {
+                        setRepeatMode(recurrence.frequency);
+                    }
+                    setRepeatUntil(recurrence.until ?? '');
+                }
                 setLoading(false);
             },
             (err: unknown) => {
@@ -372,6 +404,75 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
         return {startAt, endAt};
     };
 
+    const startDateParts = parseDateInput(startDate, intl.locale);
+    const startWeekday = startDateParts ? new Date(Date.UTC(startDateParts.year, startDateParts.month - 1, startDateParts.day)).getUTCDay() : 0;
+    const startDateISO = startDateParts ? `${startDateParts.year}-${String(startDateParts.month).padStart(2, '0')}-${String(startDateParts.day).padStart(2, '0')}` : '';
+    const weekdayLabels = Array.from({length: 7}, (_, index) => intl.formatDate(new Date(2024, 0, 7 + index), {weekday: 'short'}));
+    const weekdayNames = Array.from({length: 7}, (_, index) => intl.formatDate(new Date(2024, 0, 7 + index), {weekday: 'long'}));
+
+    const buildRecurrence = (): EventRecurrence | undefined => {
+        if (repeatMode === 'never') {
+            return undefined;
+        }
+        const until = repeatUntil || undefined;
+        if (repeatMode === 'daily') {
+            return {frequency: 'daily', interval: 1, until};
+        }
+        if (repeatMode === 'weekdays' || repeatMode === 'weekly') {
+            const weekdays = repeatMode === 'weekdays' && repeatWeekdays.length > 0 ? [...repeatWeekdays].sort((a, b) => a - b) : [startWeekday];
+            return {frequency: 'weekly', interval: 1, weekdays, until};
+        }
+        const units: Record<typeof repeatUnit, RecurrenceFrequency> = {day: 'daily', week: 'weekly', month: 'monthly', year: 'yearly'};
+        const frequency = units[repeatUnit];
+        return {
+            frequency,
+            interval: Math.min(99, Math.max(1, repeatInterval)),
+            ...(frequency === 'weekly' ? {weekdays: [startWeekday]} : {}),
+            until,
+        };
+    };
+
+    const repeatUnitDefaults: Record<typeof repeatUnit, string> = {day: 'days', week: 'weeks', month: 'months', year: 'years'};
+
+    const recurrenceLabel = () => {
+        if (repeatMode === 'never') {
+            return intl.formatMessage({id: 'tasks.event.repeat', defaultMessage: 'Repeat'});
+        }
+        if (repeatMode === 'daily') {
+            return intl.formatMessage({id: 'tasks.event.repeat.daily', defaultMessage: 'Daily'});
+        }
+        if (repeatMode === 'weekdays') {
+            const days = (repeatWeekdays.length > 0 ? repeatWeekdays : [startWeekday]).slice().sort((a, b) => a - b);
+            return days.map((day) => weekdayLabels[day]).join(', ');
+        }
+        if (repeatMode === 'weekly') {
+            return intl.formatMessage({id: 'tasks.event.repeat.weekly', defaultMessage: 'Weekly'});
+        }
+        const unit = intl.formatMessage({
+            id: `tasks.event.repeat.unit.${repeatUnit}`,
+            defaultMessage: repeatUnitDefaults[repeatUnit],
+        });
+        return intl.formatMessage({id: 'tasks.event.repeat.every', defaultMessage: 'Every {count} {unit}'}, {count: Math.min(99, Math.max(1, repeatInterval)), unit});
+    };
+
+    const toggleWeekday = (weekday: number) => {
+        setRepeatWeekdays((current) => (current.includes(weekday) ? current.filter((value) => value !== weekday) : [...current, weekday].sort((a, b) => a - b)));
+    };
+
+    const repeatOptions = [
+        {value: 'never', label: intl.formatMessage({id: 'tasks.event.repeat.never', defaultMessage: 'Never'})},
+        {value: 'daily', label: intl.formatMessage({id: 'tasks.event.repeat.daily', defaultMessage: 'Daily'})},
+        {value: 'weekdays', label: intl.formatMessage({id: 'tasks.event.repeat.weekdays', defaultMessage: 'Specific days'})},
+        {value: 'weekly', label: intl.formatMessage({id: 'tasks.event.repeat.weekly', defaultMessage: 'Weekly'})},
+        {value: 'custom', label: intl.formatMessage({id: 'tasks.event.repeat.custom', defaultMessage: 'Custom'})},
+    ];
+    const repeatUnitOptions = [
+        {value: 'day', label: intl.formatMessage({id: 'tasks.event.repeat.unit.days', defaultMessage: 'Days'})},
+        {value: 'week', label: intl.formatMessage({id: 'tasks.event.repeat.unit.weeks', defaultMessage: 'Weeks'})},
+        {value: 'month', label: intl.formatMessage({id: 'tasks.event.repeat.unit.months', defaultMessage: 'Months'})},
+        {value: 'year', label: intl.formatMessage({id: 'tasks.event.repeat.unit.years', defaultMessage: 'Years'})},
+    ];
+
     const save = async () => {
         const trimmed = title.trim();
         if (!trimmed) {
@@ -405,6 +506,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                     endAt: times.endAt,
                     allDay,
                     timezone: timeZone,
+                    recurrence: buildRecurrence() ?? {frequency: 'none'},
                 });
                 onSaved(updated);
             } else {
@@ -419,6 +521,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                     endAt: times.endAt,
                     allDay,
                     timezone: timeZone,
+                    recurrence: buildRecurrence(),
                 });
                 onSaved(created);
             }
@@ -774,6 +877,19 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                         <button
                             type='button'
                             className='Tasks-TaskEditor__propertySummary'
+                            aria-expanded={openProperty === 'repeat'}
+                            disabled={!canModify}
+                            onClick={() => setOpenProperty(openProperty === 'repeat' ? undefined : 'repeat')}
+                        >
+                            <Icon
+                                size='16'
+                                glyph={<RefreshIcon/>}
+                            />
+                            <span>{recurrenceLabel()}</span>
+                        </button>
+                        <button
+                            type='button'
+                            className='Tasks-TaskEditor__propertySummary'
                             aria-expanded={openProperty === 'timezone'}
                             disabled={!canModify}
                             onClick={() => setOpenProperty(openProperty === 'timezone' ? undefined : 'timezone')}
@@ -801,6 +917,118 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
 
                     {openProperty && (
                         <div className='Tasks-TaskEditor__propertyPanel'>
+                            {openProperty === 'repeat' && (
+                                <div className='Tasks-TaskEditor__propertyBody'>
+                                    <span className='Tasks-TaskEditor__propertyLabel'>
+                                        <FormattedMessage
+                                            id='tasks.event.repeat'
+                                            defaultMessage='Repeat'
+                                        />
+                                    </span>
+                                    <Select
+                                        size='small'
+                                        label={intl.formatMessage({id: 'tasks.event.repeat', defaultMessage: 'Repeat'})}
+                                        options={repeatOptions}
+                                        value={repeatMode}
+                                        disabled={!canModify}
+                                        onChange={(value) => {
+                                            const next = value as typeof repeatMode;
+                                            setRepeatMode(next);
+                                            if (next === 'weekdays' && repeatWeekdays.length === 0) {
+                                                setRepeatWeekdays([startWeekday]);
+                                            }
+                                        }}
+                                    />
+                                    {repeatMode === 'weekdays' && (
+                                        <>
+                                            <span className='Tasks-TaskEditor__propertyLabel'>
+                                                <FormattedMessage
+                                                    id='tasks.event.repeat.on_days'
+                                                    defaultMessage='Repeat on'
+                                                />
+                                            </span>
+                                            <div
+                                                className='Tasks-TaskEditor__quickOptions'
+                                                role='group'
+                                                aria-label={intl.formatMessage({id: 'tasks.event.repeat.on_days', defaultMessage: 'Repeat on'})}
+                                            >
+                                                {weekdayLabels.map((label, weekday) => {
+                                                    const selected = repeatWeekdays.includes(weekday);
+                                                    return (
+                                                        <button
+                                                            key={weekday}
+                                                            type='button'
+                                                            className={`Tasks-TaskEditor__quickOption${selected ? ' Tasks-TaskEditor__quickOption--selected' : ''}`}
+                                                            aria-pressed={selected}
+                                                            aria-label={weekdayNames[weekday]}
+                                                            disabled={!canModify}
+                                                            onClick={() => toggleWeekday(weekday)}
+                                                        >
+                                                            {label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </>
+                                    )}
+                                    {repeatMode === 'custom' && (
+                                        <div className='Tasks-TaskEditor__repeatRow'>
+                                            <span className='Tasks-TaskEditor__propertyLabel'>
+                                                <FormattedMessage
+                                                    id='tasks.event.repeat.every_label'
+                                                    defaultMessage='Every'
+                                                />
+                                            </span>
+                                            <input
+                                                type='number'
+                                                className='Tasks-TaskEditor__numberInput'
+                                                min={1}
+                                                max={99}
+                                                value={repeatInterval}
+                                                aria-label={intl.formatMessage({id: 'tasks.event.repeat.interval', defaultMessage: 'Repeat interval'})}
+                                                disabled={!canModify}
+                                                onChange={(changeEvent) => {
+                                                    const next = Number(changeEvent.target.value);
+                                                    setRepeatInterval(Number.isFinite(next) ? Math.min(99, Math.max(1, Math.trunc(next))) : 1);
+                                                }}
+                                            />
+                                            <Select
+                                                size='small'
+                                                label={intl.formatMessage({id: 'tasks.event.repeat.unit', defaultMessage: 'Unit'})}
+                                                options={repeatUnitOptions}
+                                                value={repeatUnit}
+                                                disabled={!canModify}
+                                                onChange={(value) => setRepeatUnit(value as typeof repeatUnit)}
+                                            />
+                                        </div>
+                                    )}
+                                    {repeatMode !== 'never' && (
+                                        <>
+                                            <span className='Tasks-TaskEditor__propertyLabel'>
+                                                <FormattedMessage
+                                                    id='tasks.event.repeat.until'
+                                                    defaultMessage='Repeat until'
+                                                />
+                                            </span>
+                                            <input
+                                                type='date'
+                                                className='Tasks-TaskEditor__dateInput'
+                                                min={startDateISO}
+                                                value={repeatUntil}
+                                                aria-label={intl.formatMessage({id: 'tasks.event.repeat.until', defaultMessage: 'Repeat until'})}
+                                                disabled={!canModify}
+                                                onChange={(changeEvent) => setRepeatUntil(changeEvent.target.value)}
+                                            />
+                                            <p className='Tasks-TaskEditor__hint'>
+                                                <FormattedMessage
+                                                    id='tasks.event.repeat.until_hint'
+                                                    defaultMessage='Leave empty to repeat forever.'
+                                                />
+                                            </p>
+                                        </>
+                                    )}
+                                </div>
+                            )}
                             {openProperty === 'timezone' && (
                                 <div className='Tasks-TaskEditor__propertyBody'>
                                     <span className='Tasks-TaskEditor__propertyLabel'>

@@ -445,7 +445,7 @@ func TestEventAPILifecycle(t *testing.T) {
 	end := int64(1767229200000)   // 2026-01-01 01:00 UTC
 	body := `{"channelId":"` + channelID + `","title":"Sprint planning","assigneeIds":["` + assigneeID + `"],"startAt":` +
 		strconv.FormatInt(start, 10) + `,"endAt":` + strconv.FormatInt(end, 10) +
-		`,"allDay":false,"timezone":"UTC","visibility":"channel"}`
+		`,"allDay":false,"timezone":"UTC","visibility":"channel","recurrence":{"frequency":"weekly","interval":1,"weekdays":[1,3],"until":"2026-02-01"}}`
 	w := env.serve(http.MethodPost, "/api/v1/events", body, creatorID)
 	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
 	created := decodeResponse[taskmodel.Event](t, w)
@@ -453,6 +453,8 @@ func TestEventAPILifecycle(t *testing.T) {
 	assert.Equal(t, channelID, created.ChannelID)
 	assert.Equal(t, taskmodel.TaskVisibilityChannel, created.Visibility)
 	assert.Equal(t, []string{assigneeID}, created.AssigneeIDs)
+	require.NotNil(t, created.Recurrence)
+	assert.Equal(t, []int{1, 3}, created.Recurrence.Weekdays)
 
 	w = env.serve(http.MethodGet, "/api/v1/events/"+created.ID, "", creatorID)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())

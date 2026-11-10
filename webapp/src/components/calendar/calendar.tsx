@@ -99,6 +99,7 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
             to: bounds.dueBefore,
             page: 0,
             perPage: 100,
+            includeRecurring: true,
         };
     }, [scope, teamId, bounds]);
     const events = useEvents(eventQuery, revision + reload);

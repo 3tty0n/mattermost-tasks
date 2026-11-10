@@ -160,6 +160,7 @@ export async function fetchEvents(query: EventQuery, signal?: AbortSignal): Prom
         to: query.to,
         page: query.page,
         per_page: query.perPage,
+        include_recurring: query.includeRecurring,
     };
     return doFetch<ListResult<EventSummary>>(withQuery('/events', params), {}, signal);
 }

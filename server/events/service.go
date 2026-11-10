@@ -98,6 +98,14 @@ func (s *EventService) Create(c *plugin.Context, path, actorID string, input mod
 	if err != nil {
 		return nil, err
 	}
+	recurrenceTimeZone := timeZone
+	if input.AllDay {
+		recurrenceTimeZone = "UTC"
+	}
+	recurrence, err := model.NormalizeEventRecurrence(input.Recurrence, startAt, recurrenceTimeZone)
+	if err != nil {
+		return nil, err
+	}
 
 	teamID, channelID := input.TeamID, input.ChannelID
 	if visibility != model.TaskVisibilityChannel {
@@ -137,6 +145,7 @@ func (s *EventService) Create(c *plugin.Context, path, actorID string, input mod
 		EndAt:       endAt,
 		AllDay:      input.AllDay,
 		TimeZone:    timeZone,
+		Recurrence:  recurrence,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 		Version:     1,
@@ -375,6 +384,21 @@ func (s *EventService) Update(c *plugin.Context, path, actorID, eventID string, 
 		current.EndAt = endAt
 		current.AllDay = allDay
 		current.TimeZone = timeZone
+		if patch.Recurrence != nil || patch.StartAt != nil || patch.TimeZone != nil {
+			recurrenceInput := current.Recurrence
+			if patch.Recurrence != nil {
+				recurrenceInput = patch.Recurrence
+			}
+			recurrenceTimeZone := timeZone
+			if allDay {
+				recurrenceTimeZone = "UTC"
+			}
+			recurrence, recurrenceErr := model.NormalizeEventRecurrence(recurrenceInput, startAt, recurrenceTimeZone)
+			if recurrenceErr != nil {
+				return nil, recurrenceErr
+			}
+			current.Recurrence = recurrence
+		}
 		return current, nil
 	})
 	if err != nil {

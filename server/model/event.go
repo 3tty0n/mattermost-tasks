@@ -14,27 +14,29 @@ import (
 // completion state or priority, and their start/end describe reserved time rather than a deadline.
 // Assignees are participants in the appointment, not people who complete it.
 type Event struct {
-	ID          string   `json:"id"`
-	TeamID      string   `json:"teamId"`
-	ChannelID   string   `json:"channelId,omitempty"`
-	Visibility  string   `json:"visibility"`
-	CreatorID   string   `json:"creatorId"`
-	AssigneeIDs []string `json:"assigneeIds"`
-	Title       string   `json:"title"`
-	Description string   `json:"description,omitempty"`
-	StartAt     int64    `json:"startAt"`
-	EndAt       int64    `json:"endAt"`
-	AllDay      bool     `json:"allDay,omitempty"`
-	TimeZone    string   `json:"timezone,omitempty"`
-	CreatedAt   int64    `json:"createdAt"`
-	UpdatedAt   int64    `json:"updatedAt"`
-	Version     int64    `json:"version"`
+	ID          string           `json:"id"`
+	TeamID      string           `json:"teamId"`
+	ChannelID   string           `json:"channelId,omitempty"`
+	Visibility  string           `json:"visibility"`
+	CreatorID   string           `json:"creatorId"`
+	AssigneeIDs []string         `json:"assigneeIds"`
+	Title       string           `json:"title"`
+	Description string           `json:"description,omitempty"`
+	StartAt     int64            `json:"startAt"`
+	EndAt       int64            `json:"endAt"`
+	AllDay      bool             `json:"allDay,omitempty"`
+	TimeZone    string           `json:"timezone,omitempty"`
+	Recurrence  *EventRecurrence `json:"recurrence,omitempty"`
+	CreatedAt   int64            `json:"createdAt"`
+	UpdatedAt   int64            `json:"updatedAt"`
+	Version     int64            `json:"version"`
 }
 
 // Clone returns a deep copy for the store's CAS retry callback.
 func (e *Event) Clone() *Event {
 	clone := *e
 	clone.AssigneeIDs = slices.Clone(e.AssigneeIDs)
+	clone.Recurrence = e.Recurrence.Clone()
 	return &clone
 }
 
@@ -53,20 +55,21 @@ func (e *Event) EffectiveVisibility() string {
 
 // EventRef is the compact record kept in the event indexes.
 type EventRef struct {
-	ID          string   `json:"i"`
-	TeamID      string   `json:"t"`
-	ChannelID   string   `json:"c,omitempty"`
-	Visibility  string   `json:"z"`
-	CreatorID   string   `json:"o"`
-	AssigneeIDs []string `json:"a,omitempty"`
-	Title       string   `json:"n"`
-	StartAt     int64    `json:"s"`
-	EndAt       int64    `json:"e"`
-	AllDay      bool     `json:"d,omitempty"`
-	TimeZone    string   `json:"tz,omitempty"`
-	CreatedAt   int64    `json:"k"`
-	UpdatedAt   int64    `json:"u"`
-	Version     int64    `json:"v"`
+	ID          string           `json:"i"`
+	TeamID      string           `json:"t"`
+	ChannelID   string           `json:"c,omitempty"`
+	Visibility  string           `json:"z"`
+	CreatorID   string           `json:"o"`
+	AssigneeIDs []string         `json:"a,omitempty"`
+	Title       string           `json:"n"`
+	StartAt     int64            `json:"s"`
+	EndAt       int64            `json:"e"`
+	AllDay      bool             `json:"d,omitempty"`
+	TimeZone    string           `json:"tz,omitempty"`
+	Recurrence  *EventRecurrence `json:"r,omitempty"`
+	CreatedAt   int64            `json:"k"`
+	UpdatedAt   int64            `json:"u"`
+	Version     int64            `json:"v"`
 }
 
 // EffectiveVisibility resolves a compact ref written before the visibility field existed.
@@ -91,6 +94,7 @@ func (e *Event) Ref() EventRef {
 		EndAt:       e.EndAt,
 		AllDay:      e.AllDay,
 		TimeZone:    e.TimeZone,
+		Recurrence:  e.Recurrence.Clone(),
 		CreatedAt:   e.CreatedAt,
 		UpdatedAt:   e.UpdatedAt,
 		Version:     e.Version,
@@ -99,19 +103,20 @@ func (e *Event) Ref() EventRef {
 
 // EventSummary is the calendar/list representation sent to the webapp.
 type EventSummary struct {
-	ID          string   `json:"id"`
-	TeamID      string   `json:"teamId"`
-	ChannelID   string   `json:"channelId,omitempty"`
-	Visibility  string   `json:"visibility"`
-	CreatorID   string   `json:"creatorId"`
-	AssigneeIDs []string `json:"assigneeIds"`
-	Title       string   `json:"title"`
-	StartAt     int64    `json:"startAt"`
-	EndAt       int64    `json:"endAt"`
-	AllDay      bool     `json:"allDay,omitempty"`
-	TimeZone    string   `json:"timezone,omitempty"`
-	CreatedAt   int64    `json:"createdAt"`
-	UpdatedAt   int64    `json:"updatedAt"`
+	ID          string           `json:"id"`
+	TeamID      string           `json:"teamId"`
+	ChannelID   string           `json:"channelId,omitempty"`
+	Visibility  string           `json:"visibility"`
+	CreatorID   string           `json:"creatorId"`
+	AssigneeIDs []string         `json:"assigneeIds"`
+	Title       string           `json:"title"`
+	StartAt     int64            `json:"startAt"`
+	EndAt       int64            `json:"endAt"`
+	AllDay      bool             `json:"allDay,omitempty"`
+	TimeZone    string           `json:"timezone,omitempty"`
+	Recurrence  *EventRecurrence `json:"recurrence,omitempty"`
+	CreatedAt   int64            `json:"createdAt"`
+	UpdatedAt   int64            `json:"updatedAt"`
 }
 
 // Summary converts an event index reference to its API representation.
@@ -151,6 +156,7 @@ type CreateEventInput struct {
 	EndAt       int64
 	AllDay      bool
 	TimeZone    string
+	Recurrence  *EventRecurrence
 }
 
 // EventPatch is a partial event update. A nil pointer means "leave unchanged".
@@ -165,22 +171,24 @@ type EventPatch struct {
 	EndAt       *int64
 	AllDay      *bool
 	TimeZone    *string
+	Recurrence  *EventRecurrence
 }
 
 // IsZero reports whether the patch changes nothing.
 func (p EventPatch) IsZero() bool {
 	return p.TeamID == nil && p.ChannelID == nil && p.Visibility == nil && p.Title == nil &&
-		p.Description == nil && p.AssigneeIDs == nil && p.StartAt == nil && p.EndAt == nil && p.AllDay == nil && p.TimeZone == nil
+		p.Description == nil && p.AssigneeIDs == nil && p.StartAt == nil && p.EndAt == nil && p.AllDay == nil && p.TimeZone == nil && p.Recurrence == nil
 }
 
 // EventQuery is a validated event list query. Events are fetched for a time range.
 type EventQuery struct {
-	Scope   TaskScope
-	TeamID  string
-	From    int64
-	To      int64
-	Page    int
-	PerPage int
+	Scope            TaskScope
+	TeamID           string
+	From             int64
+	To               int64
+	Page             int
+	PerPage          int
+	IncludeRecurring bool
 }
 
 // Normalize applies defaults and validates an event query.
@@ -215,9 +223,13 @@ func (q *EventQuery) Normalize() error {
 	return nil
 }
 
-// Match reports whether an event overlaps the requested range.
+// Match reports whether an event belongs in the requested range. Recurring series are included
+// when requested even if their base start is outside the range; the client expands occurrences.
 func (q *EventQuery) Match(ref EventRef) bool {
-	return ref.StartAt < q.To && ref.EndAt > q.From
+	if ref.StartAt < q.To && ref.EndAt > q.From {
+		return true
+	}
+	return q.IncludeRecurring && ref.Recurrence != nil
 }
 
 // Sort sorts events by start time, then end time and ID for stable pagination.

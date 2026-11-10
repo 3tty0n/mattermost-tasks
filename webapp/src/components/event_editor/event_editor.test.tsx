@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {screen, waitFor} from '@testing-library/react';
+import {fireEvent, screen, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {createEvent, deleteEvent, fetchAssignees, getEvent, getProfilePictureUrl, getProfiles, updateEvent} from 'client';
 
@@ -139,6 +139,53 @@ describe('EventEditor', () => {
         await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({title: 'Picked event'})));
         const picked = createEventMock.mock.calls[0][0];
         expect(new Date(picked.startAt).toISOString().slice(0, 10)).toBe('2026-01-20');
+    });
+
+    it('creates a daily recurring event until a date', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <EventEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC'}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Daily standup');
+        await user.click(screen.getByRole('button', {name: 'Repeat'}));
+        await user.click(screen.getByRole('combobox', {name: 'Repeat'}));
+        await user.click(await screen.findByRole('option', {name: 'Daily'}));
+        const until = screen.getByLabelText('Repeat until');
+        fireEvent.change(until, {target: {value: '2026-01-09'}});
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
+
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'Daily standup',
+            recurrence: {frequency: 'daily', interval: 1, until: '2026-01-09'},
+        })));
+    });
+
+    it('creates a weekly event on selected weekdays', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <EventEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC'}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'Office days');
+        await user.click(screen.getByRole('button', {name: 'Repeat'}));
+        await user.click(screen.getByRole('combobox', {name: 'Repeat'}));
+        await user.click(await screen.findByRole('option', {name: 'Specific days'}));
+        await user.click(screen.getByRole('button', {name: 'Wednesday'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
+
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'Office days',
+            recurrence: expect.objectContaining({frequency: 'weekly', interval: 1, weekdays: [1, 3]}),
+        })));
     });
 
     it('adds an assignee to an event', async () => {

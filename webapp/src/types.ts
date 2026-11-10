@@ -44,6 +44,13 @@ export type Task = TaskSummary & {
     version: number;
 };
 
+export type EventRecurrence = {
+    frequency: RecurrenceFrequency;
+    interval?: number;
+    weekdays?: number[];
+    until?: string;
+};
+
 export type Event = {
     id: string;
     teamId: string;
@@ -57,6 +64,7 @@ export type Event = {
     endAt: number;
     allDay?: boolean;
     timezone?: string;
+    recurrence?: EventRecurrence;
     createdAt: number;
     updatedAt: number;
     version: number;
@@ -71,6 +79,7 @@ export type EventQuery = {
     to: number;
     page?: number;
     perPage?: number;
+    includeRecurring?: boolean;
 };
 
 export type CreateEventInput = {
@@ -84,6 +93,7 @@ export type CreateEventInput = {
     endAt: number;
     allDay?: boolean;
     timezone?: string;
+    recurrence?: EventRecurrence;
 };
 
 export type UpdateEventInput = {
@@ -97,6 +107,7 @@ export type UpdateEventInput = {
     endAt?: number;
     allDay?: boolean;
     timezone?: string;
+    recurrence?: EventRecurrence;
 };
 
 export type ListResult<T> = {

@@ -193,7 +193,7 @@ Events are calendar appointments and are stored separately from tasks. They have
 priority or assignees. Routes use the same authentication and error format as tasks.
 
 ```text
-GET    /events?scope=my|team&team_id=...&from=...&to=...&page=0&per_page=20
+GET    /events?scope=my|team&team_id=...&from=...&to=...&include_recurring=true&page=0&per_page=20
 POST   /events
 GET    /events/{id}
 PATCH  /events/{id}   (POST is accepted too)
@@ -201,7 +201,9 @@ DELETE /events/{id}
 ```
 
 `from` and `to` are required epoch-millisecond bounds (exclusive end); the server returns events
-whose interval overlaps them. `scope=my` lists events created by or assigned to the actor; `scope=team` requires
+whose interval overlaps them. With `include_recurring=true`, recurring series are also returned
+when their base start is outside the range, so the webapp can expand occurrences. `scope=my`
+lists events created by or assigned to the actor; `scope=team` requires
 `team_id` and lists readable team/channel events plus the actor's own private events.
 
 Create body:
@@ -217,7 +219,13 @@ Create body:
   "startAt": 1767225600000,
   "endAt": 1767229200000,
   "allDay": false,
-  "timezone": "Asia/Tokyo"
+  "timezone": "Asia/Tokyo",
+  "recurrence": {
+    "frequency": "weekly",
+    "interval": 1,
+    "weekdays": [1, 3],
+    "until": "2026-02-01"
+  }
 }
 ```
 
@@ -231,7 +239,9 @@ Create body:
 - `visibility` follows task rules: `private` is creator-only, `team` is team-readable and
   `channel` is channel-readable. A channel is required for channel visibility.
 - Only the creator or a system administrator may update or delete an event.
-- Events are one-off in this version; recurrence is not yet exposed.
+- `recurrence` is optional. Frequencies are `daily`, `weekly`, `monthly` and `yearly`;
+  `weekdays` (0=Sunday … 6=Saturday) applies to weekly series, and `until` is an inclusive
+  `YYYY-MM-DD` end date. Omit `recurrence` or send `{"frequency":"none"}` to clear it.
 
 The response summary omits `description`; `GET /events/{id}` returns the full record.
 

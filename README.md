@@ -22,7 +22,7 @@ system, no external service, no second database.
 | Todo / In progress / Done with drag-and-drop | Assignment notifications from a plugin bot |
 | Filters, sorting and pagination | `/task` slash commands for keyboard and mobile |
 | Markdown descriptions and source backlinks | Click-to-edit name and description |
-| Repeating tasks: daily, weekly, monthly, yearly or custom | Optional end date or endless series |
+| Repeating tasks and events: daily, weekly, selected weekdays, monthly, yearly or custom | Optional end date or endless series |
 | Calendar events, separate from tasks | Timed or all-day, with task/event visual distinction |
 
 **Due dates the way you expect:** a date is date-only by default. Open the calendar, choose a day,

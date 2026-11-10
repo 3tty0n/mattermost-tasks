@@ -140,3 +140,47 @@ func TestPrivateEventVisibilityAndRange(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, result.Total)
 }
+
+func TestRecurringEventIsIncludedOutsideItsBaseRange(t *testing.T) {
+	env := newTestEnv(t)
+	teamID, channelID := mmodel.NewId(), mmodel.NewId()
+	creatorID := mmodel.NewId()
+	allowChannel(env.api, creatorID, channelID, teamID)
+	allowTeam(env.api, creatorID, teamID)
+
+	start := time.Date(2026, time.January, 5, 9, 0, 0, 0, time.UTC).UnixMilli()
+	end := time.Date(2026, time.January, 5, 10, 0, 0, 0, time.UTC).UnixMilli()
+	event, err := env.service.Create(nil, "/events", creatorID, taskmodel.CreateEventInput{
+		ChannelID:  channelID,
+		Visibility: taskmodel.TaskVisibilityChannel,
+		Title:      "Standup",
+		StartAt:    start,
+		EndAt:      end,
+		TimeZone:   "UTC",
+		Recurrence: &taskmodel.EventRecurrence{
+			Frequency: taskmodel.EventRecurrenceWeekly,
+			Weekdays:  []int{1, 3},
+			Until:     "2026-02-01",
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, event.Recurrence)
+	assert.Equal(t, []int{1, 3}, event.Recurrence.Weekdays)
+
+	query := taskmodel.EventQuery{
+		Scope:   taskmodel.TaskScopeTeam,
+		TeamID:  teamID,
+		From:    start + (7 * 24 * 60 * 60 * 1000),
+		To:      start + (8 * 24 * 60 * 60 * 1000),
+		Page:    0,
+		PerPage: 20,
+	}
+	result, err := env.service.List(creatorID, query)
+	require.NoError(t, err)
+	assert.Zero(t, result.Total)
+
+	query.IncludeRecurring = true
+	result, err = env.service.List(creatorID, query)
+	require.NoError(t, err)
+	assert.Equal(t, 1, result.Total)
+}

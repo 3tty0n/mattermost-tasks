@@ -142,6 +142,8 @@ notifications but leaves tasks working.
 
 - Mobile clients do not load plugin webapps; use the slash command.
 - Full-page task boards are not provided; the board lives in the RHS.
-- Events are currently one-off; event recurrence and attendees are not implemented yet.
+- Event recurrence is stored on the series and expanded in the webapp: daily, weekly with
+  selected weekdays, monthly/yearly custom intervals, and an optional inclusive end date. The API
+  returns recurring series outside the requested range when `include_recurring=true`.
 - Subtasks are not exposed in the UI yet. `parentTaskId` is reserved.
 - Bookmarks are a separate app in `mattermost-bookmarks`.

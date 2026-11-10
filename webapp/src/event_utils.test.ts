@@ -57,6 +57,24 @@ describe('eventOccurrencesForDays', () => {
         expect(occurrences.map((occurrence) => occurrence.dateKey)).toEqual(['2026-01-05', '2026-01-06']);
     });
 
+    it('expands a daily series through its end date', () => {
+        const recurring = event({recurrence: {frequency: 'daily', interval: 1, until: '2026-01-08'}});
+        const occurrences = eventOccurrencesForDays(recurring, days('2026-01-05', '2026-01-10'));
+        expect(occurrences.map((occurrence) => occurrence.dateKey)).toEqual(['2026-01-05', '2026-01-06', '2026-01-07', '2026-01-08']);
+    });
+
+    it('expands selected weekdays', () => {
+        const recurring = event({recurrence: {frequency: 'weekly', interval: 1, weekdays: [1, 3], until: '2026-01-15'}});
+        const occurrences = eventOccurrencesForDays(recurring, days('2026-01-05', '2026-01-16'));
+        expect(occurrences.map((occurrence) => occurrence.dateKey)).toEqual(['2026-01-05', '2026-01-07', '2026-01-12', '2026-01-14']);
+    });
+
+    it('expands custom week intervals', () => {
+        const recurring = event({recurrence: {frequency: 'weekly', interval: 2, weekdays: [1], until: '2026-01-20'}});
+        const occurrences = eventOccurrencesForDays(recurring, days('2026-01-05', '2026-01-21'));
+        expect(occurrences.map((occurrence) => occurrence.dateKey)).toEqual(['2026-01-05', '2026-01-19']);
+    });
+
     it('sorts all-day events before timed events', () => {
         const allDay = event({id: 'all-day', allDay: true, startAt: Date.UTC(2026, 0, 5), endAt: Date.UTC(2026, 0, 6)});
         const timed = event({id: 'timed'});

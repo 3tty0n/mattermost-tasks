@@ -11,16 +11,17 @@ import (
 )
 
 type createEventRequest struct {
-	TeamID      string   `json:"teamId"`
-	ChannelID   string   `json:"channelId"`
-	Visibility  string   `json:"visibility"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	AssigneeIDs []string `json:"assigneeIds"`
-	StartAt     int64    `json:"startAt"`
-	EndAt       int64    `json:"endAt"`
-	AllDay      bool     `json:"allDay"`
-	TimeZone    string   `json:"timezone"`
+	TeamID      string                     `json:"teamId"`
+	ChannelID   string                     `json:"channelId"`
+	Visibility  string                     `json:"visibility"`
+	Title       string                     `json:"title"`
+	Description string                     `json:"description"`
+	AssigneeIDs []string                   `json:"assigneeIds"`
+	StartAt     int64                      `json:"startAt"`
+	EndAt       int64                      `json:"endAt"`
+	AllDay      bool                       `json:"allDay"`
+	TimeZone    string                     `json:"timezone"`
+	Recurrence  *taskmodel.EventRecurrence `json:"recurrence"`
 }
 
 func (req createEventRequest) input() taskmodel.CreateEventInput {
@@ -35,20 +36,22 @@ func (req createEventRequest) input() taskmodel.CreateEventInput {
 		EndAt:       req.EndAt,
 		AllDay:      req.AllDay,
 		TimeZone:    req.TimeZone,
+		Recurrence:  req.Recurrence,
 	}
 }
 
 type updateEventRequest struct {
-	TeamID      *string   `json:"teamId"`
-	ChannelID   *string   `json:"channelId"`
-	Visibility  *string   `json:"visibility"`
-	Title       *string   `json:"title"`
-	Description *string   `json:"description"`
-	AssigneeIDs *[]string `json:"assigneeIds"`
-	StartAt     *int64    `json:"startAt"`
-	EndAt       *int64    `json:"endAt"`
-	AllDay      *bool     `json:"allDay"`
-	TimeZone    *string   `json:"timezone"`
+	TeamID      *string                    `json:"teamId"`
+	ChannelID   *string                    `json:"channelId"`
+	Visibility  *string                    `json:"visibility"`
+	Title       *string                    `json:"title"`
+	Description *string                    `json:"description"`
+	AssigneeIDs *[]string                  `json:"assigneeIds"`
+	StartAt     *int64                     `json:"startAt"`
+	EndAt       *int64                     `json:"endAt"`
+	AllDay      *bool                      `json:"allDay"`
+	TimeZone    *string                    `json:"timezone"`
+	Recurrence  *taskmodel.EventRecurrence `json:"recurrence"`
 }
 
 func (req updateEventRequest) patch() taskmodel.EventPatch {
@@ -63,6 +66,7 @@ func (req updateEventRequest) patch() taskmodel.EventPatch {
 		EndAt:       req.EndAt,
 		AllDay:      req.AllDay,
 		TimeZone:    req.TimeZone,
+		Recurrence:  req.Recurrence,
 	}
 }
 
@@ -155,12 +159,13 @@ func eventQueryFromRequest(r *http.Request) (taskmodel.EventQuery, error) {
 		return taskmodel.EventQuery{}, fmt.Errorf("%w: from and to are required", taskmodel.ErrInvalid)
 	}
 	return taskmodel.EventQuery{
-		Scope:   taskmodel.TaskScope(firstValue(query, "scope")),
-		TeamID:  firstValue(query, "team_id"),
-		From:    *from,
-		To:      *to,
-		Page:    page,
-		PerPage: perPage,
+		Scope:            taskmodel.TaskScope(firstValue(query, "scope")),
+		TeamID:           firstValue(query, "team_id"),
+		From:             *from,
+		To:               *to,
+		Page:             page,
+		PerPage:          perPage,
+		IncludeRecurring: firstValue(query, "include_recurring") == "true",
 	}, nil
 }
 
