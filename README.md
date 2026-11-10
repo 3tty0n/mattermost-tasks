@@ -107,13 +107,12 @@ Click the check-circle icon in the channel header to open the Tasks sidebar.
   month grid (or a week day header) to open **New task** with that date prefilled. The calendar's
   **New task** button defaults the due date to today; double-clicking a day overrides it with that
   day. Repeating tasks appear on every occurrence, not just their next due date.
-- **Events:** create an event with the **+** in a day header (week view) or in the selected day's
-  agenda (month view). Start/end are manual text fields accepting `mm/dd/yyyy`, `dd/mm/yyyy` or
-  `yyyy/mm/dd` (auto-detected; the locale decides ambiguous values) and a time in the Mattermost
-  clock format. The calendar button opens the same date picker as tasks and the clock button opens
-  a Compass clock face, so the fields can be filled visually or typed. Each event has a
-  selectable/typeahead IANA **time zone**, an optional all-day flag, visibility, assignees and an
-  optional description. They are deliberately separate
+- **Events:** in calendar view the sidebar **+**, a day-header **+**, or a double-clicked day
+  opens **New event**. The editor follows the New task layout: large title, Markdown description
+  with preview, property chips, and an assignee section. Start/end are chosen from the calendar
+  and the Compass clock face (with typed time inside the picker); they are not free-form date
+  fields. Each event has a selectable/typeahead IANA **time zone**, an optional all-day flag,
+  visibility, assignees and an optional description. They are deliberately separate
   from tasks: no checkbox or priority. Events appear as accent-colored cards with a calendar icon
   and time range plus assignee avatars; tasks keep their priority dots and assignee avatars, and
   month cells show tasks as dots and events as bars. Click an event to edit it; creators and

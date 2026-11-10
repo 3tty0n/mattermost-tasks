@@ -1,6 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import type {ReactNode} from 'react';
 import {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 
@@ -20,12 +21,14 @@ type Props = {
     label: string;
     align?: 'left'|'right';
     disabled?: boolean;
+    display?: ReactNode;
+    triggerClassName?: string;
     onChange: (value: number | undefined) => void;
 };
 
 // EventDatePicker opens the same calendar and clock as task due dates, so an event's start/end
 // can be chosen visually while the text fields remain editable.
-export default function EventDatePicker({value, hasTime, timeZone, hour12, label, align = 'left', disabled, onChange}: Props) {
+export default function EventDatePicker({value, hasTime, timeZone, hour12, label, align = 'left', disabled, display, triggerClassName, onChange}: Props) {
     const wrapperRef = useRef<HTMLDivElement>(null);
     const popoverRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);
@@ -86,15 +89,29 @@ export default function EventDatePicker({value, hasTime, timeZone, hour12, label
             ref={wrapperRef}
             className='Tasks-EventDatePicker'
         >
-            <IconButton
-                size='x-small'
-                icon={<Icon glyph={<CalendarOutlineIcon/>}/>}
-                aria-label={label}
-                aria-expanded={open}
-                aria-haspopup='dialog'
-                disabled={disabled}
-                onClick={() => setOpen((current) => !current)}
-            />
+            {display ? (
+                <button
+                    type='button'
+                    className={triggerClassName}
+                    aria-label={label}
+                    aria-expanded={open}
+                    aria-haspopup='dialog'
+                    disabled={disabled}
+                    onClick={() => setOpen((current) => !current)}
+                >
+                    {display}
+                </button>
+            ) : (
+                <IconButton
+                    size='x-small'
+                    icon={<Icon glyph={<CalendarOutlineIcon/>}/>}
+                    aria-label={label}
+                    aria-expanded={open}
+                    aria-haspopup='dialog'
+                    disabled={disabled}
+                    onClick={() => setOpen((current) => !current)}
+                />
+            )}
             {open && createPortal(
                 <div
                     ref={popoverRef}
@@ -108,6 +125,7 @@ export default function EventDatePicker({value, hasTime, timeZone, hour12, label
                         hasTime={hasTime}
                         timeZone={timeZone}
                         hour12={hour12}
+                        allowTime={hasTime}
                         onChange={(next) => {
                             if (next !== undefined) {
                                 onChange(next);

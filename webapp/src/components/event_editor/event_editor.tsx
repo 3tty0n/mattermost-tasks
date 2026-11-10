@@ -5,14 +5,24 @@ import {DAY_IN_MS} from 'calendar_utils';
 import {createEvent, deleteEvent, getEvent, updateEvent} from 'client';
 import {formatDateInput, formatTimeInput, parseDateInput, parseTimeInput, wallDateTime} from 'datetime_input_utils';
 import {useHour12} from 'hooks';
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {toDateInput} from 'recurrence_utils';
-import {epochToZonedParts, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
+import {epochToZonedParts, isValidTimeZone, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
 
+import AccountMultipleOutlineIcon from '@mattermost/compass-icons/components/account-multiple-outline';
+import CalendarOutlineIcon from '@mattermost/compass-icons/components/calendar-outline';
+import ClockOutlineIcon from '@mattermost/compass-icons/components/clock-outline';
+import FolderOutlineIcon from '@mattermost/compass-icons/components/folder-outline';
+import FormatBoldIcon from '@mattermost/compass-icons/components/format-bold';
+import FormatItalicIcon from '@mattermost/compass-icons/components/format-italic';
+import FormatListBulletedIcon from '@mattermost/compass-icons/components/format-list-bulleted';
+import LinkVariantIcon from '@mattermost/compass-icons/components/link-variant';
 import {Button} from '@mattermost/compass-ui/components/button';
 import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
+import {Icon} from '@mattermost/compass-ui/components/icon';
+import {IconButton} from '@mattermost/compass-ui/components/icon-button';
 import {SectionNotice} from '@mattermost/compass-ui/components/section-notice';
 import {Select} from '@mattermost/compass-ui/components/select';
 import {Spinner} from '@mattermost/compass-ui/components/spinner';
@@ -22,11 +32,12 @@ import {selectCurrentTeam, selectCurrentUserId, selectIsSystemAdmin, selectMyCha
 import AssigneePicker from 'components/assignee_picker/assignee_picker';
 import Dialog from 'components/dialog/dialog';
 import EventDatePicker from 'components/event_date_picker/event_date_picker';
-import TimeField from 'components/time_field/time_field';
+import MarkdownText from 'components/markdown_text/markdown_text';
 import TimeZoneInput from 'components/timezone_input/timezone_input';
 
 import type {Event, TaskVisibility} from 'types';
 
+import 'components/task_editor/task_editor.css';
 import './event_editor.css';
 
 export type EventEditorDefaults = {
@@ -86,6 +97,9 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     const [deleting, setDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [error, setError] = useState<string>();
+    const [preview, setPreview] = useState(false);
+    const [openProperty, setOpenProperty] = useState<'timezone'|'scope'>();
+    const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         if (!eventId) {
@@ -137,11 +151,11 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     if (channelID && !channelOptions.some((option) => option.value === channelID)) {
         channelOptions.push({value: channelID, label: channelID});
     }
-    const visibilityOptions = [
-        {value: 'private', label: intl.formatMessage({id: 'tasks.editor.visibility_private', defaultMessage: 'Only me'})},
-        {value: 'team', label: intl.formatMessage({id: 'tasks.editor.visibility_team', defaultMessage: 'Team'})},
-        {value: 'channel', label: intl.formatMessage({id: 'tasks.editor.visibility_channel', defaultMessage: 'Channel'})},
-    ];
+    const visibilityLabels: Record<TaskVisibility, string> = {
+        private: intl.formatMessage({id: 'tasks.editor.visibility_private', defaultMessage: 'Only me'}),
+        team: intl.formatMessage({id: 'tasks.editor.visibility_team', defaultMessage: 'Team'}),
+        channel: intl.formatMessage({id: 'tasks.editor.visibility_channel', defaultMessage: 'Channel'}),
+    };
 
     const changeTeam = (value: string) => {
         setTeamID(value);
@@ -167,6 +181,78 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
         }
     };
 
+    const replaceSelection = (before: string, after: string, placeholder: {id: string; defaultMessage: string}) => {
+        const textarea = descriptionRef.current;
+        const start = textarea?.selectionStart ?? description.length;
+        const end = textarea?.selectionEnd ?? start;
+        const selected = description.slice(start, end) || intl.formatMessage(placeholder);
+        const next = description.slice(0, start) + before + selected + after + description.slice(end);
+        setDescription(next);
+        if (textarea) {
+            requestAnimationFrame(() => {
+                textarea.focus();
+                textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+            });
+        }
+    };
+
+    const insertLink = () => {
+        const textarea = descriptionRef.current;
+        const start = textarea?.selectionStart ?? description.length;
+        const end = textarea?.selectionEnd ?? start;
+        const label = description.slice(start, end) || intl.formatMessage({id: 'tasks.editor.link_text', defaultMessage: 'link'});
+        const replacement = `[${label}](url)`;
+        const next = description.slice(0, start) + replacement + description.slice(end);
+        setDescription(next);
+        if (textarea) {
+            const urlStart = start + label.length + 3;
+            requestAnimationFrame(() => {
+                textarea.focus();
+                textarea.setSelectionRange(urlStart, urlStart + 3);
+            });
+        }
+    };
+
+    const insertBulletList = () => {
+        const textarea = descriptionRef.current;
+        const start = textarea?.selectionStart ?? 0;
+        const end = textarea?.selectionEnd ?? start;
+        const lineStart = description.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+        const nextBreak = description.indexOf('\n', end);
+        const lineEnd = nextBreak === -1 ? description.length : nextBreak;
+        const block = description.slice(lineStart, lineEnd);
+        const prefixed = block.split('\n').map((line) => `- ${line}`).join('\n');
+        setDescription(description.slice(0, lineStart) + prefixed + description.slice(lineEnd));
+        if (textarea) {
+            requestAnimationFrame(() => {
+                textarea.focus();
+                textarea.setSelectionRange(lineStart, lineStart + prefixed.length);
+            });
+        }
+    };
+
+    const selectedTeam = myTeams.find((team) => team.id === teamID);
+    const selectedChannel = myChannels.find((channel) => channel.id === channelID);
+    let scopeLabel = intl.formatMessage({id: 'tasks.editor.visibility_team', defaultMessage: 'Team'});
+    if (visibility === 'private') {
+        scopeLabel = intl.formatMessage({id: 'tasks.editor.visibility_private', defaultMessage: 'Only me'});
+    } else if (visibility === 'channel') {
+        scopeLabel = selectedChannel?.display_name ?? intl.formatMessage({id: 'tasks.editor.visibility_channel', defaultMessage: 'Channel'});
+    } else if (selectedTeam) {
+        scopeLabel = selectedTeam.display_name;
+    }
+    const displayZone = isValidTimeZone(timeZone) ? timeZone : 'UTC';
+    const formatEventWhen = (value: number | undefined, withTime: boolean) => {
+        if (!value) {
+            return '';
+        }
+        const date = new Date(value);
+        const dateLabel = intl.formatDate(date, {timeZone: displayZone, weekday: 'short', month: 'short', day: 'numeric'});
+        if (!withTime) {
+            return dateLabel;
+        }
+        return `${dateLabel} · ${intl.formatTime(date, {timeZone: displayZone, hour: 'numeric', minute: '2-digit', hour12})}`;
+    };
     const currentWallTimes = () => {
         if (allDay) {
             const start = parseDateInput(startDate, intl.locale);
@@ -192,7 +278,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     };
 
     const changeTimeZone = (next: string) => {
-        if (allDay) {
+        if (allDay || !isValidTimeZone(next)) {
             setTimeZone(next);
             return;
         }
@@ -211,6 +297,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     };
 
     const setFromPickedEpoch = (which: 'start'|'end', value: number) => {
+        const zone = isValidTimeZone(timeZone) ? timeZone : machineTimeZone();
         if (allDay) {
             const picked = new Date(value);
             const text = formatDateInput({year: picked.getUTCFullYear(), month: picked.getUTCMonth() + 1, day: picked.getUTCDate()});
@@ -221,7 +308,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
             }
             return;
         }
-        const parts = epochToZonedParts(value, timeZone);
+        const parts = epochToZonedParts(value, zone);
         const dateText = formatDateInput({year: parts.year, month: parts.month, day: parts.day});
         const clockText = formatTimeInput(parts.hour, parts.minute, Boolean(hour12));
         if (which === 'start') {
@@ -234,13 +321,16 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     };
 
     const currentInstants = currentWallTimes();
+    const startLabel = formatEventWhen(currentInstants?.startAt ?? undefined, !allDay);
+    const endLabel = formatEventWhen(currentInstants?.endAt ?? undefined, !allDay);
 
     const toggleAllDay = (next: boolean) => {
         if (next) {
             const instants = currentWallTimes();
             if (instants?.startAt) {
-                const startParts = epochToZonedParts(instants.startAt, timeZone);
-                const endParts = epochToZonedParts(Math.max(instants.startAt, (instants.endAt ?? instants.startAt + 3600000) - 1), timeZone);
+                const zone = isValidTimeZone(timeZone) ? timeZone : machineTimeZone();
+                const startParts = epochToZonedParts(instants.startAt, zone);
+                const endParts = epochToZonedParts(Math.max(instants.startAt, (instants.endAt ?? instants.startAt + 3600000) - 1), zone);
                 setStartDate(formatDateInput({year: startParts.year, month: startParts.month, day: startParts.day}));
                 setEndDate(formatDateInput({year: endParts.year, month: endParts.month, day: endParts.day}));
             }
@@ -410,10 +500,17 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                 loading={saving}
                 disabled={deleting}
             >
-                <FormattedMessage
-                    id='tasks.save'
-                    defaultMessage='Save'
-                />
+                {event ? (
+                    <FormattedMessage
+                        id='tasks.save'
+                        defaultMessage='Save'
+                    />
+                ) : (
+                    <FormattedMessage
+                        id='tasks.event.create'
+                        defaultMessage='Add event'
+                    />
+                )}
             </Button>
         </>
     ) : closeFooter;
@@ -462,44 +559,145 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                     <Spinner aria-label={intl.formatMessage({id: 'tasks.loading', defaultMessage: 'Loading…'})}/>
                 </div>
             ) : (
-                <div className='Tasks-EventEditor'>
+                <div className='Tasks-TaskEditor'>
                     {error && (
                         <SectionNotice
                             type='danger'
                             title={error}
                         />
                     )}
-                    <label className='Tasks-EventEditor__field'>
-                        <span className='Tasks-EventEditor__label'>
+
+                    <div className='Tasks-TaskEditor__headline'>
+                        <label
+                            className='Tasks-TaskEditor__srOnly'
+                            htmlFor='tasks-event-title'
+                        >
                             <FormattedMessage
                                 id='tasks.event.title'
                                 defaultMessage='Title'
                             />
-                        </span>
+                        </label>
                         <input
-                            className='Tasks-EventEditor__input'
+                            id='tasks-event-title'
+                            className='Tasks-TaskEditor__titleInput'
                             value={title}
                             maxLength={200}
                             autoFocus={canModify}
                             disabled={!canModify}
+                            placeholder={intl.formatMessage({id: 'tasks.event.title_placeholder', defaultMessage: 'Event name'})}
                             onChange={(changeEvent) => setTitle(changeEvent.target.value)}
                         />
-                    </label>
-                    <label className='Tasks-EventEditor__field'>
-                        <span className='Tasks-EventEditor__label'>
-                            <FormattedMessage
-                                id='tasks.event.description'
-                                defaultMessage='Description'
-                            />
-                        </span>
-                        <textarea
-                            className='Tasks-EventEditor__textarea'
-                            value={description}
-                            rows={3}
-                            disabled={!canModify}
-                            onChange={(changeEvent) => setDescription(changeEvent.target.value)}
-                        />
-                    </label>
+                    </div>
+
+                    <div className='Tasks-TaskEditor__description'>
+                        {!preview && (
+                            <>
+                                <label
+                                    className='Tasks-TaskEditor__srOnly'
+                                    htmlFor='tasks-event-description'
+                                >
+                                    <FormattedMessage
+                                        id='tasks.event.description'
+                                        defaultMessage='Description'
+                                    />
+                                </label>
+                                <textarea
+                                    id='tasks-event-description'
+                                    ref={descriptionRef}
+                                    className='Tasks-TaskEditor__descriptionInput'
+                                    value={description}
+                                    rows={3}
+                                    maxLength={8000}
+                                    disabled={!canModify}
+                                    placeholder={intl.formatMessage({id: 'tasks.event.description_placeholder', defaultMessage: 'Description'})}
+                                    onChange={(changeEvent) => setDescription(changeEvent.target.value)}
+                                />
+                                <div className='Tasks-TaskEditor__descriptionBar'>
+                                    <div
+                                        className='Tasks-TaskEditor__markdownTools'
+                                        role='toolbar'
+                                        aria-label={intl.formatMessage({id: 'tasks.editor.markdown_tools', defaultMessage: 'Markdown formatting'})}
+                                    >
+                                        <IconButton
+                                            size='x-small'
+                                            disabled={!canModify}
+                                            icon={<Icon glyph={<FormatBoldIcon/>}/>}
+                                            aria-label={intl.formatMessage({id: 'tasks.editor.bold', defaultMessage: 'Bold'})}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            onClick={() => replaceSelection('**', '**', {id: 'tasks.editor.bold_text', defaultMessage: 'bold text'})}
+                                        />
+                                        <IconButton
+                                            size='x-small'
+                                            disabled={!canModify}
+                                            icon={<Icon glyph={<FormatItalicIcon/>}/>}
+                                            aria-label={intl.formatMessage({id: 'tasks.editor.italic', defaultMessage: 'Italic'})}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            onClick={() => replaceSelection('_', '_', {id: 'tasks.editor.italic_text', defaultMessage: 'italic text'})}
+                                        />
+                                        <IconButton
+                                            size='x-small'
+                                            disabled={!canModify}
+                                            icon={<Icon glyph={<FormatListBulletedIcon/>}/>}
+                                            aria-label={intl.formatMessage({id: 'tasks.editor.bullet_list', defaultMessage: 'Bulleted list'})}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            onClick={insertBulletList}
+                                        />
+                                        <IconButton
+                                            size='x-small'
+                                            disabled={!canModify}
+                                            icon={<Icon glyph={<LinkVariantIcon/>}/>}
+                                            aria-label={intl.formatMessage({id: 'tasks.editor.link', defaultMessage: 'Link'})}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            onClick={insertLink}
+                                        />
+                                    </div>
+                                    <div className='Tasks-TaskEditor__descriptionMeta'>
+                                        <span className='Tasks-TaskEditor__hint'>
+                                            <FormattedMessage
+                                                id='tasks.editor.markdown_supported'
+                                                defaultMessage='Markdown supported'
+                                            />
+                                        </span>
+                                        <Button
+                                            emphasis='link'
+                                            size='small'
+                                            onClick={() => setPreview(true)}
+                                        >
+                                            <FormattedMessage
+                                                id='tasks.editor.preview'
+                                                defaultMessage='Preview'
+                                            />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                        {preview && (
+                            <div className='Tasks-TaskEditor__preview'>
+                                {description.trim() ? (
+                                    <MarkdownText text={description}/>
+                                ) : (
+                                    <span className='Tasks-TaskEditor__hint'>
+                                        <FormattedMessage
+                                            id='tasks.editor.no_description'
+                                            defaultMessage='Nothing to preview yet.'
+                                        />
+                                    </span>
+                                )}
+                                <Button
+                                    emphasis='link'
+                                    size='small'
+                                    onClick={() => setPreview(false)}
+                                >
+                                    <FormattedMessage
+                                        id='tasks.editor.edit_description'
+                                        defaultMessage='Edit description'
+                                    />
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+
                     <Checkbox
                         checked={allDay}
                         disabled={!canModify}
@@ -510,194 +708,177 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                             defaultMessage='All day'
                         />
                     </Checkbox>
-                    <div className='Tasks-EventEditor__row'>
-                        <div className='Tasks-EventEditor__field'>
-                            <span className='Tasks-EventEditor__label'>
-                                <FormattedMessage
-                                    id='tasks.event.start'
-                                    defaultMessage='Start'
-                                />
-                            </span>
-                            {allDay ? (
-                                <div className='Tasks-EventEditor__dateTimeInputs'>
-                                    <input
-                                        type='text'
-                                        className='Tasks-EventEditor__input'
-                                        value={startDate}
-                                        placeholder='YYYY/MM/DD'
-                                        autoComplete='off'
-                                        aria-label={intl.formatMessage({id: 'tasks.event.start_date', defaultMessage: 'Start date'})}
-                                        disabled={!canModify}
-                                        onChange={(changeEvent) => setStartDate(changeEvent.target.value)}
-                                    />
-                                    <EventDatePicker
-                                        value={currentInstants?.startAt ?? undefined}
-                                        hasTime={false}
-                                        timeZone={timeZone}
-                                        hour12={Boolean(hour12)}
-                                        label={intl.formatMessage({id: 'tasks.event.pick_start', defaultMessage: 'Pick start date and time'})}
-                                        disabled={!canModify}
-                                        onChange={(next) => {
-                                            if (next !== undefined) {
-                                                setFromPickedEpoch('start', next);
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            ) : (
-                                <div className='Tasks-EventEditor__dateTimeInputs'>
-                                    <input
-                                        type='text'
-                                        className='Tasks-EventEditor__input'
-                                        value={startDate}
-                                        placeholder='YYYY/MM/DD'
-                                        autoComplete='off'
-                                        aria-label={intl.formatMessage({id: 'tasks.event.start_date', defaultMessage: 'Start date'})}
-                                        disabled={!canModify}
-                                        onChange={(changeEvent) => setStartDate(changeEvent.target.value)}
-                                    />
-                                    <TimeField
-                                        value={startTime}
-                                        hour12={Boolean(hour12)}
-                                        inputLabel={intl.formatMessage({id: 'tasks.event.start_time', defaultMessage: 'Start time'})}
-                                        disabled={!canModify}
-                                        onChange={setStartTime}
-                                    />
-                                    <EventDatePicker
-                                        value={currentInstants?.startAt ?? undefined}
-                                        hasTime={true}
-                                        timeZone={timeZone}
-                                        hour12={Boolean(hour12)}
-                                        label={intl.formatMessage({id: 'tasks.event.pick_start', defaultMessage: 'Pick start date and time'})}
-                                        disabled={!canModify}
-                                        onChange={(next) => {
-                                            if (next !== undefined) {
-                                                setFromPickedEpoch('start', next);
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                        <div className='Tasks-EventEditor__field'>
-                            <span className='Tasks-EventEditor__label'>
-                                <FormattedMessage
-                                    id='tasks.event.end'
-                                    defaultMessage='End'
-                                />
-                            </span>
-                            {allDay ? (
-                                <div className='Tasks-EventEditor__dateTimeInputs'>
-                                    <input
-                                        type='text'
-                                        className='Tasks-EventEditor__input'
-                                        value={endDate}
-                                        placeholder='YYYY/MM/DD'
-                                        autoComplete='off'
-                                        aria-label={intl.formatMessage({id: 'tasks.event.end_date', defaultMessage: 'End date'})}
-                                        disabled={!canModify}
-                                        onChange={(changeEvent) => setEndDate(changeEvent.target.value)}
-                                    />
-                                    <EventDatePicker
-                                        value={currentInstants?.endAt ?? undefined}
-                                        hasTime={false}
-                                        timeZone={timeZone}
-                                        hour12={Boolean(hour12)}
-                                        label={intl.formatMessage({id: 'tasks.event.pick_end', defaultMessage: 'Pick end date and time'})}
-                                        align='right'
-                                        disabled={!canModify}
-                                        onChange={(next) => {
-                                            if (next !== undefined) {
-                                                setFromPickedEpoch('end', next);
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            ) : (
-                                <div className='Tasks-EventEditor__dateTimeInputs'>
-                                    <input
-                                        type='text'
-                                        className='Tasks-EventEditor__input'
-                                        value={endDate}
-                                        placeholder='YYYY/MM/DD'
-                                        autoComplete='off'
-                                        aria-label={intl.formatMessage({id: 'tasks.event.end_date', defaultMessage: 'End date'})}
-                                        disabled={!canModify}
-                                        onChange={(changeEvent) => setEndDate(changeEvent.target.value)}
-                                    />
-                                    <TimeField
-                                        value={endTime}
-                                        hour12={Boolean(hour12)}
-                                        inputLabel={intl.formatMessage({id: 'tasks.event.end_time', defaultMessage: 'End time'})}
-                                        disabled={!canModify}
-                                        onChange={setEndTime}
-                                    />
-                                    <EventDatePicker
-                                        value={currentInstants?.endAt ?? undefined}
-                                        hasTime={true}
-                                        timeZone={timeZone}
-                                        hour12={Boolean(hour12)}
-                                        label={intl.formatMessage({id: 'tasks.event.pick_end', defaultMessage: 'Pick end date and time'})}
-                                        align='right'
-                                        disabled={!canModify}
-                                        onChange={(next) => {
-                                            if (next !== undefined) {
-                                                setFromPickedEpoch('end', next);
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <p className='Tasks-EventEditor__hint'>
-                        <FormattedMessage
-                            id='tasks.event.date_hint'
-                            defaultMessage='Dates accept mm/dd/yyyy, dd/mm/yyyy or yyyy/mm/dd.'
-                        />
-                    </p>
-                    <TimeZoneInput
-                        value={timeZone}
-                        onChange={changeTimeZone}
-                        disabled={!canModify}
-                    />
-                    <div className='Tasks-EventEditor__row'>
-                        <div className='Tasks-EventEditor__field'>
-                            <Select
-                                size='small'
-                                label={intl.formatMessage({id: 'tasks.event.team', defaultMessage: 'Team'})}
-                                options={teamOptions}
-                                value={teamID}
-                                onChange={changeTeam}
-                            />
-                        </div>
-                        <div className='Tasks-EventEditor__field'>
-                            <Select
-                                size='small'
-                                label={intl.formatMessage({id: 'tasks.event.visibility', defaultMessage: 'Visible to'})}
-                                options={visibilityOptions}
-                                value={visibility}
-                                onChange={changeVisibility}
-                            />
-                        </div>
-                    </div>
-                    {visibility === 'channel' && (
-                        <Select
-                            size='small'
-                            label={intl.formatMessage({id: 'tasks.event.channel', defaultMessage: 'Channel'})}
-                            options={channelOptions}
-                            value={channelID}
+
+                    <div className='Tasks-TaskEditor__properties'>
+                        <EventDatePicker
+                            value={currentInstants?.startAt ?? undefined}
+                            hasTime={!allDay}
+                            timeZone={timeZone}
+                            hour12={Boolean(hour12)}
+                            label={intl.formatMessage({id: 'tasks.event.pick_start', defaultMessage: 'Pick start date and time'})}
                             disabled={!canModify}
-                            onChange={setChannelID}
+                            triggerClassName='Tasks-TaskEditor__propertySummary'
+                            display={(
+                                <>
+                                    <Icon
+                                        size='16'
+                                        glyph={<CalendarOutlineIcon/>}
+                                    />
+                                    <span>
+                                        <FormattedMessage
+                                            id='tasks.event.start'
+                                            defaultMessage='Start'
+                                        />
+                                        {`: ${startLabel || intl.formatMessage({id: 'tasks.event.pick_start_short', defaultMessage: 'Pick a date'})}`}
+                                    </span>
+                                </>
+                            )}
+                            onChange={(next) => {
+                                if (next === undefined) {
+                                    return;
+                                }
+                                setFromPickedEpoch('start', next);
+                            }}
                         />
-                    )}
-                    <div className='Tasks-EventEditor__assignees'>
-                        <span className='Tasks-EventEditor__label'>
-                            <FormattedMessage
-                                id='tasks.event.assignees'
-                                defaultMessage='Assignees'
+                        <EventDatePicker
+                            value={currentInstants?.endAt ?? undefined}
+                            hasTime={!allDay}
+                            timeZone={timeZone}
+                            hour12={Boolean(hour12)}
+                            label={intl.formatMessage({id: 'tasks.event.pick_end', defaultMessage: 'Pick end date and time'})}
+                            align='right'
+                            disabled={!canModify}
+                            triggerClassName='Tasks-TaskEditor__propertySummary'
+                            display={(
+                                <>
+                                    <Icon
+                                        size='16'
+                                        glyph={<ClockOutlineIcon/>}
+                                    />
+                                    <span>
+                                        <FormattedMessage
+                                            id='tasks.event.end'
+                                            defaultMessage='End'
+                                        />
+                                        {`: ${endLabel || intl.formatMessage({id: 'tasks.event.pick_start_short', defaultMessage: 'Pick a date'})}`}
+                                    </span>
+                                </>
+                            )}
+                            onChange={(next) => {
+                                if (next === undefined) {
+                                    return;
+                                }
+                                setFromPickedEpoch('end', next);
+                            }}
+                        />
+                        <button
+                            type='button'
+                            className='Tasks-TaskEditor__propertySummary'
+                            aria-expanded={openProperty === 'timezone'}
+                            disabled={!canModify}
+                            onClick={() => setOpenProperty(openProperty === 'timezone' ? undefined : 'timezone')}
+                        >
+                            <Icon
+                                size='16'
+                                glyph={<ClockOutlineIcon/>}
                             />
-                        </span>
+                            <span>{timeZone}</span>
+                        </button>
+                        <button
+                            type='button'
+                            className='Tasks-TaskEditor__propertySummary'
+                            aria-expanded={openProperty === 'scope'}
+                            disabled={!canModify}
+                            onClick={() => setOpenProperty(openProperty === 'scope' ? undefined : 'scope')}
+                        >
+                            <Icon
+                                size='16'
+                                glyph={<FolderOutlineIcon/>}
+                            />
+                            <span>{scopeLabel}</span>
+                        </button>
+                    </div>
+
+                    {openProperty && (
+                        <div className='Tasks-TaskEditor__propertyPanel'>
+                            {openProperty === 'timezone' && (
+                                <div className='Tasks-TaskEditor__propertyBody'>
+                                    <span className='Tasks-TaskEditor__propertyLabel'>
+                                        <FormattedMessage
+                                            id='tasks.editor.timezone'
+                                            defaultMessage='Time zone'
+                                        />
+                                    </span>
+                                    <TimeZoneInput
+                                        value={timeZone}
+                                        onChange={changeTimeZone}
+                                        disabled={!canModify}
+                                    />
+                                </div>
+                            )}
+                            {openProperty === 'scope' && (
+                                <div className='Tasks-TaskEditor__propertyBody'>
+                                    <span className='Tasks-TaskEditor__propertyLabel'>
+                                        <FormattedMessage
+                                            id='tasks.editor.visibility'
+                                            defaultMessage='Who can see this task?'
+                                        />
+                                    </span>
+                                    <div
+                                        className='Tasks-TaskEditor__quickOptions'
+                                        role='group'
+                                        aria-label={intl.formatMessage({id: 'tasks.event.visibility', defaultMessage: 'Visible to'})}
+                                    >
+                                        {(['private', 'team', 'channel'] as TaskVisibility[]).map((value) => {
+                                            const selected = visibility === value;
+                                            return (
+                                                <button
+                                                    key={value}
+                                                    type='button'
+                                                    className={`Tasks-TaskEditor__quickOption${selected ? ' Tasks-TaskEditor__quickOption--selected' : ''}`}
+                                                    aria-pressed={selected}
+                                                    disabled={!canModify}
+                                                    onClick={() => changeVisibility(value)}
+                                                >
+                                                    {visibilityLabels[value]}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <Select
+                                        label={intl.formatMessage({id: 'tasks.event.team', defaultMessage: 'Team'})}
+                                        options={teamOptions}
+                                        value={teamID}
+                                        disabled={!canModify}
+                                        onChange={changeTeam}
+                                    />
+                                    {visibility === 'channel' && (
+                                        <Select
+                                            label={intl.formatMessage({id: 'tasks.event.channel', defaultMessage: 'Channel'})}
+                                            options={channelOptions}
+                                            value={channelID}
+                                            disabled={!canModify}
+                                            onChange={setChannelID}
+                                        />
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className='Tasks-TaskEditor__assignees'>
+                        <div className='Tasks-TaskEditor__sectionHeading'>
+                            <Icon
+                                size='16'
+                                glyph={<AccountMultipleOutlineIcon/>}
+                            />
+                            <span>
+                                <FormattedMessage
+                                    id='tasks.event.assignees'
+                                    defaultMessage='Assignees'
+                                />
+                            </span>
+                        </div>
                         <AssigneePicker
                             teamId={teamID}
                             channelId={visibility === 'channel' ? channelID : undefined}

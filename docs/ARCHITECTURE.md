@@ -98,11 +98,11 @@ administrator. Assignment never grants access to a private channel.
   viewer's own environment), so two people in different regions see the same meeting at their
   local times. The 12/24-hour clock follows the Mattermost `display_settings--use_military_time`
   preference.
-- Event start/end date fields accept mm/dd/yyyy, dd/mm/yyyy and yyyy/mm/dd; an ambiguous value is
-  resolved with the user's locale order. The timezone control is a creatable combobox, so any
-  IANA zone (or a typed value to be validated on save) can be selected. Date fields link to the
-  shared calendar popover and time fields to a Compass clock-face popover, while remaining
-  manually editable.
+- Event start/end are chosen with the shared calendar popover and Compass clock-face popover.
+  All-day events hide the time control. The timezone control is a creatable combobox, so any IANA
+  zone (or a typed value to be validated on save) can be selected. The event editor mirrors the
+  New task dialog (large title, Markdown description/preview, property chips, assignee section).
+  In calendar view the sidebar plus and a double-clicked day both open New event.
 - The due calendar commits only on **OK**. Time is off by default and only a date is stored unless
   the user enables **Set time**. Recurrence stores a frequency, interval, stable start date,
   optional end date and IANA timezone in both the task and its compact ref. The calendar asks for

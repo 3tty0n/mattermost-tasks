@@ -38,7 +38,6 @@ type Props = {
     assigneeId?: string;
     revision: number;
     onOpenTask: (taskID: string) => void;
-    onCreateTask: (day: Date) => void;
     onOpenEvent: (eventID: string) => void;
     onCreateEvent: (day: Date) => void;
 };
@@ -55,7 +54,7 @@ function defaultSelectedKey(mode: CalendarMode, cursor: Date, weekStart: number)
     return range.startKey;
 }
 
-export default function Calendar({scope, teamId, priority, assigneeId, revision, onOpenTask, onCreateTask, onOpenEvent, onCreateEvent}: Props) {
+export default function Calendar({scope, teamId, priority, assigneeId, revision, onOpenTask, onOpenEvent, onCreateEvent}: Props) {
     const intl = useIntl();
     const [mode, setMode] = useState<CalendarMode>('month');
     const [cursor, setCursor] = useState(() => startOfLocalDay(new Date()));
@@ -453,7 +452,7 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                             aria-label={dayLabel(day, dayTasks.length, dayEvents.length)}
                                             title={intl.formatMessage({id: 'tasks.calendar.add_hint', defaultMessage: 'Double-click to add a task'})}
                                             onClick={() => selectDay(day)}
-                                            onDoubleClick={() => onCreateTask(day)}
+                                            onDoubleClick={() => onCreateEvent(day)}
                                             onKeyDown={(event) => moveDayFocus(event, day)}
                                         >
                                             <span className='Tasks-Calendar__dayNumber'>{day.getDate()}</span>
@@ -583,7 +582,7 @@ export default function Calendar({scope, teamId, priority, assigneeId, revision,
                                     <header
                                         className='Tasks-Calendar__weekDayHeader'
                                         title={intl.formatMessage({id: 'tasks.calendar.add_hint', defaultMessage: 'Double-click to add a task'})}
-                                        onDoubleClick={() => onCreateTask(day)}
+                                        onDoubleClick={() => onCreateEvent(day)}
                                     >
                                         <h4
                                             id={`tasks-calendar-day-${key}`}

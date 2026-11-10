@@ -299,20 +299,6 @@ export default function TasksSidebar() {
         }
     };
 
-    const openCreate = () => {
-        const defaults: TaskEditorDefaults = {
-            teamId: teamID ?? myTeams[0]?.id,
-            visibility: isDM ? 'private' : 'team',
-            assigneeIds: currentUserId ? [currentUserId] : [],
-        };
-        if (view === 'calendar') {
-            const today = new Date();
-            defaults.dueAt = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-            defaults.dueHasTime = false;
-        }
-        setTaskEditor({defaults});
-    };
-
     const openCreateEvent = useCallback((day: Date) => {
         const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 9, 0, 0, 0);
         let visibility: TaskVisibility = 'team';
@@ -332,17 +318,18 @@ export default function TasksSidebar() {
         });
     }, [scope, isDM, canUseChannel, currentChannel, teamID, myTeams]);
 
-    const openCreateForDay = useCallback((day: Date) => {
-        setTaskEditor({
-            defaults: {
-                teamId: teamID ?? myTeams[0]?.id,
-                visibility: isDM ? 'private' : 'team',
-                assigneeIds: currentUserId ? [currentUserId] : [],
-                dueAt: Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()),
-                dueHasTime: false,
-            },
-        });
-    }, [teamID, myTeams, isDM, currentUserId]);
+    const openCreate = () => {
+        if (view === 'calendar') {
+            openCreateEvent(new Date());
+            return;
+        }
+        const defaults: TaskEditorDefaults = {
+            teamId: teamID ?? myTeams[0]?.id,
+            visibility: isDM ? 'private' : 'team',
+            assigneeIds: currentUserId ? [currentUserId] : [],
+        };
+        setTaskEditor({defaults});
+    };
 
     const startQuickAdd = (status: TaskStatus) => {
         setQuickAddStatus((current) => (current === status ? undefined : status));
@@ -477,7 +464,7 @@ export default function TasksSidebar() {
                     />
                     <IconButton
                         icon={<Icon glyph={<PlusIcon/>}/>}
-                        aria-label={intl.formatMessage({id: 'tasks.new', defaultMessage: 'New task'})}
+                        aria-label={view === 'calendar' ? intl.formatMessage({id: 'tasks.event.new', defaultMessage: 'New event'}) : intl.formatMessage({id: 'tasks.new', defaultMessage: 'New task'})}
                         onClick={openCreate}
                     />
                 </div>
@@ -813,7 +800,6 @@ export default function TasksSidebar() {
                         assigneeId={filters.assigneeId || undefined}
                         revision={tasksRevision}
                         onOpenTask={openCalendarTask}
-                        onCreateTask={openCreateForDay}
                         onOpenEvent={(eventID) => setEventEditor({eventId: eventID})}
                         onCreateEvent={openCreateEvent}
                     />

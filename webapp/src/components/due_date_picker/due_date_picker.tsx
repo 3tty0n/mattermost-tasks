@@ -3,7 +3,7 @@
 
 import {useId, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
-import {epochToZonedParts, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
+import {epochToZonedParts, isValidTimeZone, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
 
 import ChevronLeftIcon from '@mattermost/compass-icons/components/chevron-left';
 import ChevronRightIcon from '@mattermost/compass-icons/components/chevron-right';
@@ -21,6 +21,7 @@ type Props = {
     hasTime?: boolean;
     timeZone?: string;
     hour12?: boolean;
+    allowTime?: boolean;
     onChange: (value: number | undefined, hasTime: boolean) => void;
 };
 
@@ -32,10 +33,10 @@ function sameDay(a: Date, b: Date): boolean {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-export default function DueDatePicker({value, hasTime = false, timeZone, hour12 = false, onChange}: Props) {
+export default function DueDatePicker({value, hasTime = false, timeZone, hour12 = false, allowTime = true, onChange}: Props) {
     const intl = useIntl();
     const timeFieldID = useId();
-    const zone = timeZone || machineTimeZone();
+    const zone = timeZone && isValidTimeZone(timeZone) ? timeZone : machineTimeZone();
     const initial = value ? new Date(value) : new Date();
     const zoned = value && hasTime ? epochToZonedParts(value, zone) : undefined;
     let initialYear = initial.getFullYear();
@@ -142,7 +143,7 @@ export default function DueDatePicker({value, hasTime = false, timeZone, hour12 
                 })}
             </div>
 
-            <div className='Tasks-DueDatePicker__time'>
+            {allowTime && <div className='Tasks-DueDatePicker__time'>
                 <Checkbox
                     checked={timeEnabled}
                     onChange={(event) => {
@@ -166,7 +167,7 @@ export default function DueDatePicker({value, hasTime = false, timeZone, hour12 
                         onChange={setTime}
                     />
                 )}
-            </div>
+            </div>}
 
             <div className='Tasks-DueDatePicker__actions'>
                 {value !== undefined && (

@@ -227,46 +227,43 @@ describe('TasksSidebar', () => {
         expect(screen.queryByRole('combobox', {name: 'Sort'})).not.toBeInTheDocument();
     });
 
-    it('defaults a calendar New task to today', async () => {
+    it('creates an event from the calendar header plus', async () => {
         const user = userEvent.setup();
         renderWithStore(<TasksSidebar/>);
         await screen.findByRole('button', {name: 'Pick up mail'});
         await user.click(screen.getByRole('button', {name: 'Calendar view'}));
         await screen.findByRole('tab', {name: 'Month'});
 
-        const now = new Date();
-        await user.click(screen.getByRole('button', {name: 'New task'}));
+        await user.click(screen.getByRole('button', {name: 'New event'}));
         await user.type(screen.getByLabelText('Title'), 'Plan today');
-        await user.click(screen.getByRole('button', {name: 'Add task'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
 
-        await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
             title: 'Plan today',
-            dueAt: Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()),
-            dueHasTime: false,
+            visibility: 'channel',
+            channelId: ids.channel,
         })));
         expect(screen.getByRole('tab', {name: 'Month'})).toBeVisible();
     });
 
-    it('creates a task from a double-clicked calendar day', async () => {
+    it('creates an event from a double-clicked calendar day', async () => {
         const user = userEvent.setup();
         renderWithStore(<TasksSidebar/>);
         await screen.findByRole('button', {name: 'Pick up mail'});
         await user.click(screen.getByRole('button', {name: 'Calendar view'}));
 
         const day = await screen.findByRole('button', {name: /, (no events|\d+ events)$/, pressed: true});
-        const now = new Date();
         await user.dblClick(day);
 
-        expect(await screen.findByRole('button', {name: 'Add task'})).toBeVisible();
+        expect(await screen.findByRole('button', {name: 'Add event'})).toBeVisible();
         await user.type(screen.getByLabelText('Title'), 'Plan the offsite');
-        await user.click(screen.getByRole('button', {name: 'Add task'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
 
-        await waitFor(() => expect(createTaskMock).toHaveBeenCalledWith(expect.objectContaining({
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
             title: 'Plan the offsite',
-            dueAt: Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()),
-            dueHasTime: false,
+            visibility: 'channel',
+            channelId: ids.channel,
         })));
-        expect(screen.queryByRole('button', {name: 'Back to tasks'})).not.toBeInTheDocument();
         expect(screen.getByRole('tab', {name: 'Month'})).toBeVisible();
     });
 
@@ -279,7 +276,7 @@ describe('TasksSidebar', () => {
 
         await user.click(await screen.findByRole('button', {name: /Add event on/}));
         await user.type(await screen.findByLabelText('Title'), 'Sprint planning');
-        await user.click(screen.getByRole('button', {name: 'Save'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
 
         await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
             title: 'Sprint planning',

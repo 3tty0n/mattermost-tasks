@@ -38,8 +38,8 @@ describe('EventDatePicker', () => {
         render(
             <IntlProvider locale='en'>
                 <EventDatePicker
-                    value={Date.UTC(2026, 0, 5)}
-                    hasTime={false}
+                    value={Date.UTC(2026, 0, 5, 9, 0)}
+                    hasTime={true}
                     timeZone='UTC'
                     hour12={true}
                     label='Pick start date'
@@ -49,7 +49,6 @@ describe('EventDatePicker', () => {
         );
 
         await user.click(screen.getByRole('button', {name: 'Pick start date'}));
-        await user.click(screen.getByRole('checkbox', {name: 'Set time'}));
         await user.click(screen.getByRole('button', {name: 'Choose time'}));
         await user.click(screen.getByRole('button', {name: '10:00'}));
 

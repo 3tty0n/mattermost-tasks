@@ -7,7 +7,7 @@ import {useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
 import {fromDateInput, recurrencePillLabel, toDateInput} from 'recurrence_utils';
-import {epochToZonedDateTimeInput, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
+import {epochToZonedDateTimeInput, isValidTimeZone, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
 import {
     PRIORITY_MESSAGES,
     STATUS_MESSAGES,
@@ -168,6 +168,9 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     const changeTimeZone = (next: string) => {
         const instant = dueValue;
         setTimeZone(next);
+        if (!isValidTimeZone(next)) {
+            return;
+        }
         if (dueHasTime && instant) {
             setDue(epochToZonedDateTimeInput(instant, next));
         }

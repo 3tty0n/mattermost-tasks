@@ -51,16 +51,15 @@ function page(items: TaskSummary[]): ListResult<TaskSummary> {
     return {items, total: items.length, page: 0, perPage: 100, hasMore: false};
 }
 
-function renderCalendar(onCreateTask: (day: Date) => void = jest.fn(), onOpenEvent: (eventID: string) => void = jest.fn()) {
+function renderCalendar(onCreateEvent: (day: Date) => void = jest.fn(), onOpenEvent: (eventID: string) => void = jest.fn()) {
     return renderWithStore(
         <Calendar
             scope='team'
             teamId={ids.team}
             revision={0}
             onOpenTask={jest.fn()}
-            onCreateTask={onCreateTask}
             onOpenEvent={onOpenEvent}
-            onCreateEvent={jest.fn()}
+            onCreateEvent={onCreateEvent}
         />,
     );
 }
@@ -95,16 +94,16 @@ describe('Calendar', () => {
         );
     });
 
-    it('opens task creation when a day is double-clicked', async () => {
+    it('opens event creation when a day is double-clicked', async () => {
         const user = userEvent.setup();
-        const onCreateTask = jest.fn();
-        renderCalendar(onCreateTask);
+        const onCreateEvent = jest.fn();
+        renderCalendar(onCreateEvent);
         await screen.findByRole('button', {name: 'Pick up mail'});
 
         await user.dblClick(screen.getByRole('button', {pressed: true}));
 
-        expect(onCreateTask).toHaveBeenCalledTimes(1);
-        expect(localDateKey(onCreateTask.mock.calls[0][0])).toBe(localDateKey(new Date()));
+        expect(onCreateEvent).toHaveBeenCalledTimes(1);
+        expect(localDateKey(onCreateEvent.mock.calls[0][0])).toBe(localDateKey(new Date()));
     });
 
     it('shows every day’s cards in the week view', async () => {

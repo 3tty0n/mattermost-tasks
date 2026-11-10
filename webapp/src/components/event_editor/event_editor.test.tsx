@@ -76,7 +76,7 @@ describe('EventEditor', () => {
         );
 
         await user.type(screen.getByLabelText('Title'), 'Sprint planning');
-        await user.click(screen.getByRole('button', {name: 'Save'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
 
         await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
             teamId: ids.team,
@@ -107,7 +107,7 @@ describe('EventEditor', () => {
         );
 
         await user.type(screen.getByLabelText('Title'), 'Tokyo sync');
-        await user.click(screen.getByRole('button', {name: 'Save'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
 
         await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
             title: 'Tokyo sync',
@@ -117,7 +117,7 @@ describe('EventEditor', () => {
         })));
     });
 
-    it('accepts manual date/time formats', async () => {
+    it('picks a start date from the calendar', async () => {
         const user = userEvent.setup();
         renderWithStore(
             <EventEditor
@@ -127,22 +127,18 @@ describe('EventEditor', () => {
             />,
         );
 
-        await user.type(screen.getByLabelText('Title'), 'Manual event');
-        await user.clear(screen.getByLabelText('Start date'));
-        await user.type(screen.getByLabelText('Start date'), '2026/01/06');
-        await user.clear(screen.getByLabelText('Start time'));
-        await user.type(screen.getByLabelText('Start time'), '10:30');
-        await user.clear(screen.getByLabelText('End date'));
-        await user.type(screen.getByLabelText('End date'), '2026/01/07');
-        await user.clear(screen.getByLabelText('End time'));
-        await user.type(screen.getByLabelText('End time'), '11:00');
-        await user.click(screen.getByRole('button', {name: 'Save'}));
+        await user.type(screen.getByLabelText('Title'), 'Picked event');
+        await user.click(screen.getByRole('button', {name: 'Pick start date and time'}));
+        await user.click(screen.getByRole('button', {name: /January 20, 2026/}));
+        await user.click(screen.getByRole('button', {name: 'OK'}));
+        await user.click(screen.getByRole('button', {name: 'Pick end date and time'}));
+        await user.click(screen.getByRole('button', {name: /January 20, 2026/}));
+        await user.click(screen.getByRole('button', {name: 'OK'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
 
-        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
-            title: 'Manual event',
-            startAt: Date.UTC(2026, 0, 6, 10, 30),
-            endAt: Date.UTC(2026, 0, 7, 11, 0),
-        })));
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({title: 'Picked event'})));
+        const picked = createEventMock.mock.calls[0][0];
+        expect(new Date(picked.startAt).toISOString().slice(0, 10)).toBe('2026-01-20');
     });
 
     it('adds an assignee to an event', async () => {
@@ -158,7 +154,7 @@ describe('EventEditor', () => {
         await user.type(screen.getByLabelText('Title'), 'Sprint planning');
         await user.click(screen.getByLabelText('Add assignee'));
         await user.click(await screen.findByRole('option', {name: /Alice/}));
-        await user.click(screen.getByRole('button', {name: 'Save'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
 
         await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
             title: 'Sprint planning',
@@ -178,7 +174,7 @@ describe('EventEditor', () => {
 
         await user.type(screen.getByLabelText('Title'), 'Offsite');
         await user.click(screen.getByRole('checkbox', {name: 'All day'}));
-        await user.click(screen.getByRole('button', {name: 'Save'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
 
         await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
             title: 'Offsite',
