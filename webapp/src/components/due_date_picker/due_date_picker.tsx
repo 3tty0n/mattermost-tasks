@@ -160,7 +160,7 @@ export default function DueDatePicker({value, hasTime = false, timeZone, hour12 
                 {timeEnabled && (
                     <TimeField
                         id={timeFieldID}
-                        label={intl.formatMessage({id: 'tasks.due.time', defaultMessage: 'Time'})}
+                        inputLabel={intl.formatMessage({id: 'tasks.due.time', defaultMessage: 'Time'})}
                         value={time}
                         hour12={hour12}
                         onChange={setTime}

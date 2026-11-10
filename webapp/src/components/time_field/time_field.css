@@ -43,14 +43,8 @@
 }
 
 .Tasks-TimeField__popover {
-    position: absolute;
-    z-index: 30;
-    top: calc(100% + var(--spacing-xxs));
-    right: 0;
-}
-
-.Tasks-TimeField__hint {
-    color: rgba(var(--center-channel-color-rgb), 0.56);
-    font-size: var(--font-size-50);
-    line-height: var(--line-height-50);
+    position: fixed;
+    z-index: 3000;
+    top: -9999px;
+    left: -9999px;
 }

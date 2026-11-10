@@ -139,6 +139,10 @@ export default function ClockPicker({hours, minutes, hour12, onChange, onDone}: 
                 aria-label={intl.formatMessage({id: 'tasks.clock.face', defaultMessage: 'Clock face'})}
             >
                 <span className='Tasks-ClockPicker__center'/>
+                <span
+                    className={`Tasks-ClockPicker__hand Tasks-ClockPicker__hand--${mode === 'hour' ? hours % 12 : Math.floor(minutes / 5) % 12}`}
+                    aria-hidden={true}
+                />
                 {values.map((value, index) => {
                     const selected = mode === 'hour' ? value === (hours % 12 || 12) : minutes % 5 === 0 && value === minutes;
                     return (

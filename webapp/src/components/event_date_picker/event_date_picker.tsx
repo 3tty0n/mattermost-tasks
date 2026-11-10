@@ -1,7 +1,8 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useLayoutEffect, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 
 import CalendarOutlineIcon from '@mattermost/compass-icons/components/calendar-outline';
 import {Icon} from '@mattermost/compass-ui/components/icon';
@@ -26,6 +27,7 @@ type Props = {
 // can be chosen visually while the text fields remain editable.
 export default function EventDatePicker({value, hasTime, timeZone, hour12, label, align = 'left', disabled, onChange}: Props) {
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const popoverRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);
 
     useEffect(() => {
@@ -33,13 +35,51 @@ export default function EventDatePicker({value, hasTime, timeZone, hour12, label
             return undefined;
         }
         const close = (event: MouseEvent) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            if ((target as Element).closest?.('.Tasks-ClockPicker')) {
+                return;
+            }
+            if (!wrapperRef.current?.contains(target) && !popoverRef.current?.contains(target)) {
                 setOpen(false);
             }
         };
         document.addEventListener('mousedown', close);
         return () => document.removeEventListener('mousedown', close);
     }, [open]);
+
+    useLayoutEffect(() => {
+        if (!open) {
+            return undefined;
+        }
+        const update = () => {
+            const trigger = wrapperRef.current?.getBoundingClientRect();
+            const popover = popoverRef.current?.getBoundingClientRect();
+            if (!trigger) {
+                return;
+            }
+            const width = popover?.width || 264;
+            const height = popover?.height || 360;
+            let top = trigger.bottom + 4;
+            if (top + height > window.innerHeight - 8) {
+                top = Math.max(8, trigger.top - height - 4);
+            }
+            let left = align === 'right' ? trigger.right - width : trigger.left;
+            if (left + width > window.innerWidth - 8) {
+                left = window.innerWidth - width - 8;
+            }
+            if (popoverRef.current) {
+                popoverRef.current.style.top = `${top}px`;
+                popoverRef.current.style.left = `${Math.max(8, left)}px`;
+            }
+        };
+        update();
+        window.addEventListener('resize', update);
+        window.addEventListener('scroll', update, true);
+        return () => {
+            window.removeEventListener('resize', update);
+            window.removeEventListener('scroll', update, true);
+        };
+    }, [open, align]);
 
     return (
         <div
@@ -55,9 +95,10 @@ export default function EventDatePicker({value, hasTime, timeZone, hour12, label
                 disabled={disabled}
                 onClick={() => setOpen((current) => !current)}
             />
-            {open && (
+            {open && createPortal(
                 <div
-                    className={`Tasks-EventDatePicker__popover Tasks-EventDatePicker__popover--${align}`}
+                    ref={popoverRef}
+                    className='Tasks-EventDatePicker__popover'
                     role='dialog'
                     aria-label={label}
                 >
@@ -74,7 +115,8 @@ export default function EventDatePicker({value, hasTime, timeZone, hour12, label
                             }
                         }}
                     />
-                </div>
+                </div>,
+                document.body,
             )}
         </div>
     );

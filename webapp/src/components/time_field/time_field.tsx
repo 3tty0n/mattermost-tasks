@@ -2,8 +2,9 @@
 // See LICENSE.txt for license information.
 
 import {formatTimeInput, parseTimeInput} from 'datetime_input_utils';
-import {useEffect, useId, useRef, useState} from 'react';
-import {FormattedMessage, useIntl} from 'react-intl';
+import {useEffect, useId, useLayoutEffect, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
+import {useIntl} from 'react-intl';
 
 import ClockOutlineIcon from '@mattermost/compass-icons/components/clock-outline';
 import {Icon} from '@mattermost/compass-ui/components/icon';
@@ -42,6 +43,8 @@ export default function TimeField({value, hour12, onChange, disabled, label, inp
     const generatedID = useId();
     const inputID = id ?? generatedID;
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const controlRef = useRef<HTMLDivElement>(null);
+    const popoverRef = useRef<HTMLDivElement>(null);
     const focusedRef = useRef(false);
     const [text, setText] = useState(() => (value ? formatTimeInput(parseValue(value).hours, parseValue(value).minutes, hour12) : ''));
     const [open, setOpen] = useState(false);
@@ -58,12 +61,47 @@ export default function TimeField({value, hour12, onChange, disabled, label, inp
             return undefined;
         }
         const close = (event: MouseEvent) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            if (!wrapperRef.current?.contains(target) && !popoverRef.current?.contains(target)) {
                 setOpen(false);
             }
         };
         document.addEventListener('mousedown', close);
         return () => document.removeEventListener('mousedown', close);
+    }, [open]);
+
+    useLayoutEffect(() => {
+        if (!open) {
+            return undefined;
+        }
+        const update = () => {
+            const trigger = controlRef.current?.getBoundingClientRect();
+            const popover = popoverRef.current?.getBoundingClientRect();
+            if (!trigger) {
+                return;
+            }
+            const width = popover?.width || 264;
+            const height = popover?.height || 380;
+            let top = trigger.bottom + 4;
+            if (top + height > window.innerHeight - 8) {
+                top = Math.max(8, trigger.top - height - 4);
+            }
+            let left = trigger.left;
+            if (left + width > window.innerWidth - 8) {
+                left = window.innerWidth - width - 8;
+            }
+            if (popoverRef.current) {
+                popoverRef.current.style.top = `${top}px`;
+                popoverRef.current.style.left = `${Math.max(8, left)}px`;
+            }
+        };
+        update();
+        window.addEventListener('resize', update);
+        window.addEventListener('scroll', update, true);
+        return () => {
+            window.removeEventListener('resize', update);
+            window.removeEventListener('scroll', update, true);
+        };
     }, [open]);
 
     const commit = (next: string) => {
@@ -89,7 +127,10 @@ export default function TimeField({value, hour12, onChange, disabled, label, inp
                     {label}
                 </label>
             )}
-            <div className='Tasks-TimeField__control'>
+            <div
+                ref={controlRef}
+                className='Tasks-TimeField__control'
+            >
                 <input
                     id={inputID}
                     className='Tasks-TimeField__input'
@@ -139,32 +180,26 @@ export default function TimeField({value, hour12, onChange, disabled, label, inp
                         onClick={() => setOpen((current) => !current)}
                     />
                 )}
-                {open && (
-                    <div
-                        className='Tasks-TimeField__popover'
-                        role='dialog'
-                        aria-label={intl.formatMessage({id: 'tasks.time.choose', defaultMessage: 'Choose time'})}
-                    >
-                        <ClockPicker
-                            hours={parsed.hours}
-                            minutes={parsed.minutes}
-                            hour12={hour12}
-                            onChange={(hours, minutes) => {
-                                onChange(`${pad(hours)}:${pad(minutes)}`);
-                                setText(formatTimeInput(hours, minutes, hour12));
-                            }}
-                            onDone={() => setOpen(false)}
-                        />
-                    </div>
-                )}
             </div>
-            {open && (
-                <span className='Tasks-TimeField__hint'>
-                    <FormattedMessage
-                        id='tasks.time.clock_hint'
-                        defaultMessage='Click a number, or type an exact time.'
+            {open && createPortal(
+                <div
+                    ref={popoverRef}
+                    className='Tasks-TimeField__popover'
+                    role='dialog'
+                    aria-label={intl.formatMessage({id: 'tasks.time.choose', defaultMessage: 'Choose time'})}
+                >
+                    <ClockPicker
+                        hours={parsed.hours}
+                        minutes={parsed.minutes}
+                        hour12={hour12}
+                        onChange={(hours, minutes) => {
+                            onChange(`${pad(hours)}:${pad(minutes)}`);
+                            setText(formatTimeInput(hours, minutes, hour12));
+                        }}
+                        onDone={() => setOpen(false)}
                     />
-                </span>
+                </div>,
+                document.body,
             )}
         </div>
     );

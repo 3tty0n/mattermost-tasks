@@ -7,6 +7,8 @@
     flex-direction: column;
     gap: var(--spacing-s);
     width: 244px;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
     padding: var(--spacing-s);
     border: 1px solid rgba(var(--center-channel-color-rgb), 0.16);
     border-radius: var(--radius-m);
@@ -93,6 +95,30 @@
     transform: translate(-50%, -50%);
 }
 
+.Tasks-ClockPicker__hand {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    width: 2px;
+    height: 40%;
+    border-radius: 1px;
+    background: var(--button-bg);
+    transform-origin: bottom center;
+}
+
+.Tasks-ClockPicker__hand--0 { transform: translateX(-50%) rotate(0deg); }
+.Tasks-ClockPicker__hand--1 { transform: translateX(-50%) rotate(30deg); }
+.Tasks-ClockPicker__hand--2 { transform: translateX(-50%) rotate(60deg); }
+.Tasks-ClockPicker__hand--3 { transform: translateX(-50%) rotate(90deg); }
+.Tasks-ClockPicker__hand--4 { transform: translateX(-50%) rotate(120deg); }
+.Tasks-ClockPicker__hand--5 { transform: translateX(-50%) rotate(150deg); }
+.Tasks-ClockPicker__hand--6 { transform: translateX(-50%) rotate(180deg); }
+.Tasks-ClockPicker__hand--7 { transform: translateX(-50%) rotate(210deg); }
+.Tasks-ClockPicker__hand--8 { transform: translateX(-50%) rotate(240deg); }
+.Tasks-ClockPicker__hand--9 { transform: translateX(-50%) rotate(270deg); }
+.Tasks-ClockPicker__hand--10 { transform: translateX(-50%) rotate(300deg); }
+.Tasks-ClockPicker__hand--11 { transform: translateX(-50%) rotate(330deg); }
+
 .Tasks-ClockPicker__faceButton {
     position: absolute;
     display: flex;
@@ -142,4 +168,15 @@
 .Tasks-ClockPicker__actions {
     display: flex;
     justify-content: flex-end;
+}
+
+.Tasks-ClockPicker__timeInput::-webkit-inner-spin-button,
+.Tasks-ClockPicker__timeInput::-webkit-outer-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
+.Tasks-ClockPicker__timeInput {
+    -moz-appearance: textfield;
+    appearance: textfield;
 }
