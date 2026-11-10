@@ -21,53 +21,65 @@ type Props = {
     onOpen: (eventID: string) => void;
 };
 
+// Up to nine participants are shown; with ten or more the first nine are followed by an ellipsis.
+const MAX_AVATARS = 9;
+
 // EventCalendarCard is intentionally different from TaskCalendarCard: an accent bar and a time
-// range, no checkbox, priority or assignee.
+// range, no checkbox or priority. Participants sit on their own row (or, when the card is wide, at
+// the right end of a single row) so they never take width from the time range.
 export default function EventCalendarCard({event, profiles, onOpen}: Props) {
     const intl = useIntl();
     const hour12 = useHour12();
-    const visibleAssignees = event.assigneeIds.slice(0, 3);
-    const extraAssignees = event.assigneeIds.length - visibleAssignees.length;
+    const visibleAssignees = event.assigneeIds.slice(0, MAX_AVATARS);
+    const hasMore = event.assigneeIds.length > MAX_AVATARS;
+    const names = event.assigneeIds.map((userID) => profileName(profiles[userID], userID));
     return (
         <article
             className='Tasks-EventCard'
             onClick={() => onOpen(event.id)}
         >
-            <div className='Tasks-EventCard__meta'>
-                <Icon
-                    size='12'
-                    glyph={<CalendarOutlineIcon/>}
-                />
-                <span>{formatEventTime(intl, event, hour12)}</span>
-                <div className='Tasks-EventCard__assignees'>
-                    {visibleAssignees.map((userID) => {
-                        const profile = profiles[userID];
-                        const name = profileName(profile, userID);
-                        return (
-                            <UserAvatar
-                                key={userID}
-                                alt={name}
-                                name={name}
-                                src={getProfilePictureUrl(profile)}
-                                size='20'
-                            />
-                        );
-                    })}
-                    {extraAssignees > 0 && (
-                        <span className='Tasks-EventCard__extra'>{`+${extraAssignees}`}</span>
-                    )}
+            <div className='Tasks-EventCard__body'>
+                <div className='Tasks-EventCard__meta'>
+                    <Icon
+                        size='12'
+                        glyph={<CalendarOutlineIcon/>}
+                    />
+                    <span className='Tasks-EventCard__time'>{formatEventTime(intl, event, hour12)}</span>
                 </div>
+                <button
+                    type='button'
+                    className='Tasks-EventCard__title'
+                    onClick={(clickEvent) => {
+                        clickEvent.stopPropagation();
+                        onOpen(event.id);
+                    }}
+                >
+                    {event.title}
+                </button>
+                {names.length > 0 && (
+                    <div
+                        className='Tasks-EventCard__assignees'
+                        title={names.join(', ')}
+                    >
+                        {visibleAssignees.map((userID, index) => (
+                            <span
+                                key={userID}
+                                className='Tasks-EventCard__avatar'
+                            >
+                                <UserAvatar
+                                    alt={names[index]}
+                                    name={names[index]}
+                                    src={getProfilePictureUrl(profiles[userID])}
+                                    size='20'
+                                />
+                            </span>
+                        ))}
+                        {hasMore && (
+                            <span className='Tasks-EventCard__extra'>{'…'}</span>
+                        )}
+                    </div>
+                )}
             </div>
-            <button
-                type='button'
-                className='Tasks-EventCard__title'
-                onClick={(clickEvent) => {
-                    clickEvent.stopPropagation();
-                    onOpen(event.id);
-                }}
-            >
-                {event.title}
-            </button>
         </article>
     );
 }

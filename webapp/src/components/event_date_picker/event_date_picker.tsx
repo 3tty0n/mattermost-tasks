@@ -23,7 +23,7 @@ type Props = {
     disabled?: boolean;
     display?: ReactNode;
     triggerClassName?: string;
-    onChange: (value: number | undefined) => void;
+    onChange: (value: number | undefined, hasTime: boolean) => void;
 };
 
 // EventDatePicker opens the same calendar and clock as task due dates, so an event's start/end
@@ -126,9 +126,9 @@ export default function EventDatePicker({value, hasTime, timeZone, hour12, label
                         timeZone={timeZone}
                         hour12={hour12}
                         allowTime={hasTime}
-                        onChange={(next) => {
+                        onChange={(next, nextHasTime) => {
                             if (next !== undefined) {
-                                onChange(next);
+                                onChange(next, nextHasTime);
                                 setOpen(false);
                             }
                         }}

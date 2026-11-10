@@ -25,7 +25,8 @@ server/
   tasks/        task use cases and audit records
   api/          REST routing, JSON decoding, error mapping
   command/      /task slash-command fallback
-  notifications/ assignment DM worker
+  notifications/ assignment and reminder DM worker
+  reminders/   hour-bucketed reminder scheduler (cluster job, once per minute)
   events/       WebSocket change events (IDs only)
   testutil/     shared test API wrapper
 webapp/
@@ -142,6 +143,9 @@ notifications but leaves tasks working.
 
 - Mobile clients do not load plugin webapps; use the slash command.
 - Full-page task boards are not provided; the board lives in the RHS.
+- Reminders are persisted as hour buckets in the plugin KV store. A cluster-scheduled job runs
+  once per minute, atomically pops due entries, re-reads the task/event to discard stale jobs,
+  and sends bot DMs. No external scheduler or outbound request is involved.
 - Event recurrence is stored on the series and expanded in the webapp: daily, weekly with
   selected weekdays, monthly/yearly custom intervals, and an optional inclusive end date. The API
   returns recurring series outside the requested range when `include_recurring=true`.

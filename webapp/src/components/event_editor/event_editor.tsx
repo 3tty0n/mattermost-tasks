@@ -128,8 +128,15 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                 setTimeZone(loadedZone);
                 setStartDate(loaded.allDay ? toDateInput(loaded.startAt, false).replace(/-/g, '/') : formatDateInput({year: startParts.year, month: startParts.month, day: startParts.day}));
                 setEndDate(loaded.allDay ? toDateInput(loaded.endAt - DAY_IN_MS, false).replace(/-/g, '/') : formatDateInput({year: endDateParts.year, month: endDateParts.month, day: endDateParts.day}));
-                setStartTime(formatTimeInput(startParts.hour, startParts.minute, Boolean(hour12)));
-                setEndTime(formatTimeInput(endClockParts.hour, endClockParts.minute, Boolean(hour12)));
+                if (loaded.allDay) {
+                    const utcStart = new Date(loaded.startAt);
+                    const utcEnd = new Date(loaded.endAt);
+                    setStartTime(formatTimeInput(utcStart.getUTCHours(), utcStart.getUTCMinutes(), Boolean(hour12)));
+                    setEndTime(formatTimeInput(utcEnd.getUTCHours(), utcEnd.getUTCMinutes(), Boolean(hour12)));
+                } else {
+                    setStartTime(formatTimeInput(startParts.hour, startParts.minute, Boolean(hour12)));
+                    setEndTime(formatTimeInput(endClockParts.hour, endClockParts.minute, Boolean(hour12)));
+                }
                 setTeamID(loaded.teamId);
                 setChannelID(loaded.channelId ?? '');
                 setVisibility(loaded.visibility);
@@ -340,15 +347,18 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
         setEndTime(formatTimeInput(endClockParts.hour, endClockParts.minute, Boolean(hour12)));
     };
 
-    const setFromPickedEpoch = (which: 'start'|'end', value: number) => {
+    const setFromPickedEpoch = (which: 'start'|'end', value: number, hasTime: boolean) => {
         const zone = isValidTimeZone(timeZone) ? timeZone : machineTimeZone();
-        if (allDay) {
+        if (!hasTime || allDay) {
             const picked = new Date(value);
             const text = formatDateInput({year: picked.getUTCFullYear(), month: picked.getUTCMonth() + 1, day: picked.getUTCDate()});
             if (which === 'start') {
                 setStartDate(text);
             } else {
                 setEndDate(text);
+            }
+            if (!hasTime) {
+                setAllDay(true);
             }
             return;
         }
@@ -852,11 +862,11 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                     </span>
                                 </>
                             )}
-                            onChange={(next) => {
+                            onChange={(next, hasTime) => {
                                 if (next === undefined) {
                                     return;
                                 }
-                                setFromPickedEpoch('start', next);
+                                setFromPickedEpoch('start', next, hasTime);
                             }}
                         />
                         <EventDatePicker
@@ -883,11 +893,11 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                     </span>
                                 </>
                             )}
-                            onChange={(next) => {
+                            onChange={(next, hasTime) => {
                                 if (next === undefined) {
                                     return;
                                 }
-                                setFromPickedEpoch('end', next);
+                                setFromPickedEpoch('end', next, hasTime);
                             }}
                         />
                         <button

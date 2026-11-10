@@ -29,7 +29,7 @@ describe('EventDatePicker', () => {
         await user.click(screen.getByRole('button', {name: /January 20, 2026/}));
         await user.click(screen.getByRole('button', {name: 'OK'}));
 
-        expect(onChange).toHaveBeenCalledWith(Date.UTC(2026, 0, 20));
+        expect(onChange).toHaveBeenCalledWith(Date.UTC(2026, 0, 20), false);
         expect(screen.queryByRole('dialog', {name: 'Pick start date'})).not.toBeInTheDocument();
     });
 

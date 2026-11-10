@@ -2,21 +2,26 @@
    See LICENSE.txt for license information. */
 
 .Tasks-EventCard {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
     min-width: 0;
     padding: var(--spacing-xs) var(--spacing-s);
     border: 1px solid rgba(var(--button-bg-rgb), 0.24);
     border-left: 3px solid var(--button-bg);
     border-radius: var(--radius-s);
     background: rgba(var(--button-bg-rgb), 0.06);
+    container-type: inline-size;
     cursor: pointer;
 }
 
 .Tasks-EventCard:hover {
     border-color: rgba(var(--button-bg-rgb), 0.56);
     background: rgba(var(--button-bg-rgb), 0.10);
+}
+
+.Tasks-EventCard__body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
 }
 
 .Tasks-EventCard__meta {
@@ -28,21 +33,14 @@
     line-height: var(--line-height-25);
 }
 
-.Tasks-EventCard__assignees {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: var(--spacing-xxxxs);
-    margin-left: auto;
-}
-
-.Tasks-EventCard__extra {
-    color: rgba(var(--center-channel-color-rgb), 0.64);
-    font-size: var(--font-size-50);
+/* The time range (the event's duration) never shrinks or truncates. */
+.Tasks-EventCard__time {
+    white-space: nowrap;
 }
 
 .Tasks-EventCard__title {
     width: 100%;
+    min-width: 0;
     padding: 0;
     overflow: hidden;
     border: 0;
@@ -53,25 +51,53 @@
     font-size: var(--font-size-75);
     font-weight: var(--font-weight-semibold);
     line-height: var(--line-height-75);
-    overflow-wrap: anywhere;
     text-align: left;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.Tasks-EventCard:hover .Tasks-EventCard__assignees {
+.Tasks-EventCard:hover .Tasks-EventCard__title {
+    color: var(--button-bg);
+}
+
+/* Participants overlap like an avatar stack. */
+.Tasks-EventCard__assignees {
     display: flex;
     flex: none;
     align-items: center;
-    gap: var(--spacing-xxxxs);
-    margin-left: auto;
+}
+
+.Tasks-EventCard__avatar {
+    display: inline-flex;
+    border-radius: var(--radius-pill);
+    box-shadow: 0 0 0 2px var(--center-channel-bg);
+}
+
+.Tasks-EventCard__avatar + .Tasks-EventCard__avatar {
+    margin-left: -9px;
 }
 
 .Tasks-EventCard__extra {
+    margin-left: var(--spacing-xxs);
     color: rgba(var(--center-channel-color-rgb), 0.64);
     font-size: var(--font-size-50);
 }
 
-.Tasks-EventCard__title {
-    color: var(--button-bg);
+/* Wide card: one row — fixed time column, flexible title, participants at the right. */
+@container (min-width: 380px) {
+    .Tasks-EventCard__body {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--spacing-s);
+    }
+
+    .Tasks-EventCard__meta {
+        flex: none;
+        min-width: 150px;
+    }
+
+    .Tasks-EventCard__title {
+        flex: 1;
+        width: auto;
+    }
 }

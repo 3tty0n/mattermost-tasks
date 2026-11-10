@@ -24,6 +24,7 @@ system, no external service, no second database.
 | Markdown descriptions and source backlinks | Click-to-edit name and description |
 | Repeating tasks and events: daily, weekly, selected weekdays, monthly, yearly or custom | Optional end date or endless series |
 | Calendar events, separate from tasks | Timed or all-day, with task/event visual distinction |
+| Due/start reminders | At time, 5/10/15 minutes, 1 day or 1 week before; choose several |
 
 **Due dates the way you expect:** a date is date-only by default. Open the calendar, choose a day,
 and press **OK**. Enable **Set time** only when you need a time. Timed tasks and events store their

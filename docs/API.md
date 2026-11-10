@@ -52,6 +52,7 @@ Response:
       "dueAt": 1767225600000,
       "dueHasTime": false,
       "timezone": "Asia/Tokyo",
+      "reminders": [15, 1440],
       "recurrence": {
         "frequency": "daily",
         "interval": 1,
@@ -236,6 +237,9 @@ Create body:
   `UTC`. The stored instants are displayed in each viewer's own machine timezone.
 - `assigneeIds` are users who can see the event through its scope; they are shown on event cards
   and are included in the `scope=my` event list.
+- `reminders` is an array of minutes before the start: `0`, `5`, `10`, `15`, `1440` or `10080`.
+  Multiple values are allowed; an empty array disables reminders. All-day events have no start
+  time and should not set reminders.
 - `visibility` follows task rules: `private` is creator-only, `team` is team-readable and
   `channel` is channel-readable. A channel is required for channel visibility.
 - Only the creator or a system administrator may update or delete an event.

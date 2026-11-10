@@ -263,6 +263,18 @@
     gap: var(--spacing-xs);
 }
 
+/* Event cards need ~190px to show a time range without truncation, and become one wide row each
+   (see EventCalendarCard) once the calendar is wide enough for the single-column layout. */
+.Tasks-Calendar__cards--events {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
+}
+
+@container (min-width: 440px) {
+    .Tasks-Calendar__cards--events {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .Tasks-Calendar__empty {
     margin: 0;
     padding: var(--spacing-xs) 0;

@@ -210,6 +210,34 @@ describe('EventEditor', () => {
         })));
     });
 
+    it('turns the event all-day when the picker has no time', async () => {
+        const user = userEvent.setup();
+        renderWithStore(
+            <EventEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel', startAt: start, timeZone: 'UTC'}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Title'), 'No-time event');
+        await user.click(screen.getByRole('button', {name: 'Pick start date and time'}));
+        await user.click(screen.getByRole('checkbox', {name: 'Set time'}));
+        await user.click(screen.getByRole('button', {name: /January 20, 2026/}));
+        await user.click(screen.getByRole('button', {name: 'OK'}));
+        await user.click(screen.getByRole('button', {name: 'Pick end date and time'}));
+        await user.click(screen.getByRole('button', {name: /January 20, 2026/}));
+        await user.click(screen.getByRole('button', {name: 'OK'}));
+        await user.click(screen.getByRole('button', {name: 'Add event'}));
+
+        await waitFor(() => expect(createEventMock).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'No-time event',
+            allDay: true,
+            startAt: Date.UTC(2026, 0, 20),
+            endAt: Date.UTC(2026, 0, 21),
+        })));
+    });
+
     it('adds an assignee to an event', async () => {
         const user = userEvent.setup();
         renderWithStore(

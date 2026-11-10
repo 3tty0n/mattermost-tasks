@@ -46,8 +46,16 @@ func (f *fixture) advance(d time.Duration) {
 
 func TestTaskReminderFiresOnceAtOffset(t *testing.T) {
 	f := newFixture(t)
-	task := &model.Task{ID: "t1", Title: "Report", AssigneeIDs: []string{"u1"}, CreatorID: "c", Status: model.TaskStatusTodo,
-		DueAt: f.now + 30*60_000, DueHasTime: true, Reminders: []int{0, 15, 24 * 60}}
+	task := &model.Task{
+		ID:          "t1",
+		Title:       "Report",
+		AssigneeIDs: []string{"u1"},
+		CreatorID:   "c",
+		Status:      model.TaskStatusTodo,
+		DueAt:       f.now + 30*60_000,
+		DueHasTime:  true,
+		Reminders:   []int{0, 15, 24 * 60},
+	}
 	require.NoError(t, f.store.CreateTask(task))
 	f.scheduler.ScheduleTask(task) // the 1-day reminder is already in the past and is skipped
 
@@ -79,9 +87,11 @@ func TestStaleTaskReminderIsDropped(t *testing.T) {
 
 func TestRepeatingEventRemindsEveryOccurrence(t *testing.T) {
 	f := newFixture(t)
-	event := &model.Event{ID: "e1", Title: "Standup", CreatorID: "c", TimeZone: "UTC",
+	event := &model.Event{
+		ID: "e1", Title: "Standup", CreatorID: "c", TimeZone: "UTC",
 		StartAt: f.now + 60*60_000, EndAt: f.now + 90*60_000, Reminders: []int{10},
-		Recurrence: &model.EventRecurrence{Frequency: model.EventRecurrenceDaily, Interval: 1}}
+		Recurrence: &model.EventRecurrence{Frequency: model.EventRecurrenceDaily, Interval: 1},
+	}
 	require.NoError(t, f.store.CreateEvent(event))
 	f.scheduler.ScheduleEvent(event)
 
