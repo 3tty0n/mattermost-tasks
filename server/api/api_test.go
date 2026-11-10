@@ -220,7 +220,7 @@ func TestAssigneesAPI(t *testing.T) {
 		{Id: model.NewId(), Username: "deleted", DeleteAt: 1},
 		{Id: model.NewId(), Username: "bot", IsBot: true},
 	}
-	env.api.On("GetUsersInChannel", channelID, "", 0, maxAssigneeResults).Return(users, nil).Maybe()
+	env.api.On("GetUsersInChannel", channelID, "username", 0, maxAssigneeResults).Return(users, nil).Maybe()
 
 	w := env.serve(http.MethodGet, "/api/v1/assignees?channel_id="+channelID, "", actorID)
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())

@@ -47,7 +47,7 @@ func (h *Handler) handleListAssignees(w http.ResponseWriter, r *http.Request) {
 	var users []*model.User
 	if search == "" {
 		if channelID != "" {
-			users, err = h.client.User.ListInChannel(channelID, "", 0, maxAssigneeResults)
+			users, err = h.client.User.ListInChannel(channelID, "username", 0, maxAssigneeResults)
 		} else {
 			users, err = h.client.User.ListInTeam(teamID, 0, maxAssigneeResults)
 		}
@@ -93,7 +93,7 @@ func (h *Handler) searchAssignees(teamID, channelID, search string) ([]*model.Us
 
 	var members []*model.User
 	if channelID != "" {
-		members, err = h.client.User.ListInChannel(channelID, "", 0, maxAssigneeResults)
+		members, err = h.client.User.ListInChannel(channelID, "username", 0, maxAssigneeResults)
 	} else {
 		members, err = h.client.User.ListInTeam(teamID, 0, maxAssigneeResults)
 	}

@@ -753,7 +753,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                                 <>
                                     <Icon
                                         size='16'
-                                        glyph={<ClockOutlineIcon/>}
+                                        glyph={<CalendarOutlineIcon/>}
                                     />
                                     <span>
                                         <FormattedMessage
