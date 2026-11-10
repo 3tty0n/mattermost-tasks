@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {fetchAssignees, fetchConfig, fetchEvents, fetchTasks, getProfiles, type Profile} from 'client';
-import {type FocusEvent, useEffect, useRef, useState} from 'react';
+import {type FocusEvent, type RefObject, useEffect, useRef, useState} from 'react';
 import {useSelector} from 'react-redux';
 
 import {selectUseMilitaryTime} from 'selectors';
@@ -14,6 +14,27 @@ type AsyncState<T> = {
     loading: boolean;
     error?: string;
 };
+
+// useFocusAfterOpen focuses an element shortly after mount. The host's own focus handling (the message
+// box, the modal) can run after autoFocus and take the focus back, so typing would land elsewhere.
+export function useFocusAfterOpen(ref: RefObject<HTMLElement>, enabled: boolean) {
+    useEffect(() => {
+        if (!enabled) {
+            return undefined;
+        }
+        const timer = window.setTimeout(() => {
+            // Take focus back unless the user is already in a field of the dialog. The modal itself (a
+            // tabindex=-1 box) grabbing focus a few ms after mount is exactly what we undo.
+            const active = document.activeElement;
+            const dialog = ref.current?.closest('.Tasks-DialogOverlay');
+            const inField = Boolean(active && dialog?.contains(active) && active.matches('input, textarea, select, button, [contenteditable="true"]'));
+            if (ref.current && !inField) {
+                ref.current.focus();
+            }
+        }, 150);
+        return () => window.clearTimeout(timer);
+    }, [ref, enabled]);
+}
 
 // useLeaveToPreview calls onLeave when the user leaves an editing area (a Tab to another control, or a
 // click outside it). Mouse leaves run on click, after the clicked control has acted: swapping the

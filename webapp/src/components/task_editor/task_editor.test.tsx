@@ -327,6 +327,22 @@ describe('TaskEditor', () => {
         expect(screen.getByRole('button', {name: 'Edit description'})).toBeVisible();
     });
 
+    it('takes focus back to the task name when the modal grabs it after mount', async () => {
+        renderWithStore(
+            <TaskEditor
+                defaults={{teamId: ids.team, channelId: ids.channel, visibility: 'channel'}}
+                onClose={jest.fn()}
+                onSaved={jest.fn()}
+            />,
+        );
+        const title = screen.getByLabelText('Title');
+        const box = title.closest('.Tasks-DialogOverlay')!.firstElementChild as HTMLElement;
+        box.tabIndex = -1;
+        box.focus(); // what the host modal does a few ms after mount
+
+        await waitFor(() => expect(title).toHaveFocus());
+    });
+
     it('updates an existing task', async () => {
         const user = userEvent.setup();
         const onSaved = jest.fn();

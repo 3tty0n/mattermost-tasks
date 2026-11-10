@@ -1,6 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {weekStartsOn} from 'calendar_utils';
 import {useId, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {epochToZonedParts, isValidTimeZone, machineTimeZone, zonedDateTimeToEpoch} from 'timezone_utils';
@@ -58,8 +59,11 @@ export default function DueDatePicker({value, hasTime = false, timeZone, hour12 
 
     const today = new Date();
     const monthLabel = intl.formatDate(month, {month: 'long', year: 'numeric'});
-    const weekdays = Array.from({length: 7}, (_, index) => intl.formatDate(new Date(2024, 0, 7 + index), {weekday: 'short'}));
-    const startOffset = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
+
+    // Same first day of the week as the sidebar calendar (2024-01-07 was a Sunday).
+    const weekStart = weekStartsOn(intl.locale);
+    const weekdays = Array.from({length: 7}, (_, index) => intl.formatDate(new Date(2024, 0, 7 + (weekStart + index)), {weekday: 'short'}));
+    const startOffset = ((new Date(month.getFullYear(), month.getMonth(), 1).getDay() - weekStart) + 7) % 7;
     const days = Array.from({length: 42}, (_, index) => new Date(month.getFullYear(), month.getMonth(), 1 + (index - startOffset)));
 
     const changeMonth = (offset: number) => {

@@ -4,7 +4,7 @@
 import {DAY_IN_MS} from 'calendar_utils';
 import {createEvent, deleteEvent, getEvent, updateEvent} from 'client';
 import {formatDateInput, formatTimeInput, parseDateInput, parseTimeInput, wallDateTime} from 'datetime_input_utils';
-import {FALLBACK_EVENT_DURATION_MINUTES, useHour12, useLeaveToPreview} from 'hooks';
+import {FALLBACK_EVENT_DURATION_MINUTES, useFocusAfterOpen, useHour12, useLeaveToPreview} from 'hooks';
 import {type ReactNode, useEffect, useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
@@ -20,6 +20,7 @@ import FormatBoldIcon from '@mattermost/compass-icons/components/format-bold';
 import FormatItalicIcon from '@mattermost/compass-icons/components/format-italic';
 import FormatListBulletedIcon from '@mattermost/compass-icons/components/format-list-bulleted';
 import LinkVariantIcon from '@mattermost/compass-icons/components/link-variant';
+import MapMarkerOutlineIcon from '@mattermost/compass-icons/components/map-marker-outline';
 import RefreshIcon from '@mattermost/compass-icons/components/refresh';
 import {Button} from '@mattermost/compass-ui/components/button';
 import {Checkbox} from '@mattermost/compass-ui/components/checkbox';
@@ -122,6 +123,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     const [repeatUnit, setRepeatUnit] = useState<'day'|'week'|'month'|'year'>('week');
     const [repeatUntil, setRepeatUntil] = useState('');
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
+    const titleRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!eventId) {
@@ -207,6 +209,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
     }, [eventId]);
 
     const canModify = !eventId || Boolean(event && (event.creatorId === currentUserId || isAdmin));
+    useFocusAfterOpen(titleRef, !loading && canModify);
     const canDelete = Boolean(event && (event.creatorId === currentUserId || isAdmin));
     const teamOptions = myTeams.map((memberTeam) => ({value: memberTeam.id, label: memberTeam.display_name}));
     if (teamID && !teamOptions.some((option) => option.value === teamID)) {
@@ -745,6 +748,7 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
                             value={title}
                             maxLength={200}
                             autoFocus={canModify}
+                            ref={titleRef}
                             disabled={!canModify}
                             placeholder={intl.formatMessage({id: 'tasks.event.title_placeholder', defaultMessage: 'Event name'})}
                             onChange={(changeEvent) => setTitle(changeEvent.target.value)}
@@ -881,13 +885,19 @@ export default function EventEditor({eventId, defaults, onClose, onSaved, onDele
 
                     <div className='Tasks-EventEditor__field'>
                         <label
-                            className='Tasks-TaskEditor__srOnly'
+                            className='Tasks-TaskEditor__sectionHeading'
                             htmlFor='tasks-event-location'
                         >
-                            <FormattedMessage
-                                id='tasks.event.location'
-                                defaultMessage='Location'
+                            <Icon
+                                size='16'
+                                glyph={<MapMarkerOutlineIcon/>}
                             />
+                            <span>
+                                <FormattedMessage
+                                    id='tasks.event.location'
+                                    defaultMessage='Location'
+                                />
+                            </span>
                         </label>
                         <input
                             id='tasks-event-location'

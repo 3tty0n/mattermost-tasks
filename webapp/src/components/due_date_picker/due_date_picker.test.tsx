@@ -3,6 +3,7 @@
 
 import {fireEvent, render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import {weekStartsOn} from 'calendar_utils';
 import {IntlProvider} from 'react-intl';
 
 import DueDatePicker from './due_date_picker';
@@ -83,6 +84,13 @@ describe('DueDatePicker', () => {
         await user.click(screen.getByRole('checkbox', {name: 'Set time'}));
 
         expect(screen.getByLabelText('Time')).toHaveValue('12:07');
+    });
+
+    it('starts the week on the same day as the sidebar calendar', () => {
+        renderPicker(undefined, jest.fn());
+        const expected = new Intl.DateTimeFormat('en', {weekday: 'short'}).format(new Date(2024, 0, 7 + weekStartsOn('en')));
+
+        expect(screen.getAllByText(/^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)$/)[0]).toHaveTextContent(expected);
     });
 
     it('navigates between months', async () => {

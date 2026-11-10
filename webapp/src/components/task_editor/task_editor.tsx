@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {createTask, updateTask} from 'client';
-import {useHour12, useLeaveToPreview} from 'hooks';
+import {useFocusAfterOpen, useHour12, useLeaveToPreview} from 'hooks';
 import {useRef, useState} from 'react';
 import {FormattedMessage, useIntl} from 'react-intl';
 import {useSelector} from 'react-redux';
@@ -141,6 +141,8 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
     const [error, setError] = useState<string>();
 
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
+    const titleRef = useRef<HTMLInputElement>(null);
+    useFocusAfterOpen(titleRef, true);
 
     const teamOptions = myTeams.map((team) => ({value: team.id, label: team.display_name}));
     if (teamID && !teamOptions.some((option) => option.value === teamID)) {
@@ -451,6 +453,7 @@ export default function TaskEditor({task, defaults, onClose, onSaved}: Props) {
                         placeholder={intl.formatMessage({id: 'tasks.editor.title_placeholder', defaultMessage: 'Task name'})}
                         onChange={(event) => setTitle(event.target.value)}
                         autoFocus={true}
+                        ref={titleRef}
                     />
                 </div>
 
