@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -91,17 +92,24 @@ func TestNotifyAssignmentDropsWhenDisabled(t *testing.T) {
 
 func TestFormatReminder(t *testing.T) {
 	start := time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC).UnixMilli()
-	message := formatReminder(Reminder{Kind: "event", Title: "Standup", Location: " https://zoom.us/j/1\n", Start: start, HasTime: true, TimeZone: "Asia/Tokyo", Offset: 15},
-		"engineering", "town-square", "https://mm.example/engineering#event-id")
-	assert.Contains(t, message, "Event starting in 15 minutes")
-	assert.Contains(t, message, "Jan 5, 2026 09:00 JST")
-	assert.Contains(t, message, "town-square")
-	assert.NotContains(t, message, "**Team:**")
+	message := formatReminder(Reminder{
+		Kind: "event", Title: "Standup", Description: "Agenda\nBring notes", Location: " https://zoom.us/j/1\n",
+		Start: start, HasTime: true, TimeZone: "Asia/Tokyo", Offset: 15,
+	}, "https://mm.example/engineering#event-id")
+	assert.Contains(t, message, "Event starting in 15 minutes:** Standup")
+	assert.Contains(t, message, "- **When:** Jan 5, 2026 09:00 JST")
 	assert.Contains(t, message, "- **Location:** https://zoom.us/j/1\n")
+	assert.Contains(t, message, "> Agenda\n> Bring notes")
+	assert.NotContains(t, message, "**Team:**")
+	assert.NotContains(t, message, "**Channel:**")
 
-	message = formatReminder(Reminder{Kind: "task", Title: "Report", Start: start, Offset: 7 * 24 * 60}, "engineering", "", "link")
-	assert.Contains(t, message, "Task due in 1 week")
+	message = formatReminder(Reminder{Kind: "task", Title: "Report", Start: start, Offset: 7 * 24 * 60}, "link")
+	assert.Contains(t, message, "Task due in 1 week:** Report")
 	assert.NotContains(t, message, "Location")
-	assert.Contains(t, message, "engineering") // no channel: fall back to the team
+	assert.NotContains(t, message, ">")
 	assert.Contains(t, message, "Jan 5, 2026")
+
+	long := formatReminder(Reminder{Kind: "task", Title: "T", Description: strings.Repeat("あ", 400), Start: start}, "link")
+	assert.Contains(t, long, strings.Repeat("あ", 300)+"…")
+	assert.NotContains(t, long, strings.Repeat("あ", 301))
 }

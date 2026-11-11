@@ -125,7 +125,7 @@ func (s *Scheduler) fire(entry kvstore.ReminderEntry) {
 			return
 		}
 		s.sender.SendReminder(notifications.Reminder{
-			Kind: "task", ID: task.ID, Title: task.Title, TeamID: task.TeamID, ChannelID: task.ChannelID,
+			Kind: "task", ID: task.ID, Title: task.Title, Description: task.Description, TeamID: task.TeamID, ChannelID: task.ChannelID,
 			Start: start, HasTime: task.DueHasTime, TimeZone: task.TimeZone, Offset: entry.Offset,
 			UserIDs: recipients(task.AssigneeIDs, task.CreatorID),
 		})
@@ -140,7 +140,7 @@ func (s *Scheduler) fire(entry kvstore.ReminderEntry) {
 		}
 		if next, ok := event.NextStart(start - 1); ok && next == start {
 			s.sender.SendReminder(notifications.Reminder{
-				Kind: "event", ID: event.ID, Title: event.Title, Location: event.Location, TeamID: event.TeamID, ChannelID: event.ChannelID,
+				Kind: "event", ID: event.ID, Title: event.Title, Description: event.Description, Location: event.Location, TeamID: event.TeamID, ChannelID: event.ChannelID,
 				Start: start, HasTime: !event.AllDay, TimeZone: event.TimeZone, Offset: entry.Offset,
 				UserIDs: recipients(event.AssigneeIDs, event.CreatorID),
 			})

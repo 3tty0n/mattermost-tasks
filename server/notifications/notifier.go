@@ -212,17 +212,18 @@ func formatMessage(item assignment, teamName, channelName, link string) string {
 
 // Reminder is a due/start-time reminder for one item, sent to each of UserIDs.
 type Reminder struct {
-	Kind      string // "task" or "event"
-	ID        string
-	Title     string
-	Location  string // events only; free text or a meeting URL
-	TeamID    string
-	ChannelID string
-	Start     int64 // due or start time, Unix ms
-	HasTime   bool  // false for date-only due dates and all-day events
-	TimeZone  string
-	Offset    int // minutes before Start
-	UserIDs   []string
+	Kind        string // "task" or "event"
+	ID          string
+	Title       string
+	Description string
+	Location    string // events only; free text or a meeting URL
+	TeamID      string
+	ChannelID   string
+	Start       int64 // due or start time, Unix ms
+	HasTime     bool  // false for date-only due dates and all-day events
+	TimeZone    string
+	Offset      int // minutes before Start
+	UserIDs     []string
 }
 
 // SendReminder sends the reminder DMs synchronously; call it from a background job, not a request.
@@ -245,7 +246,7 @@ func (n *Notifier) SendReminder(r Reminder) {
 			return
 		}
 	}
-	message := formatReminder(r, teamName, channelName, n.link(assignment{kind: r.Kind, taskID: r.ID}, teamName, channelName))
+	message := formatReminder(r, n.link(assignment{kind: r.Kind, taskID: r.ID}, teamName, channelName))
 	for _, userID := range r.UserIDs {
 		if err := n.client.Post.DM(botUserID, userID, &mmodel.Post{Message: message}); err != nil {
 			n.client.Log.Warn("Failed to send a reminder", "id", r.ID, "user_id", userID, "error", err.Error())
@@ -253,7 +254,12 @@ func (n *Notifier) SendReminder(r Reminder) {
 	}
 }
 
-func formatReminder(r Reminder, teamName, channelName, link string) string {
+// maxReminderDescriptionRunes keeps a long description from turning the DM into a wall of text.
+const maxReminderDescriptionRunes = 300
+
+// formatReminder shows only the name, time, optional description and optional location/URL; the
+// team and channel are deliberately left out.
+func formatReminder(r Reminder, link string) string {
 	what := "due"
 	if r.Kind == "event" {
 		what = "starting"
@@ -269,18 +275,27 @@ func formatReminder(r Reminder, teamName, channelName, link string) string {
 	}
 	var builder strings.Builder
 	fmt.Fprintf(&builder, "**%s %s %s:** %s\n", strings.ToUpper(r.Kind[:1])+r.Kind[1:], what, when, r.Title)
-	// The team name is only shown for team-level items; a channel already implies its team.
-	if channelName != "" {
-		builder.WriteString("\n- **Channel:** " + channelName)
-	} else {
-		builder.WriteString("\n- **Team:** " + teamName)
-	}
 	builder.WriteString("\n- **When:** " + formatWhen(r))
 	if location := strings.Join(strings.Fields(r.Location), " "); location != "" {
 		builder.WriteString("\n- **Location:** " + location) // Mattermost links a bare URL itself
 	}
+	if description := reminderDescription(r.Description); description != "" {
+		builder.WriteString("\n\n" + description)
+	}
 	builder.WriteString("\n\n[Open in Mattermost](" + link + ")")
 	return builder.String()
+}
+
+// reminderDescription quotes the description, cut to a fixed length.
+func reminderDescription(text string) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+	if runes := []rune(text); len(runes) > maxReminderDescriptionRunes {
+		text = strings.TrimSpace(string(runes[:maxReminderDescriptionRunes])) + "…"
+	}
+	return "> " + strings.ReplaceAll(text, "\n", "\n> ")
 }
 
 func formatWhen(r Reminder) string {
